@@ -69,12 +69,34 @@ function renderMap(maps: MapTile[], character: Character | null) {
       
       if (tile) {
         cell.title = `${tile.name} (${x}, ${y})`;
-        cell.textContent = tile.skin || '·';
+        
+        // Create tile image
+        const img = document.createElement('img');
+        img.src = `https://artifactsmmo.com/images/tiles/${tile.skin}.png`;
+        img.alt = tile.skin;
+        img.style.width = '100%';
+        img.style.height = '100%';
+        img.style.objectFit = 'cover';
+        img.onerror = () => {
+          // Fallback if image doesn't load
+          img.style.display = 'none';
+          cell.textContent = tile.skin?.substring(0, 3) || '·';
+        };
+        cell.appendChild(img);
         
         // Check if character is at this location
         if (character && character.x === x && character.y === y) {
           cell.classList.add('player');
-          cell.textContent = '🧙';
+          // Add player overlay
+          const playerIcon = document.createElement('div');
+          playerIcon.textContent = '🧙';
+          playerIcon.style.position = 'absolute';
+          playerIcon.style.top = '50%';
+          playerIcon.style.left = '50%';
+          playerIcon.style.transform = 'translate(-50%, -50%)';
+          playerIcon.style.fontSize = '24px';
+          playerIcon.style.filter = 'drop-shadow(0 0 2px black)';
+          cell.appendChild(playerIcon);
         }
         
         cell.addEventListener('click', () => {

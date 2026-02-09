@@ -109,6 +109,10 @@ All modifications, additions, and deletions should be logged in a single `AGENTI
 - When removing or deprecating code
 - When changing API integrations or data structures
 
+### Git
+
+- Changes should also be committed to git after each request is completed
+
 ## Code Style
 
 ### Single-User Optimization

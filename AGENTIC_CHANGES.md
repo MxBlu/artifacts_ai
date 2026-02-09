@@ -1,5 +1,23 @@
 # Agentic Changes Log
 
+## [2026-02-09] - Fixed map tile rendering to use images
+
+### Changed
+- File: `src/main.ts`
+  - Updated renderMap() to create img elements for tile skins
+  - Construct image URLs from skin identifiers: `https://artifactsmmo.com/images/tiles/{skin}.png`
+  - Added fallback text display if image fails to load
+  - Player icon now overlays as absolute positioned div
+
+- File: `index.html`
+  - Added overflow: hidden to .map-cell for proper image containment
+  - Added image-rendering css for crisp pixel art display
+
+### Notes
+- API returns skin as string identifier, not URL
+- Images are fetched from game's CDN based on skin value
+- Player position shown as overlay to not hide tile underneath
+
 ## [2026-02-09] - Project initialized with map viewer SPA
 
 ### Added
