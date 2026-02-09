@@ -141,17 +141,17 @@ async function loadMapAndCharacter() {
   try {
     api = new ArtifactsAPI(token);
     
-    // Load map data
-    console.log('Fetching map data...');
-    const maps = await api.getAllMaps();
-    console.log(`Loaded ${maps.length} map tiles`);
-    currentMap = maps;
-    
-    // Load character data
+    // Load character data first to get the layer
     console.log('Fetching character data...');
     const character = await api.getCharacter(charName);
     console.log('Character loaded:', character);
     currentCharacter = character;
+    
+    // Load map data for character's layer
+    console.log(`Fetching map data for layer: ${character.layer}...`);
+    const maps = await api.getMapsByLayer(character.layer);
+    console.log(`Loaded ${maps.length} map tiles`);
+    currentMap = maps;
     
     // Render everything
     renderMap(currentMap, currentCharacter);

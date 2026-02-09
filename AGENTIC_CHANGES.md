@@ -1,5 +1,22 @@
 # Agentic Changes Log
 
+## [2026-02-10] - Fixed map layer filtering
+
+### Changed
+- File: `src/api.ts`
+  - Added `layer` property to MapTile interface
+  - Renamed `getAllMaps()` to `getMapsByLayer(layer: string)`
+  - Updated to use `/maps/{layer}` endpoint for layer-specific map data
+
+- File: `src/main.ts`
+  - Changed loading order: fetch character first, then maps for character's layer
+  - Now displays only maps for the same layer as the character
+
+### Notes
+- Character has a `layer` property (interior, overworld, underground)
+- Maps are now filtered by layer so only relevant tiles are shown
+- Fixes issue where wrong layer maps were being displayed
+
 ## [2026-02-09] - Corrected map tile image URL path
 
 ### Changed

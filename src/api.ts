@@ -7,6 +7,7 @@ export interface MapTile {
   skin: string;
   x: number;
   y: number;
+  layer: string;
   content: {
     type: string;
     code: string;
@@ -48,13 +49,13 @@ export class ArtifactsAPI {
     });
   }
 
-  async getAllMaps(): Promise<MapTile[]> {
+  async getMapsByLayer(layer: string): Promise<MapTile[]> {
     const maps: MapTile[] = [];
     let page = 1;
     const size = 100;
     
     while (true) {
-      const response = await this.client.get<MapResponse>('/maps', {
+      const response = await this.client.get<MapResponse>(`/maps/${layer}`, {
         params: { page, size }
       });
       
