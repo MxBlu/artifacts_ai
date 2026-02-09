@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-09] - Corrected map tile image URL path
+
+### Changed
+- File: `src/main.ts`
+  - Fixed image URL from `/images/tiles/` to `/images/maps/`
+  - Correct URL format: `https://artifactsmmo.com/images/maps/{skin}.png`
+
 ## [2026-02-09] - Fixed map tile rendering to use images
 
 ### Changed

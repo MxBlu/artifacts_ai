@@ -72,7 +72,7 @@ function renderMap(maps: MapTile[], character: Character | null) {
         
         // Create tile image
         const img = document.createElement('img');
-        img.src = `https://artifactsmmo.com/images/tiles/${tile.skin}.png`;
+        img.src = `https://artifactsmmo.com/images/maps/${tile.skin}.png`;
         img.alt = tile.skin;
         img.style.width = '100%';
         img.style.height = '100%';
