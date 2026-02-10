@@ -1,5 +1,17 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:45] - Move configuration pane to bottom of page
+
+### Changed
+- File: `index.html`
+  - Moved `.controls` div from top of page to bottom, after character info panel
+  - Changed `.controls` CSS margin from `margin-bottom: 20px` to `margin-top: 20px`
+  
+### Notes
+- Configuration section now appears at the bottom of the page for cleaner layout
+- All map and character info is visible first
+- Configuration still auto-collapses after successful load
+
 ## [2026-02-10 09:40] - Add right-click movement functionality
 
 ### Added

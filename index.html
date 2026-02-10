@@ -32,7 +32,7 @@
       background: #16213e;
       padding: 20px;
       border-radius: 8px;
-      margin-bottom: 20px;
+      margin-top: 20px;
     }
 
     .input-group {
@@ -335,6 +335,24 @@
   <div class="container">
     <h1>🗺️ Artifacts MMO - Map Viewer</h1>
     
+    <div class="map-view-wrapper">
+      <div class="map-container">
+        <div id="mapGrid" class="map-grid">
+          <!-- Map will be rendered here -->
+        </div>
+      </div>
+
+      <div class="cell-info-panel">
+        <h2>Selected Cell Info</h2>
+        <pre id="cellInfo">Click on a map cell to see details</pre>
+      </div>
+    </div>
+
+    <div class="info-panel">
+      <h2>Character Info</h2>
+      <pre id="characterInfo">No character loaded</pre>
+    </div>
+
     <div class="controls">
       <details class="config-section" id="configSection" open>
         <summary>Configuration</summary>
@@ -355,24 +373,6 @@
       </details>
       
       <div id="status" class="status" style="display: none;"></div>
-    </div>
-
-    <div class="map-view-wrapper">
-      <div class="map-container">
-        <div id="mapGrid" class="map-grid">
-          <!-- Map will be rendered here -->
-        </div>
-      </div>
-
-      <div class="cell-info-panel">
-        <h2>Selected Cell Info</h2>
-        <pre id="cellInfo">Click on a map cell to see details</pre>
-      </div>
-    </div>
-
-    <div class="info-panel">
-      <h2>Character Info</h2>
-      <pre id="characterInfo">No character loaded</pre>
     </div>
 
     <div id="tileModal" class="tile-modal">
