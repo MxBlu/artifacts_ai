@@ -42,6 +42,13 @@
   - Added rest action handler and cooldown/HP checks
   - Disabled Rest button when on cooldown or at full HP
 
+## [2026-02-11 11:05] - Auto-fight after move cooldown
+
+### Changed
+- File: `src/main.ts`
+  - Schedule the fight automatically after moving and cooldown expiration
+  - Added shared fight execution helper and pending timeout tracking
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

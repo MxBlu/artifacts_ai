@@ -29,6 +29,7 @@ const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 let contextMenuTarget: { tile: MapTile } | null = null;
 let timerUpdateInterval: number | null = null;
 let lastCooldownState: boolean | null = null;
+let pendingFightTimeout: number | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -119,6 +120,60 @@ function canRest(character: Character | null): boolean {
   if (!character) return false;
   if (isOnCooldown(character)) return false;
   return character.hp < character.max_hp;
+}
+
+function scheduleFightAfterCooldown(monsterCode: string) {
+  if (!currentCharacter) return;
+  if (pendingFightTimeout) {
+    clearTimeout(pendingFightTimeout);
+    pendingFightTimeout = null;
+  }
+
+  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+
+  renderFightState(`Moved. Waiting ${Math.ceil(delayMs / 1000)}s to fight ${monsterCode}...`, 'info');
+  showStatus(`Moved. Waiting ${Math.ceil(delayMs / 1000)}s before fighting ${monsterCode}...`, 'info');
+
+  pendingFightTimeout = window.setTimeout(() => {
+    pendingFightTimeout = null;
+    handleFightAfterMove(monsterCode);
+  }, delayMs);
+}
+
+async function handleFightAfterMove(monsterCode: string) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleFightAfterCooldown(monsterCode);
+    return;
+  }
+
+  try {
+    renderFightState(`Fighting ${monsterCode}...`, 'info');
+    showStatus(`Fighting ${monsterCode}...`, 'info');
+    const fightData = await api.fightCharacter(currentCharacter.name);
+    const updatedCharacter = fightData.characters.find(c => c.name === currentCharacter?.name) || fightData.characters[0];
+
+    if (updatedCharacter) {
+      currentCharacter = updatedCharacter;
+    }
+
+    renderFightResult(fightData, monsterCode);
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = fightData.cooldown.total_seconds;
+    const result = fightData.fight.result;
+    const turns = fightData.fight.turns;
+    showStatus(`Fight ${result} vs ${fightData.fight.opponent} in ${turns} turns. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Fight error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Fight failed';
+    renderFightState(`Fight failed: ${message}`, 'error');
+    showStatus(`Error: ${message}`, 'error');
+  }
 }
 
 // Update timers display
@@ -323,6 +378,8 @@ async function handleFightAction() {
     return;
   }
 
+  const monsterCode = tile.interactions.content?.code || 'monster';
+
   hideContextMenu();
 
   if (!isCharacterOnTile(currentCharacter, tile)) {
@@ -337,9 +394,7 @@ async function handleFightAction() {
       updateTimers();
 
       if (isOnCooldown(currentCharacter)) {
-        const remaining = getRemainingCooldown(currentCharacter);
-        renderFightState(`Moved. Cooldown active (${remaining}s). Fight when ready.`, 'info');
-        showStatus(`Moved to ${moveData.destination.name}. Cooldown: ${remaining}s. Retry fight after cooldown.`, 'info');
+        scheduleFightAfterCooldown(monsterCode);
         return;
       }
     } catch (error: any) {
@@ -351,32 +406,7 @@ async function handleFightAction() {
     }
   }
 
-  const monsterCode = tile.interactions.content?.code || 'monster';
-
-  try {
-    renderFightState(`Fighting ${monsterCode}...`, 'info');
-    showStatus(`Fighting ${monsterCode}...`, 'info');
-    const fightData = await api.fightCharacter(currentCharacter.name);
-    const updatedCharacter = fightData.characters.find(c => c.name === currentCharacter?.name) || fightData.characters[0];
-
-    if (updatedCharacter) {
-      currentCharacter = updatedCharacter;
-    }
-
-    renderFightResult(fightData, monsterCode);
-    updateCharacterInfo(currentCharacter);
-    updateTimers();
-
-    const cooldown = fightData.cooldown.total_seconds;
-    const result = fightData.fight.result;
-    const turns = fightData.fight.turns;
-    showStatus(`Fight ${result} vs ${fightData.fight.opponent} in ${turns} turns. Cooldown: ${cooldown}s`, 'success');
-  } catch (error: any) {
-    console.error('Fight error:', error);
-    const message = error.response?.data?.error?.message || error.message || 'Fight failed';
-    renderFightState(`Fight failed: ${message}`, 'error');
-    showStatus(`Error: ${message}`, 'error');
-  }
+  handleFightAfterMove(monsterCode);
 }
 
 async function handleRestAction() {
