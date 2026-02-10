@@ -30,6 +30,18 @@
   - Render fight status during move and fight actions
   - Show fight summary details and logs after combat
 
+## [2026-02-11 10:58] - Add rest action to timers pane
+
+### Changed
+- File: `index.html`
+  - Added a Rest button to the timers pane
+  - Updated timers pane layout to align controls
+- File: `src/api.ts`
+  - Added rest response types and `restCharacter()` API method
+- File: `src/main.ts`
+  - Added rest action handler and cooldown/HP checks
+  - Disabled Rest button when on cooldown or at full HP
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

@@ -439,6 +439,9 @@
       padding: 15px 20px;
       border-radius: 8px;
       margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
     }
 
     .timers-container {
@@ -446,6 +449,30 @@
       gap: 20px;
       align-items: center;
       flex-wrap: wrap;
+      flex: 1;
+    }
+
+    .rest-button {
+      background: #51cf66;
+      color: #0a0a1a;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2) inset;
+    }
+
+    .rest-button:hover {
+      background: #3fbf57;
+    }
+
+    .rest-button:disabled {
+      background: #2c3e50;
+      color: #666;
+      cursor: not-allowed;
     }
 
     .timer {
@@ -603,6 +630,7 @@
       <div id="timersContainer" class="timers-container">
         <!-- Timers will be rendered here -->
       </div>
+      <button id="restBtn" class="rest-button" disabled>Rest</button>
     </div>
     
     <div class="map-view-wrapper">

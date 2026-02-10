@@ -24,6 +24,7 @@ const contextMenu = document.getElementById('contextMenu') as HTMLDivElement;
 const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
 const fightMenuItem = document.getElementById('fightMenuItem') as HTMLDivElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
+const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 
 let contextMenuTarget: { tile: MapTile } | null = null;
 let timerUpdateInterval: number | null = null;
@@ -114,10 +115,17 @@ function isCharacterOnTile(character: Character | null, tile: MapTile): boolean 
   return character.x === tile.x && character.y === tile.y && character.layer === tile.layer;
 }
 
+function canRest(character: Character | null): boolean {
+  if (!character) return false;
+  if (isOnCooldown(character)) return false;
+  return character.hp < character.max_hp;
+}
+
 // Update timers display
 function updateTimers() {
   if (!currentCharacter) {
     timersContainer.innerHTML = '<div style="color: #666; font-style: italic;">No character loaded</div>';
+    restBtn.disabled = true;
     return;
   }
 
@@ -154,6 +162,8 @@ function updateTimers() {
   html += '</div></div></div>';
   
   timersContainer.innerHTML = html;
+
+  restBtn.disabled = !canRest(currentCharacter);
 }
 
 // Start timer updates
@@ -365,6 +375,39 @@ async function handleFightAction() {
     console.error('Fight error:', error);
     const message = error.response?.data?.error?.message || error.message || 'Fight failed';
     renderFightState(`Fight failed: ${message}`, 'error');
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleRestAction() {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  if (currentCharacter.hp >= currentCharacter.max_hp) {
+    showStatus('HP is already full', 'info');
+    return;
+  }
+
+  try {
+    showStatus('Resting...', 'info');
+    const restData = await api.restCharacter(currentCharacter.name);
+    currentCharacter = restData.character;
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = restData.cooldown.total_seconds;
+    showStatus(`Rested +${restData.hp_restored} HP. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Rest error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Rest failed';
     showStatus(`Error: ${message}`, 'error');
   }
 }
@@ -719,6 +762,12 @@ moveMenuItem.addEventListener('click', () => {
 fightMenuItem.addEventListener('click', () => {
   if (!fightMenuItem.classList.contains('disabled')) {
     handleFightAction();
+  }
+});
+
+restBtn.addEventListener('click', () => {
+  if (!restBtn.disabled) {
+    handleRestAction();
   }
 });
 

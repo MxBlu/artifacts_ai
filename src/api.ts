@@ -95,6 +95,22 @@ export interface FightResponse {
   data: FightData;
 }
 
+export interface RestData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  hp_restored: number;
+  character: Character;
+}
+
+export interface RestResponse {
+  data: RestData;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -152,6 +168,13 @@ export class ArtifactsAPI {
     const response = await this.client.post<FightResponse>(
       `/my/${characterName}/action/fight`,
       { participants }
+    );
+    return response.data.data;
+  }
+
+  async restCharacter(characterName: string): Promise<RestData> {
+    const response = await this.client.post<RestResponse>(
+      `/my/${characterName}/action/rest`
     );
     return response.data.data;
   }
