@@ -61,8 +61,8 @@ function renderMap(maps: MapTile[], character: Character | null) {
   });
 
   // Set grid dimensions
-  mapGrid.style.gridTemplateColumns = `repeat(${width}, 40px)`;
-  mapGrid.style.gridTemplateRows = `repeat(${height}, 40px)`;
+  mapGrid.style.gridTemplateColumns = `repeat(${width}, 1fr)`;
+  mapGrid.style.gridTemplateRows = `repeat(${height}, 1fr)`;
   mapGrid.innerHTML = '';
 
   // Render cells (top to bottom, left to right)

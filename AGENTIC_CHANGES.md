@@ -1,5 +1,24 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:25] - Remove gaps and fill width with map tiles
+
+### Changed
+- File: `index.html`
+  - Changed `.map-grid` gap from 2px to 0
+  - Removed padding and background from `.map-grid`
+  - Changed map-grid to `display: grid` with `width: 100%`
+  - Removed borders from `.map-cell`
+  - Changed cell sizing to use `aspect-ratio: 1` instead of fixed width/height
+  
+- File: `src/main.ts`
+  - Changed grid template from `repeat(${width}, 40px)` to `repeat(${width}, 1fr)`
+  - Tiles now dynamically size to fill container width while maintaining square aspect ratio
+  
+### Notes
+- Map tiles now have no gaps between them
+- Map grid fills the full width of the container
+- Tiles scale dynamically while maintaining square shape
+
 ## [2026-02-10 09:20] - Move cell details to side panel
 
 ### Changed
