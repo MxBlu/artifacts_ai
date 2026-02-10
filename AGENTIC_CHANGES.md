@@ -21,6 +21,15 @@
   - Auto-move to the target tile before attempting the fight
   - Inform the user when movement cooldown prevents immediate fighting
 
+## [2026-02-11 10:40] - Add fight status panel with logs
+
+### Changed
+- File: `index.html`
+  - Added Fight Status panel and styles for fight summaries and logs
+- File: `src/main.ts`
+  - Render fight status during move and fight actions
+  - Show fight summary details and logs after combat
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -14,6 +14,7 @@ const statusDiv = document.getElementById('status') as HTMLDivElement;
 const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
+const fightInfo = document.getElementById('fightInfo') as HTMLDivElement;
 const configSection = document.getElementById('configSection') as HTMLDetailsElement;
 const tileModal = document.getElementById('tileModal') as HTMLDivElement;
 const tileModalTitle = document.getElementById('tileModalTitle') as HTMLHeadingElement;
@@ -58,6 +59,48 @@ function getCooldownProgress(character: Character | null): number {
   
   const progress = Math.min(Math.max(elapsed / totalCooldown, 0), 1);
   return progress;
+}
+
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function renderFightState(message: string, state: 'info' | 'error' = 'info') {
+  fightInfo.innerHTML = `<div class="fight-state ${state}">${escapeHtml(message)}</div>`;
+}
+
+function renderFightResult(fightData: FightData, monsterLabel: string) {
+  const resultClass = fightData.fight.result === 'win' ? 'win' : 'loss';
+  const cooldown = fightData.cooldown.total_seconds;
+  const turns = fightData.fight.turns;
+  const baseCooldown = turns * 2;
+  const participants = fightData.characters?.map(c => c.name).join(', ') || 'Unknown';
+  const logs = fightData.fight.logs || [];
+
+  const logsHtml = logs.length
+    ? `<ul class="fight-logs">${logs.map(log => `<li>${escapeHtml(log)}</li>`).join('')}</ul>`
+    : '<div class="fight-empty">No logs returned</div>';
+
+  fightInfo.innerHTML = `
+    <div class="fight-summary">
+      <div class="fight-label">Opponent</div>
+      <div class="fight-value">${escapeHtml(monsterLabel)}</div>
+      <div class="fight-label">Result</div>
+      <div class="fight-result ${resultClass}">${escapeHtml(fightData.fight.result)}</div>
+      <div class="fight-label">Turns</div>
+      <div class="fight-value">${turns}</div>
+      <div class="fight-label">Cooldown</div>
+      <div class="fight-value">${cooldown}s (base ${baseCooldown}s)</div>
+      <div class="fight-label">Participants</div>
+      <div class="fight-value">${escapeHtml(participants)}</div>
+    </div>
+    ${logsHtml}
+  `;
 }
 
 function isMonsterTile(tile: MapTile): boolean {
@@ -274,6 +317,7 @@ async function handleFightAction() {
 
   if (!isCharacterOnTile(currentCharacter, tile)) {
     try {
+      renderFightState(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
@@ -284,12 +328,14 @@ async function handleFightAction() {
 
       if (isOnCooldown(currentCharacter)) {
         const remaining = getRemainingCooldown(currentCharacter);
+        renderFightState(`Moved. Cooldown active (${remaining}s). Fight when ready.`, 'info');
         showStatus(`Moved to ${moveData.destination.name}. Cooldown: ${remaining}s. Retry fight after cooldown.`, 'info');
         return;
       }
     } catch (error: any) {
       console.error('Move before fight error:', error);
       const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      renderFightState(`Move failed: ${message}`, 'error');
       showStatus(`Error: ${message}`, 'error');
       return;
     }
@@ -298,6 +344,7 @@ async function handleFightAction() {
   const monsterCode = tile.interactions.content?.code || 'monster';
 
   try {
+    renderFightState(`Fighting ${monsterCode}...`, 'info');
     showStatus(`Fighting ${monsterCode}...`, 'info');
     const fightData = await api.fightCharacter(currentCharacter.name);
     const updatedCharacter = fightData.characters.find(c => c.name === currentCharacter?.name) || fightData.characters[0];
@@ -306,6 +353,7 @@ async function handleFightAction() {
       currentCharacter = updatedCharacter;
     }
 
+    renderFightResult(fightData, monsterCode);
     updateCharacterInfo(currentCharacter);
     updateTimers();
 
@@ -316,6 +364,7 @@ async function handleFightAction() {
   } catch (error: any) {
     console.error('Fight error:', error);
     const message = error.response?.data?.error?.message || error.message || 'Fight failed';
+    renderFightState(`Fight failed: ${message}`, 'error');
     showStatus(`Error: ${message}`, 'error');
   }
 }
