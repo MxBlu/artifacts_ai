@@ -21,6 +21,7 @@ const tileModalCoords = document.getElementById('tileModalCoords') as HTMLDivEle
 const tileModalInteractions = document.getElementById('tileModalInteractions') as HTMLDivElement;
 const contextMenu = document.getElementById('contextMenu') as HTMLDivElement;
 const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
+const fightMenuItem = document.getElementById('fightMenuItem') as HTMLDivElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 
 let contextMenuTarget: { tile: MapTile } | null = null;
@@ -57,6 +58,17 @@ function getCooldownProgress(character: Character | null): number {
   
   const progress = Math.min(Math.max(elapsed / totalCooldown, 0), 1);
   return progress;
+}
+
+function isMonsterTile(tile: MapTile): boolean {
+  const content = tile.interactions.content;
+  if (!content || !content.type) return false;
+  return content.type.toLowerCase() === 'monster';
+}
+
+function isCharacterOnTile(character: Character | null, tile: MapTile): boolean {
+  if (!character) return false;
+  return character.x === tile.x && character.y === tile.y && character.layer === tile.layer;
 }
 
 // Update timers display
@@ -188,6 +200,18 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
   } else {
     moveMenuItem.classList.remove('disabled');
   }
+
+  const hasMonster = isMonsterTile(tile);
+  fightMenuItem.style.display = hasMonster ? 'block' : 'none';
+
+  if (hasMonster) {
+    const canFight = !!currentCharacter && !isOnCooldown(currentCharacter);
+    if (!canFight) {
+      fightMenuItem.classList.add('disabled');
+    } else {
+      fightMenuItem.classList.remove('disabled');
+    }
+  }
 }
 
 function hideContextMenu() {
@@ -224,6 +248,74 @@ async function handleMoveAction() {
   } catch (error: any) {
     console.error('Move error:', error);
     const message = error.response?.data?.error?.message || error.message || 'Move failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleFightAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+
+  if (!isMonsterTile(tile)) {
+    showStatus('No monster on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        const remaining = getRemainingCooldown(currentCharacter);
+        showStatus(`Moved to ${moveData.destination.name}. Cooldown: ${remaining}s. Retry fight after cooldown.`, 'info');
+        return;
+      }
+    } catch (error: any) {
+      console.error('Move before fight error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  const monsterCode = tile.interactions.content?.code || 'monster';
+
+  try {
+    showStatus(`Fighting ${monsterCode}...`, 'info');
+    const fightData = await api.fightCharacter(currentCharacter.name);
+    const updatedCharacter = fightData.characters.find(c => c.name === currentCharacter?.name) || fightData.characters[0];
+
+    if (updatedCharacter) {
+      currentCharacter = updatedCharacter;
+    }
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = fightData.cooldown.total_seconds;
+    const result = fightData.fight.result;
+    const turns = fightData.fight.turns;
+    showStatus(`Fight ${result} vs ${fightData.fight.opponent} in ${turns} turns. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Fight error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Fight failed';
     showStatus(`Error: ${message}`, 'error');
   }
 }
@@ -572,6 +664,12 @@ apiTokenInput.addEventListener('keypress', (e) => {
 moveMenuItem.addEventListener('click', () => {
   if (!moveMenuItem.classList.contains('disabled')) {
     handleMoveAction();
+  }
+});
+
+fightMenuItem.addEventListener('click', () => {
+  if (!fightMenuItem.classList.contains('disabled')) {
+    handleFightAction();
   }
 });
 

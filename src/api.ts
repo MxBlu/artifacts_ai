@@ -73,6 +73,28 @@ export interface MovementResponse {
   data: MovementData;
 }
 
+export interface FightData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  fight: {
+    result: 'win' | 'loss';
+    turns: number;
+    opponent: string;
+    logs: string[];
+    characters: any[];
+  };
+  characters: Character[];
+}
+
+export interface FightResponse {
+  data: FightData;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -122,6 +144,14 @@ export class ArtifactsAPI {
     const response = await this.client.post<MovementResponse>(
       `/my/${characterName}/action/move`,
       { x, y }
+    );
+    return response.data.data;
+  }
+
+  async fightCharacter(characterName: string, participants: string[] = []): Promise<FightData> {
+    const response = await this.client.post<FightResponse>(
+      `/my/${characterName}/action/fight`,
+      { participants }
     );
     return response.data.data;
   }

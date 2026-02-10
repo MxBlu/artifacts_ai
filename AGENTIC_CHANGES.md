@@ -1,5 +1,26 @@
 # Agentic Changes Log
 
+## [2026-02-11 10:15] - Add fight action from map tiles
+
+### Changed
+- File: `src/api.ts`
+  - Added fight response types and `fightCharacter()` API method
+- File: `src/main.ts`
+  - Added monster tile checks and fight action handler
+  - Added context menu enable/disable logic for fighting
+- File: `index.html`
+  - Added "Fight Monster" item to the tile context menu
+- File: `GAME_KNOWLEDGE.md`
+  - Documented fight action request shape and tile requirement
+
+## [2026-02-11 10:22] - Gate fight menu and auto-move before fight
+
+### Changed
+- File: `src/main.ts`
+  - Hide fight option when no monster is present on the tile
+  - Auto-move to the target tile before attempting the fight
+  - Inform the user when movement cooldown prevents immediate fighting
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

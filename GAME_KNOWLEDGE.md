@@ -44,6 +44,7 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - **Drops:** Gold + potential item drops (based on monster)
 - **Multi-character:** Boss fights support up to 3 characters
 - **Threat:** Affects monster targeting in multi-char combat
+- **Fight action:** `/my/{name}/action/fight` uses current map tile; request body only supports optional `participants` (max 2), and monster must be present on the tile
 
 ### Resources & Items
 - **Items have levels:** Equipment requires character level
