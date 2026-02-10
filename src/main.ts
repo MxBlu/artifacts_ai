@@ -12,8 +12,8 @@ const loadBtn = document.getElementById('loadBtn') as HTMLButtonElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
-const characterInfo = document.getElementById('characterInfo') as HTMLPreElement;
-const cellInfo = document.getElementById('cellInfo') as HTMLPreElement;
+const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
+const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
 const configSection = document.getElementById('configSection') as HTMLDetailsElement;
 const tileModal = document.getElementById('tileModal') as HTMLDivElement;
 const tileModalTitle = document.getElementById('tileModalTitle') as HTMLHeadingElement;
@@ -233,11 +233,187 @@ function renderMap(maps: MapTile[], character: Character | null) {
 }
 
 function showCellInfo(tile: MapTile) {
-  cellInfo.textContent = JSON.stringify(tile, null, 2);
+  let html = '<div class="info-content">';
+  
+  // Always visible info
+  html += `<div class="info-item"><span class="info-label">Name:</span> <span class="info-value">${tile.name}</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Position:</span> <span class="info-value">(${tile.x}, ${tile.y})</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Layer:</span> <span class="info-value">${tile.layer}</span></div>`;
+  
+  // Interactions section (collapsible)
+  html += '<div class="info-section">';
+  html += '<div class="info-section-header" data-section="tile-interactions">Interactions</div>';
+  html += '<div class="info-section-content" id="section-tile-interactions">';
+  
+  if (tile.interactions.content) {
+    const content = tile.interactions.content;
+    html += '<div class="info-subsection">';
+    html += '<div class="info-subsection-header">Content</div>';
+    html += `<div class="info-item"><span class="info-label">Type:</span> <span class="info-value">${content.type}</span></div>`;
+    html += `<div class="info-item"><span class="info-label">Code:</span> <span class="info-value">${content.code}</span></div>`;
+    html += '</div>';
+  }
+  
+  if (tile.interactions.transition) {
+    const trans = tile.interactions.transition;
+    html += '<div class="info-subsection">';
+    html += '<div class="info-subsection-header">Transition</div>';
+    html += `<div class="info-item"><span class="info-label">To:</span> <span class="info-value">(${trans.x}, ${trans.y})</span></div>`;
+    html += `<div class="info-item"><span class="info-label">Layer:</span> <span class="info-value">${trans.layer}</span></div>`;
+    html += `<div class="info-item"><span class="info-label">Map ID:</span> <span class="info-value">${trans.map_id}</span></div>`;
+    html += '</div>';
+  }
+  
+  if (!tile.interactions.content && !tile.interactions.transition) {
+    html += '<div class="info-item"><span class="info-value" style="color: #666;">No interactions available</span></div>';
+  }
+  
+  html += '</div></div>';
+  
+  // Details section (collapsible)
+  html += '<div class="info-section">';
+  html += '<div class="info-section-header" data-section="tile-details">Details</div>';
+  html += '<div class="info-section-content" id="section-tile-details">';
+  html += `<div class="info-item"><span class="info-label">Map ID:</span> <span class="info-value">${tile.map_id}</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Skin:</span> <span class="info-value">${tile.skin}</span></div>`;
+  html += '</div></div>';
+  
+  html += '</div>';
+  cellInfo.innerHTML = html;
+  
+  // Add click handlers for collapsible sections
+  setupCollapsibleSections();
 }
 
 function updateCharacterInfo(character: Character) {
-  characterInfo.textContent = JSON.stringify(character, null, 2);
+  let html = '<div class="info-content">';
+  
+  // Always visible info
+  html += `<div class="info-item"><span class="info-label">Name:</span> <span class="info-value">${character.name}</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Level:</span> <span class="info-value">${character.level}</span></div>`;
+  
+  // XP with progress bar
+  const xpPercent = (character.xp / character.max_xp * 100).toFixed(1);
+  html += `<div class="info-item"><span class="info-label">XP:</span> <span class="info-value">${character.xp.toLocaleString()} / ${character.max_xp.toLocaleString()} (${xpPercent}%)</span>`;
+  html += `<div class="progress-bar"><div class="progress-fill" style="width: ${xpPercent}%"></div></div>`;
+  html += '</div>';
+  
+  html += `<div class="info-item"><span class="info-label">Gold:</span> <span class="info-value">${character.gold.toLocaleString()}</span></div>`;
+  html += `<div class="info-item"><span class="info-label">HP:</span> <span class="info-value">${character.hp} / ${character.max_hp}</span></div>`;
+  
+  // Cooldown badge if active
+  if (character.cooldown > 0) {
+    html += `<div class="info-item"><span class="info-label">Status:</span><span class="cooldown-badge">Cooldown: ${character.cooldown}s</span></div>`;
+  }
+  
+  // Task info
+  if (character.task) {
+    const taskPercent = (character.task_progress / character.task_total * 100).toFixed(1);
+    html += `<div class="info-item"><span class="info-label">Task:</span> <span class="info-value">${character.task}</span></div>`;
+    html += `<div class="info-item"><span class="info-label">Progress:</span> <span class="info-value">${character.task_progress} / ${character.task_total} (${taskPercent}%)</span>`;
+    html += `<div class="progress-bar"><div class="progress-fill" style="width: ${taskPercent}%"></div></div>`;
+    html += '</div>';
+  }
+  
+  // Combat Stats (collapsible)
+  html += '<div class="info-section">';
+  html += '<div class="info-section-header" data-section="char-combat">Combat Stats</div>';
+  html += '<div class="info-section-content" id="section-char-combat">';
+  html += `<div class="info-item"><span class="info-label">Attack:</span> <span class="info-value">${character.dmg}</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Fire:</span> <span class="info-value">${character.attack_fire} / ${character.dmg_fire} dmg / ${character.res_fire} res</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Earth:</span> <span class="info-value">${character.attack_earth} / ${character.dmg_earth} dmg / ${character.res_earth} res</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Water:</span> <span class="info-value">${character.attack_water} / ${character.dmg_water} dmg / ${character.res_water} res</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Air:</span> <span class="info-value">${character.attack_air} / ${character.dmg_air} dmg / ${character.res_air} res</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Haste:</span> <span class="info-value">${character.haste}</span></div>`;
+  html += `<div class="info-item"><span class="info-label">Crit Strike:</span> <span class="info-value">${character.critical_strike}</span></div>`;
+  html += '</div></div>';
+  
+  // Skills (collapsible)
+  html += '<div class="info-section">';
+  html += '<div class="info-section-header" data-section="char-skills">Skills</div>';
+  html += '<div class="info-section-content" id="section-char-skills">';
+  
+  const skills = [
+    { name: 'Mining', level: character.mining_level, xp: character.mining_xp, max_xp: character.mining_max_xp },
+    { name: 'Woodcutting', level: character.woodcutting_level, xp: character.woodcutting_xp, max_xp: character.woodcutting_max_xp },
+    { name: 'Fishing', level: character.fishing_level, xp: character.fishing_xp, max_xp: character.fishing_max_xp },
+    { name: 'Weaponcrafting', level: character.weaponcrafting_level, xp: character.weaponcrafting_xp, max_xp: character.weaponcrafting_max_xp },
+    { name: 'Gearcrafting', level: character.gearcrafting_level, xp: character.gearcrafting_xp, max_xp: character.gearcrafting_max_xp },
+    { name: 'Jewelrycrafting', level: character.jewelrycrafting_level, xp: character.jewelrycrafting_xp, max_xp: character.jewelrycrafting_max_xp },
+    { name: 'Cooking', level: character.cooking_level, xp: character.cooking_xp, max_xp: character.cooking_max_xp },
+    { name: 'Alchemy', level: character.alchemy_level, xp: character.alchemy_xp, max_xp: character.alchemy_max_xp },
+  ];
+  
+  skills.forEach(skill => {
+    const percent = (skill.xp / skill.max_xp * 100).toFixed(0);
+    html += `<div class="info-item"><span class="info-label">${skill.name}:</span> <span class="info-value">Lvl ${skill.level} (${percent}%)</span></div>`;
+  });
+  
+  html += '</div></div>';
+  
+  // Equipment (collapsible)
+  html += '<div class="info-section">';
+  html += '<div class="info-section-header" data-section="char-equipment">Equipment</div>';
+  html += '<div class="info-section-content" id="section-char-equipment">';
+  
+  const equipment = [
+    { slot: 'Weapon', value: character.weapon_slot },
+    { slot: 'Shield', value: character.shield_slot },
+    { slot: 'Helmet', value: character.helmet_slot },
+    { slot: 'Body Armor', value: character.body_armor_slot },
+    { slot: 'Leg Armor', value: character.leg_armor_slot },
+    { slot: 'Boots', value: character.boots_slot },
+    { slot: 'Ring 1', value: character.ring1_slot },
+    { slot: 'Ring 2', value: character.ring2_slot },
+    { slot: 'Amulet', value: character.amulet_slot },
+    { slot: 'Artifact 1', value: character.artifact1_slot },
+    { slot: 'Artifact 2', value: character.artifact2_slot },
+    { slot: 'Artifact 3', value: character.artifact3_slot },
+  ];
+  
+  equipment.forEach(item => {
+    if (item.value) {
+      html += `<div class="info-item"><span class="info-label">${item.slot}:</span> <span class="info-value">${item.value}</span></div>`;
+    }
+  });
+  
+  html += '</div></div>';
+  
+  // Inventory (collapsible)
+  html += '<div class="info-section">';
+  html += '<div class="info-section-header" data-section="char-inventory">Inventory</div>';
+  html += '<div class="info-section-content" id="section-char-inventory">';
+  html += `<div class="info-item"><span class="info-label">Slots:</span> <span class="info-value">${character.inventory?.length || 0} / ${character.inventory_max_items}</span></div>`;
+  
+  if (character.inventory && character.inventory.length > 0) {
+    character.inventory.forEach((item: any) => {
+      html += `<div class="info-item"><span class="info-value">${item.code} x${item.quantity}</span></div>`;
+    });
+  } else {
+    html += '<div class="info-item"><span class="info-value" style="color: #666;">Empty</span></div>';
+  }
+  
+  html += '</div></div>';
+  
+  html += '</div>';
+  characterInfo.innerHTML = html;
+  
+  // Add click handlers for collapsible sections
+  setupCollapsibleSections();
+}
+
+function setupCollapsibleSections() {
+  document.querySelectorAll('.info-section-header').forEach(header => {
+    header.addEventListener('click', () => {
+      const sectionId = header.getAttribute('data-section');
+      const content = document.getElementById(`section-${sectionId}`);
+      
+      if (content) {
+        content.classList.toggle('visible');
+        header.classList.toggle('expanded');
+      }
+    });
+  });
 }
 
 async function loadMapAndCharacter() {

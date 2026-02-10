@@ -293,6 +293,106 @@
       font-size: 12px;
     }
 
+    .info-content {
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .info-item {
+      margin: 6px 0;
+      color: #eee;
+    }
+
+    .info-label {
+      color: #00d9ff;
+      font-weight: bold;
+      display: inline-block;
+      min-width: 100px;
+    }
+
+    .info-value {
+      color: #ccc;
+    }
+
+    .info-section {
+      margin: 10px 0;
+    }
+
+    .info-section-header {
+      cursor: pointer;
+      padding: 8px;
+      background: #0f3460;
+      border-radius: 4px;
+      user-select: none;
+      color: #00d9ff;
+      font-weight: bold;
+      transition: background 0.2s;
+      margin: 4px 0;
+    }
+
+    .info-section-header:hover {
+      background: #154060;
+    }
+
+    .info-section-header::before {
+      content: '▶';
+      display: inline-block;
+      margin-right: 6px;
+      transition: transform 0.2s;
+      font-size: 10px;
+    }
+
+    .info-section-header.expanded::before {
+      transform: rotate(90deg);
+    }
+
+    .info-section-content {
+      display: none;
+      padding: 8px 8px 8px 20px;
+      background: #0a0a1a;
+      border-radius: 4px;
+      margin-top: 4px;
+    }
+
+    .info-section-content.visible {
+      display: block;
+    }
+
+    .info-subsection {
+      margin: 8px 0;
+    }
+
+    .info-subsection-header {
+      color: #51cf66;
+      font-weight: bold;
+      margin-bottom: 4px;
+      font-size: 12px;
+    }
+
+    .progress-bar {
+      height: 4px;
+      background: #0f3460;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 2px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #00d9ff;
+      transition: width 0.3s;
+    }
+
+    .cooldown-badge {
+      display: inline-block;
+      background: #5e1717;
+      color: #ff6b6b;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 11px;
+      margin-left: 8px;
+    }
+
     details.config-section {
       margin-bottom: 15px;
     }
@@ -344,13 +444,13 @@
 
       <div class="cell-info-panel">
         <h2>Selected Cell Info</h2>
-        <pre id="cellInfo">Click on a map cell to see details</pre>
+        <div id="cellInfo">Click on a map cell to see details</div>
       </div>
     </div>
 
     <div class="info-panel">
       <h2>Character Info</h2>
-      <pre id="characterInfo">No character loaded</pre>
+      <div id="characterInfo">No character loaded</div>
     </div>
 
     <div class="controls">

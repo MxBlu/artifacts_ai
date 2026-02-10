@@ -1,5 +1,47 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:50] - Improve info views with collapsible tree structure
+
+### Changed
+- File: `index.html`
+  - Added extensive CSS styling for tree view components
+  - Added styles for collapsible sections with arrow indicators
+  - Added progress bar styling for XP and task progress
+  - Added cooldown badge styling
+  - Changed cellInfo and characterInfo from `<pre>` to `<div>` tags
+  
+- File: `src/main.ts`
+  - Completely rewrote `showCellInfo()` to render structured tree view
+  - Completely rewrote `updateCharacterInfo()` to render structured tree view
+  - Added `setupCollapsibleSections()` helper function
+  - Changed element types from HTMLPreElement to HTMLDivElement
+  
+### Map Tile Info Structure
+**Always Visible:**
+- Name, Position (x, y), Layer
+
+**Collapsible Sections:**
+- Interactions (content type/code, transition details)
+- Details (map_id, skin)
+
+### Character Info Structure
+**Always Visible:**
+- Name, Level, XP (with progress bar), Gold, HP, Cooldown status, Current task (with progress)
+
+**Collapsible Sections:**
+- Combat Stats (attack, elemental stats, haste, crit)
+- Skills (8 skills with levels and XP percentages)
+- Equipment (12 equipment slots)
+- Inventory (items with quantities)
+
+### Notes
+- Tree view has 2 levels maximum (section → items)
+- Progress bars for XP and task completion
+- Cooldown displayed as red badge when active
+- Click section headers to expand/collapse
+- Sections remember their state during the session
+- Much cleaner and more readable than raw JSON
+
 ## [2026-02-10 09:45] - Move configuration pane to bottom of page
 
 ### Changed
