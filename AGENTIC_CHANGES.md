@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-10 10:05] - Rename Selected Cell Info to Selected Map Tile Info
+
+### Changed
+- File: `index.html`
+  - Changed heading from "Selected Cell Info" to "Selected Map Tile Info"
+  - Updated placeholder text from "Click on a map cell" to "Click on a map tile"
+
 ## [2026-02-10 10:00] - Move character info to right column
 
 ### Changed
