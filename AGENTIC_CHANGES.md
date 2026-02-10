@@ -1,5 +1,16 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:15] - Auto-load map when config is saved
+
+### Changed
+- File: `src/main.ts`
+  - Automatically calls `loadMapAndCharacter()` on page load if saved config exists
+  - Users no longer need to click "Load Map & Character" when returning to the page
+  
+### Notes
+- If config is already saved, page loads map and character data immediately
+- Improves UX by eliminating extra click for returning users
+
 ## [2026-02-10 09:00] - Made configuration section collapsible
 
 ### Changed

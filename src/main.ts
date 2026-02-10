@@ -23,6 +23,8 @@ if (savedConfig) {
   characterNameInput.value = savedConfig.characterName;
   // Collapse the config section if config exists
   configSection.open = false;
+  // Auto-load map and character data
+  loadMapAndCharacter();
 }
 
 function showStatus(message: string, type: 'error' | 'success' | 'info') {
