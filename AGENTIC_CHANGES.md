@@ -1,5 +1,24 @@
 # Agentic Changes Log
 
+## [2026-02-10 10:00] - Move character info to right column
+
+### Changed
+- File: `index.html`
+  - Moved character info panel into right column alongside cell info
+  - Added `.panel-section` class for separating sections in right column
+  - Updated `.cell-info-panel` to use flexbox column layout with vertical scrolling
+  - Added `max-height` to both map container and info panel (calc(100vh - 180px))
+  - Removed redundant `.info-panel` background/padding styles
+  - Removed unused `.info-panel h2` and `.info-panel pre` CSS rules
+  - Added border separator between panel sections
+  
+### Notes
+- Character info and cell info now both appear in the right column
+- Both columns have matching max-height to fit on one screen
+- Right column scrolls vertically if content overflows
+- Visual separator between the two info sections
+- Entire layout now fits on one screen without scrolling the page
+
 ## [2026-02-10 09:55] - Fix collapsible sections in character info
 
 ### Changed
