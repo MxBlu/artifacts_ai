@@ -38,6 +38,7 @@ export interface Character {
   x: number;
   y: number;
   cooldown: number;
+  cooldown_expiration: string;
   hp: number;
   max_hp: number;
   [key: string]: any;

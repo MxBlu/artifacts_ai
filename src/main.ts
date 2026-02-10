@@ -24,6 +24,23 @@ const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
 
 let contextMenuTarget: { tile: MapTile } | null = null;
 
+// Helper function to check if character is on cooldown
+function isOnCooldown(character: Character | null): boolean {
+  if (!character) return false;
+  if (!character.cooldown_expiration) return false;
+  const expirationTime = new Date(character.cooldown_expiration).getTime();
+  const currentTime = Date.now();
+  return expirationTime > currentTime;
+}
+
+// Helper function to get remaining cooldown in seconds
+function getRemainingCooldown(character: Character | null): number {
+  if (!character || !isOnCooldown(character)) return 0;
+  const expirationTime = new Date(character.cooldown_expiration).getTime();
+  const currentTime = Date.now();
+  return Math.ceil((expirationTime - currentTime) / 1000);
+}
+
 // Load saved config on startup
 const savedConfig = loadConfig();
 if (savedConfig) {
@@ -88,7 +105,7 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
   contextMenu.classList.add('visible');
   
   // Disable move if no character loaded or character is on cooldown
-  if (!currentCharacter || currentCharacter.cooldown > 0) {
+  if (!currentCharacter || isOnCooldown(currentCharacter)) {
     moveMenuItem.classList.add('disabled');
   } else {
     moveMenuItem.classList.remove('disabled');
@@ -105,8 +122,9 @@ async function handleMoveAction() {
     return;
   }
   
-  if (currentCharacter.cooldown > 0) {
-    showStatus(`Character is on cooldown for ${currentCharacter.cooldown} seconds`, 'error');
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
     return;
   }
   
@@ -299,8 +317,9 @@ function updateCharacterInfo(character: Character) {
   html += `<div class="info-item"><span class="info-label">HP:</span> <span class="info-value">${character.hp} / ${character.max_hp}</span></div>`;
   
   // Cooldown badge if active
-  if (character.cooldown > 0) {
-    html += `<div class="info-item"><span class="info-label">Status:</span><span class="cooldown-badge">Cooldown: ${character.cooldown}s</span></div>`;
+  if (isOnCooldown(character)) {
+    const remaining = getRemainingCooldown(character);
+    html += `<div class="info-item"><span class="info-label">Status:</span><span class="cooldown-badge">Cooldown: ${remaining}s</span></div>`;
   }
   
   // Task info

@@ -1,5 +1,25 @@
 # Agentic Changes Log
 
+## [2026-02-10 10:10] - Fix cooldown logic to check expiration time
+
+### Changed
+- File: `src/api.ts`
+  - Added `cooldown_expiration: string` field to Character interface
+  
+- File: `src/main.ts`
+  - Added `isOnCooldown()` helper function that checks if cooldown_expiration is in the future
+  - Added `getRemainingCooldown()` helper function that calculates remaining seconds
+  - Updated all cooldown checks to use these helper functions instead of checking `character.cooldown > 0`
+  - Fixed context menu disable logic
+  - Fixed move action validation
+  - Fixed character info display of cooldown badge
+  
+### Notes
+- Previous logic incorrectly used `cooldown` field (total duration) instead of checking expiration time
+- Now properly compares `cooldown_expiration` timestamp against current time
+- Remaining cooldown is calculated dynamically from expiration time
+- Character will no longer appear on cooldown after expiration time has passed
+
 ## [2026-02-10 10:05] - Rename Selected Cell Info to Selected Map Tile Info
 
 ### Changed
