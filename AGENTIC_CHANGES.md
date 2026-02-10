@@ -1,5 +1,23 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:00] - Made configuration section collapsible
+
+### Changed
+- File: `index.html`
+  - Wrapped API token and character name inputs in a `<details>` element for collapsible functionality
+  - Added CSS styling for collapsible section with arrow indicator
+  - Section header displays "Configuration" with expand/collapse arrow
+  
+- File: `src/main.ts`
+  - Added reference to configSection element
+  - Auto-collapses config section when config is already saved on page load
+  - Auto-collapses config section after user saves config
+  
+### Notes
+- Config section starts open if no saved config exists, closed if config is already saved
+- Uses native HTML `<details>` element for clean, accessible collapse/expand
+- Section automatically collapses after "Save Config" is clicked
+
 ## [2026-02-10] - Fixed map layer filtering
 
 ### Changed

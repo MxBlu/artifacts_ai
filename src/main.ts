@@ -14,12 +14,15 @@ const statusDiv = document.getElementById('status') as HTMLDivElement;
 const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLPreElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLPreElement;
+const configSection = document.getElementById('configSection') as HTMLDetailsElement;
 
 // Load saved config on startup
 const savedConfig = loadConfig();
 if (savedConfig) {
   apiTokenInput.value = savedConfig.apiToken;
   characterNameInput.value = savedConfig.characterName;
+  // Collapse the config section if config exists
+  configSection.open = false;
 }
 
 function showStatus(message: string, type: 'error' | 'success' | 'info') {
@@ -178,6 +181,9 @@ function saveConfigToStorage() {
 
   saveConfig({ apiToken: token, characterName: charName });
   showStatus('Configuration saved!', 'success');
+  
+  // Collapse the config section after saving
+  configSection.open = false;
 }
 
 // Event listeners

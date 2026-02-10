@@ -171,6 +171,43 @@
       overflow: auto;
       font-size: 12px;
     }
+
+    details.config-section {
+      margin-bottom: 15px;
+    }
+
+    details.config-section summary {
+      cursor: pointer;
+      font-weight: bold;
+      color: #00d9ff;
+      padding: 10px;
+      background: #0f3460;
+      border-radius: 4px;
+      user-select: none;
+      list-style: none;
+    }
+
+    details.config-section summary::-webkit-details-marker {
+      display: none;
+    }
+
+    details.config-section summary::before {
+      content: '▶ ';
+      display: inline-block;
+      transition: transform 0.2s;
+    }
+
+    details.config-section[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    details.config-section summary:hover {
+      background: #154060;
+    }
+
+    .config-inputs {
+      padding-top: 15px;
+    }
   </style>
 </head>
 <body>
@@ -178,18 +215,23 @@
     <h1>🗺️ Artifacts MMO - Map Viewer</h1>
     
     <div class="controls">
-      <div class="input-group">
-        <label for="apiToken">API Token:</label>
-        <input type="password" id="apiToken" placeholder="Enter your API token">
-      </div>
-      
-      <div class="input-group">
-        <label for="characterName">Character Name:</label>
-        <input type="text" id="characterName" placeholder="Enter your character name">
-      </div>
-      
-      <button id="loadBtn">Load Map & Character</button>
-      <button id="saveBtn">Save Config</button>
+      <details class="config-section" id="configSection" open>
+        <summary>Configuration</summary>
+        <div class="config-inputs">
+          <div class="input-group">
+            <label for="apiToken">API Token:</label>
+            <input type="password" id="apiToken" placeholder="Enter your API token">
+          </div>
+          
+          <div class="input-group">
+            <label for="characterName">Character Name:</label>
+            <input type="text" id="characterName" placeholder="Enter your character name">
+          </div>
+          
+          <button id="loadBtn">Load Map & Character</button>
+          <button id="saveBtn">Save Config</button>
+        </div>
+      </details>
       
       <div id="status" class="status" style="display: none;"></div>
     </div>
