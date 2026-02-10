@@ -19,6 +19,10 @@ const tileModal = document.getElementById('tileModal') as HTMLDivElement;
 const tileModalTitle = document.getElementById('tileModalTitle') as HTMLHeadingElement;
 const tileModalCoords = document.getElementById('tileModalCoords') as HTMLDivElement;
 const tileModalInteractions = document.getElementById('tileModalInteractions') as HTMLDivElement;
+const contextMenu = document.getElementById('contextMenu') as HTMLDivElement;
+const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
+
+let contextMenuTarget: { tile: MapTile } | null = null;
 
 // Load saved config on startup
 const savedConfig = loadConfig();
@@ -74,6 +78,57 @@ function showTileModal(tile: MapTile, event: MouseEvent) {
 
 function hideTileModal() {
   tileModal.classList.remove('visible');
+}
+
+function showContextMenu(tile: MapTile, event: MouseEvent) {
+  event.preventDefault();
+  contextMenuTarget = { tile };
+  contextMenu.style.left = `${event.clientX}px`;
+  contextMenu.style.top = `${event.clientY}px`;
+  contextMenu.classList.add('visible');
+  
+  // Disable move if no character loaded or character is on cooldown
+  if (!currentCharacter || currentCharacter.cooldown > 0) {
+    moveMenuItem.classList.add('disabled');
+  } else {
+    moveMenuItem.classList.remove('disabled');
+  }
+}
+
+function hideContextMenu() {
+  contextMenu.classList.remove('visible');
+  contextMenuTarget = null;
+}
+
+async function handleMoveAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+  
+  if (currentCharacter.cooldown > 0) {
+    showStatus(`Character is on cooldown for ${currentCharacter.cooldown} seconds`, 'error');
+    return;
+  }
+  
+  const { tile } = contextMenuTarget;
+  hideContextMenu();
+  
+  try {
+    showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+    const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+    currentCharacter = moveData.character;
+    
+    // Re-render map to update character position
+    renderMap(currentMap, currentCharacter);
+    updateCharacterInfo(currentCharacter);
+    
+    const cooldown = moveData.cooldown.total_seconds;
+    showStatus(`Moved to ${moveData.destination.name}. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Move error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Move failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
 }
 
 function renderMap(maps: MapTile[], character: Character | null) {
@@ -143,6 +198,10 @@ function renderMap(maps: MapTile[], character: Character | null) {
         
         cell.addEventListener('click', () => {
           showCellInfo(tile);
+        });
+        
+        cell.addEventListener('contextmenu', (e: MouseEvent) => {
+          showContextMenu(tile, e);
         });
         
         cell.addEventListener('mouseenter', (e: MouseEvent) => {
@@ -252,4 +311,21 @@ apiTokenInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
     loadMapAndCharacter();
   }
+});
+
+// Context menu handlers
+moveMenuItem.addEventListener('click', () => {
+  if (!moveMenuItem.classList.contains('disabled')) {
+    handleMoveAction();
+  }
+});
+
+// Close context menu when clicking outside
+document.addEventListener('click', () => {
+  hideContextMenu();
+});
+
+// Prevent context menu from closing when clicking inside it
+contextMenu.addEventListener('click', (e) => {
+  e.stopPropagation();
 });

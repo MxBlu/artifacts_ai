@@ -1,5 +1,33 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:40] - Add right-click movement functionality
+
+### Added
+- File: `index.html`
+  - Added context menu CSS styling with hover effects
+  - Context menu shows "Move Here" option with disabled state support
+  - Context menu HTML already existed, added styling
+  
+- File: `src/api.ts`
+  - Added MovementData and MovementResponse interfaces
+  - Added `moveCharacter()` method to call `/my/{name}/action/move` endpoint
+  
+- File: `src/main.ts`
+  - Added context menu DOM references and target tracking
+  - Added `showContextMenu()` and `hideContextMenu()` functions
+  - Added `handleMoveAction()` async function to execute movement
+  - Added contextmenu event listener to tiles (right-click)
+  - Added move menu item click handler
+  - Added document click handler to close context menu
+  - Move button disabled when character is on cooldown
+  
+### Notes
+- Right-click any tile to see "Move Here" option
+- Move option is disabled/grayed out when character is on cooldown
+- After successful move, map re-renders with updated character position
+- Error messages displayed for cooldown violations or invalid moves
+- Context menu closes automatically after action or when clicking outside
+
 ## [2026-02-10 09:30] - Add tile hover modal with interaction details
 
 ### Changed

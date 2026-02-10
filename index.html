@@ -184,6 +184,45 @@
       font-size: 11px;
     }
 
+    .context-menu {
+      position: fixed;
+      background: #16213e;
+      border: 2px solid #00d9ff;
+      border-radius: 6px;
+      padding: 4px 0;
+      z-index: 2000;
+      min-width: 150px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      display: none;
+    }
+
+    .context-menu.visible {
+      display: block;
+    }
+
+    .context-menu-item {
+      padding: 8px 16px;
+      cursor: pointer;
+      color: #eee;
+      font-size: 13px;
+      transition: background 0.1s;
+    }
+
+    .context-menu-item:hover {
+      background: #00d9ff;
+      color: #000;
+    }
+
+    .context-menu-item.disabled {
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .context-menu-item.disabled:hover {
+      background: transparent;
+      color: #666;
+    }
+
     .map-grid {
       display: grid;
       gap: 0;
@@ -340,6 +379,10 @@
       <h3 id="tileModalTitle"></h3>
       <div id="tileModalCoords" class="coords"></div>
       <div id="tileModalInteractions" class="interactions"></div>
+    </div>
+
+    <div id="contextMenu" class="context-menu">
+      <div id="moveMenuItem" class="context-menu-item">Move Here</div>
     </div>
   </div>
 

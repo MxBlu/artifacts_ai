@@ -51,6 +51,27 @@ export interface CharacterResponse {
   data: Character;
 }
 
+export interface MovementData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  destination: {
+    name: string;
+    x: number;
+    y: number;
+    layer: string;
+  };
+  character: Character;
+}
+
+export interface MovementResponse {
+  data: MovementData;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -93,6 +114,14 @@ export class ArtifactsAPI {
 
   async getCharacter(name: string): Promise<Character> {
     const response = await this.client.get<CharacterResponse>(`/characters/${name}`);
+    return response.data.data;
+  }
+
+  async moveCharacter(characterName: string, x: number, y: number): Promise<MovementData> {
+    const response = await this.client.post<MovementResponse>(
+      `/my/${characterName}/action/move`,
+      { x, y }
+    );
     return response.data.data;
   }
 }
