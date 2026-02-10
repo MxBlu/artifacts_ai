@@ -1,5 +1,19 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:20] - Move cell details to side panel
+
+### Changed
+- File: `index.html`
+  - Created two-column layout with map on left and cell details on right
+  - Added `map-view-wrapper` flex container
+  - Cell info panel now has fixed 400px width next to the map
+  - Character info remains below the map view
+  - Cell info panel has max-height of 600px with scroll
+  
+### Notes
+- Improves visibility of tile details while browsing the map
+- No need to scroll down to see selected cell information
+
 ## [2026-02-10 09:15] - Auto-load map when config is saved
 
 ### Changed
