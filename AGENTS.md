@@ -205,6 +205,7 @@ project/
 - Keep API client separate from game logic
 - Use axios with proper TypeScript types
 - Define response types based on OpenAPI schemas
+- You are free to make sample requests to the API to check possible values and debug situations
 
 ## Testing Philosophy
 
