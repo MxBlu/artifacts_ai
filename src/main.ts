@@ -21,8 +21,10 @@ const tileModalCoords = document.getElementById('tileModalCoords') as HTMLDivEle
 const tileModalInteractions = document.getElementById('tileModalInteractions') as HTMLDivElement;
 const contextMenu = document.getElementById('contextMenu') as HTMLDivElement;
 const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
+const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 
 let contextMenuTarget: { tile: MapTile } | null = null;
+let timerUpdateInterval: number | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -39,6 +41,73 @@ function getRemainingCooldown(character: Character | null): number {
   const expirationTime = new Date(character.cooldown_expiration).getTime();
   const currentTime = Date.now();
   return Math.ceil((expirationTime - currentTime) / 1000);
+}
+
+// Helper function to get cooldown progress (0-1)
+function getCooldownProgress(character: Character | null): number {
+  if (!character || !character.cooldown_expiration) return 1;
+  if (!character.cooldown) return 1;
+  
+  const expirationTime = new Date(character.cooldown_expiration).getTime();
+  const currentTime = Date.now();
+  const totalCooldown = character.cooldown * 1000; // Convert to ms
+  const startTime = expirationTime - totalCooldown;
+  const elapsed = currentTime - startTime;
+  
+  const progress = Math.min(Math.max(elapsed / totalCooldown, 0), 1);
+  return progress;
+}
+
+// Update timers display
+function updateTimers() {
+  if (!currentCharacter) {
+    timersContainer.innerHTML = '<div style="color: #666; font-style: italic;">No character loaded</div>';
+    return;
+  }
+
+  const isReady = !isOnCooldown(currentCharacter);
+  const remaining = getRemainingCooldown(currentCharacter);
+  const progress = getCooldownProgress(currentCharacter);
+  const degrees = Math.floor(progress * 360);
+  
+  let html = '<div class="timer ' + (isReady ? 'ready' : 'active') + '">';
+  
+  // Pie chart
+  html += '<div class="timer-pie" style="background: conic-gradient(#00d9ff ' + degrees + 'deg, #0f3460 ' + degrees + 'deg)">';
+  html += '<div class="timer-pie-inner">';
+  if (isReady) {
+    html += '✓';
+  } else {
+    html += remaining + 's';
+  }
+  html += '</div></div>';
+  
+  // Info
+  html += '<div class="timer-info">';
+  html += '<div class="timer-label">Cooldown</div>';
+  html += '<div class="timer-value ' + (isReady ? 'ready' : 'cooldown') + '">';
+  html += isReady ? 'Ready' : remaining + 's remaining';
+  html += '</div></div></div>';
+  
+  timersContainer.innerHTML = html;
+}
+
+// Start timer updates
+function startTimerUpdates() {
+  if (timerUpdateInterval) {
+    clearInterval(timerUpdateInterval);
+  }
+  
+  updateTimers();
+  timerUpdateInterval = window.setInterval(updateTimers, 100); // Update every 100ms for smooth animation
+}
+
+// Stop timer updates
+function stopTimerUpdates() {
+  if (timerUpdateInterval) {
+    clearInterval(timerUpdateInterval);
+    timerUpdateInterval = null;
+  }
 }
 
 // Load saved config on startup
@@ -139,6 +208,7 @@ async function handleMoveAction() {
     // Re-render map to update character position
     renderMap(currentMap, currentCharacter);
     updateCharacterInfo(currentCharacter);
+    updateTimers(); // Update timers immediately after action
     
     const cooldown = moveData.cooldown.total_seconds;
     showStatus(`Moved to ${moveData.destination.name}. Cooldown: ${cooldown}s`, 'success');
@@ -445,6 +515,7 @@ async function loadMapAndCharacter() {
     // Render everything
     renderMap(currentMap, currentCharacter);
     updateCharacterInfo(currentCharacter);
+    startTimerUpdates();
     
     showStatus(`Loaded ${maps.length} map tiles and character "${character.name}"`, 'success');
   } catch (error: any) {

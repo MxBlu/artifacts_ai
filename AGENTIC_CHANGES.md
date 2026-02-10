@@ -1,5 +1,34 @@
 # Agentic Changes Log
 
+## [2026-02-10 16:21] - Add timers pane with pie-style cooldown timer
+
+### Added
+- File: `index.html`
+  - Added timers pane section above map-view-wrapper
+  - Added timersContainer div for rendering timers
+  - Added comprehensive CSS for timers pane styling
+  - Added CSS for pie-style timer visualization using conic-gradient
+  - Added timer states: active (red border), ready (green border)
+  - Added timer-pie, timer-pie-inner, timer-info, timer-label, and timer-value styles
+
+- File: `src/main.ts`
+  - Added timersContainer DOM element reference
+  - Added timerUpdateInterval variable for tracking update interval
+  - Added getCooldownProgress() function to calculate 0-1 progress for pie chart
+  - Added updateTimers() function to render cooldown timer with pie chart
+  - Added startTimerUpdates() function to begin timer interval (updates every 100ms)
+  - Added stopTimerUpdates() function to clear timer interval
+  - Called startTimerUpdates() in loadMapAndCharacter() after loading character
+  - Called updateTimers() in handleMoveAction() after character moves
+
+### Notes
+- Pie-style timer uses conic-gradient to create animated countdown visualization
+- Timer updates 10 times per second for smooth animation
+- Shows remaining seconds when on cooldown, checkmark when ready
+- Timer displays "Ready" status in green when no cooldown
+- Timer displays remaining seconds in red when on cooldown
+- First timer implemented is cooldown timer; more timers can be added later
+
 ## [2026-02-10 10:10] - Fix cooldown logic to check expiration time
 
 ### Changed
