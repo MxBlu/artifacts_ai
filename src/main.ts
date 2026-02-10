@@ -280,9 +280,6 @@ function showCellInfo(tile: MapTile) {
   
   html += '</div>';
   cellInfo.innerHTML = html;
-  
-  // Add click handlers for collapsible sections
-  setupCollapsibleSections();
 }
 
 function updateCharacterInfo(character: Character) {
@@ -397,23 +394,6 @@ function updateCharacterInfo(character: Character) {
   
   html += '</div>';
   characterInfo.innerHTML = html;
-  
-  // Add click handlers for collapsible sections
-  setupCollapsibleSections();
-}
-
-function setupCollapsibleSections() {
-  document.querySelectorAll('.info-section-header').forEach(header => {
-    header.addEventListener('click', () => {
-      const sectionId = header.getAttribute('data-section');
-      const content = document.getElementById(`section-${sectionId}`);
-      
-      if (content) {
-        content.classList.toggle('visible');
-        header.classList.toggle('expanded');
-      }
-    });
-  });
 }
 
 async function loadMapAndCharacter() {
@@ -504,4 +484,18 @@ document.addEventListener('click', () => {
 // Prevent context menu from closing when clicking inside it
 contextMenu.addEventListener('click', (e) => {
   e.stopPropagation();
+});
+
+// Event delegation for collapsible sections in info panels
+document.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  if (target.classList.contains('info-section-header')) {
+    const sectionId = target.getAttribute('data-section');
+    const content = document.getElementById(`section-${sectionId}`);
+    
+    if (content) {
+      content.classList.toggle('visible');
+      target.classList.toggle('expanded');
+    }
+  }
 });

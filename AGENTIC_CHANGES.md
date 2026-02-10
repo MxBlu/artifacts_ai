@@ -1,5 +1,19 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:55] - Fix collapsible sections in character info
+
+### Changed
+- File: `src/main.ts`
+  - Removed `setupCollapsibleSections()` function
+  - Replaced direct event listeners with event delegation
+  - Added single document-level click handler for all `.info-section-header` elements
+  - Removed calls to `setupCollapsibleSections()` from `showCellInfo()` and `updateCharacterInfo()`
+  
+### Notes
+- Fixes bug where character info sections wouldn't open after clicking a map tile
+- Event delegation approach prevents duplicate/conflicting event listeners
+- Single listener handles all collapsible sections dynamically
+
 ## [2026-02-10 09:50] - Improve info views with collapsible tree structure
 
 ### Changed
