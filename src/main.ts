@@ -25,6 +25,7 @@ const timersContainer = document.getElementById('timersContainer') as HTMLDivEle
 
 let contextMenuTarget: { tile: MapTile } | null = null;
 let timerUpdateInterval: number | null = null;
+let lastCooldownState: boolean | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -65,10 +66,18 @@ function updateTimers() {
     return;
   }
 
-  const isReady = !isOnCooldown(currentCharacter);
+  const onCooldown = isOnCooldown(currentCharacter);
+  const isReady = !onCooldown;
   const remaining = getRemainingCooldown(currentCharacter);
   const progress = getCooldownProgress(currentCharacter);
   const degrees = Math.floor(progress * 360);
+
+  if (lastCooldownState === null) {
+    lastCooldownState = onCooldown;
+  } else if (lastCooldownState !== onCooldown) {
+    lastCooldownState = onCooldown;
+    updateCharacterInfo(currentCharacter);
+  }
   
   let html = '<div class="timer ' + (isReady ? 'ready' : 'active') + '">';
   

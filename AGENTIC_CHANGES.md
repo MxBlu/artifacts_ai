@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-10 16:24] - Refresh status when cooldown expires
+
+### Changed
+- File: `src/main.ts`
+  - Track cooldown state changes during timer updates
+  - Refresh character info when cooldown flips to ready
+
 ## [2026-02-10 16:21] - Add timers pane with pie-style cooldown timer
 
 ### Added
