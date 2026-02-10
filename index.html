@@ -130,6 +130,60 @@
       max-height: 600px;
     }
 
+    .tile-modal {
+      position: fixed;
+      background: #16213e;
+      border: 2px solid #00d9ff;
+      border-radius: 8px;
+      padding: 12px;
+      pointer-events: none;
+      z-index: 1000;
+      min-width: 200px;
+      max-width: 300px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      display: none;
+    }
+
+    .tile-modal.visible {
+      display: block;
+    }
+
+    .tile-modal h3 {
+      margin: 0 0 8px 0;
+      color: #00d9ff;
+      font-size: 14px;
+      border-bottom: 1px solid #00d9ff;
+      padding-bottom: 4px;
+    }
+
+    .tile-modal .coords {
+      color: #aaa;
+      font-size: 11px;
+      margin-bottom: 8px;
+    }
+
+    .tile-modal .interactions {
+      font-size: 12px;
+    }
+
+    .tile-modal .interaction-item {
+      margin: 4px 0;
+      padding: 4px 8px;
+      background: #0f3460;
+      border-radius: 4px;
+    }
+
+    .tile-modal .interaction-type {
+      color: #00d9ff;
+      font-weight: bold;
+    }
+
+    .tile-modal .no-interactions {
+      color: #666;
+      font-style: italic;
+      font-size: 11px;
+    }
+
     .map-grid {
       display: grid;
       gap: 0;
@@ -155,8 +209,10 @@
     }
 
     .map-cell:hover {
-      border-color: #00d9ff;
-      background: #252547;
+      outline: 2px solid #00d9ff;
+      outline-offset: -2px;
+      z-index: 10;
+      position: relative;
     }
 
     .map-cell.player {
@@ -278,6 +334,12 @@
     <div class="info-panel">
       <h2>Character Info</h2>
       <pre id="characterInfo">No character loaded</pre>
+    </div>
+
+    <div id="tileModal" class="tile-modal">
+      <h3 id="tileModalTitle"></h3>
+      <div id="tileModalCoords" class="coords"></div>
+      <div id="tileModalInteractions" class="interactions"></div>
     </div>
   </div>
 

@@ -2,16 +2,32 @@ import axios, { AxiosInstance } from 'axios';
 
 const BASE_URL = 'https://api.artifactsmmo.com';
 
+export interface MapContentSchema {
+  type: string;
+  code: string;
+}
+
+export interface TransitionSchema {
+  map_id: number;
+  x: number;
+  y: number;
+  layer: string;
+  conditions?: any[];
+}
+
+export interface InteractionSchema {
+  content: MapContentSchema | null;
+  transition: TransitionSchema | null;
+}
+
 export interface MapTile {
+  map_id: number;
   name: string;
   skin: string;
   x: number;
   y: number;
   layer: string;
-  content: {
-    type: string;
-    code: string;
-  } | null;
+  interactions: InteractionSchema;
 }
 
 export interface Character {

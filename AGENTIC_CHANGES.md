@@ -1,5 +1,31 @@
 # Agentic Changes Log
 
+## [2026-02-10 09:30] - Add tile hover modal with interaction details
+
+### Changed
+- File: `src/api.ts`
+  - Updated MapTile interface to include full interactions schema
+  - Added InteractionSchema, MapContentSchema, and TransitionSchema interfaces
+  - Now includes map_id in MapTile
+  
+- File: `index.html`
+  - Changed hover effect from border to outline for better visibility
+  - Added tile-modal styles for floating modal display
+  - Added modal HTML structure with title, coordinates, and interactions sections
+  
+- File: `src/main.ts`
+  - Added showTileModal() and hideTileModal() functions
+  - Added mouseenter, mousemove, and mouseleave event listeners to tiles
+  - Modal displays tile name, coordinates, and all available interactions
+  - Shows content interactions (monster, resource, workshop, bank, etc.)
+  - Shows transition interactions (portals to other map locations)
+  
+### Notes
+- Tile modal follows cursor on hover
+- Displays all interactions from the API's InteractionSchema
+- Modal auto-hides when mouse leaves tile
+- Replaces simple title attribute with rich interaction display
+
 ## [2026-02-10 09:25] - Remove gaps and fill width with map tiles
 
 ### Changed

@@ -15,6 +15,10 @@ const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLPreElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLPreElement;
 const configSection = document.getElementById('configSection') as HTMLDetailsElement;
+const tileModal = document.getElementById('tileModal') as HTMLDivElement;
+const tileModalTitle = document.getElementById('tileModalTitle') as HTMLHeadingElement;
+const tileModalCoords = document.getElementById('tileModalCoords') as HTMLDivElement;
+const tileModalInteractions = document.getElementById('tileModalInteractions') as HTMLDivElement;
 
 // Load saved config on startup
 const savedConfig = loadConfig();
@@ -37,6 +41,39 @@ function showStatus(message: string, type: 'error' | 'success' | 'info') {
       statusDiv.style.display = 'none';
     }, 5000);
   }
+}
+
+function showTileModal(tile: MapTile, event: MouseEvent) {
+  tileModalTitle.textContent = tile.name;
+  tileModalCoords.textContent = `Position: (${tile.x}, ${tile.y}) | Layer: ${tile.layer}`;
+  
+  // Build interactions list
+  const interactions: string[] = [];
+  
+  if (tile.interactions.content) {
+    const content = tile.interactions.content;
+    interactions.push(`<div class="interaction-item"><span class="interaction-type">${content.type}</span>: ${content.code}</div>`);
+  }
+  
+  if (tile.interactions.transition) {
+    const trans = tile.interactions.transition;
+    interactions.push(`<div class="interaction-item"><span class="interaction-type">transition</span>: to (${trans.x}, ${trans.y}) layer ${trans.layer}</div>`);
+  }
+  
+  if (interactions.length === 0) {
+    tileModalInteractions.innerHTML = '<div class="no-interactions">No interactions available</div>';
+  } else {
+    tileModalInteractions.innerHTML = interactions.join('');
+  }
+  
+  // Position modal near cursor
+  tileModal.style.left = `${event.clientX + 15}px`;
+  tileModal.style.top = `${event.clientY + 15}px`;
+  tileModal.classList.add('visible');
+}
+
+function hideTileModal() {
+  tileModal.classList.remove('visible');
 }
 
 function renderMap(maps: MapTile[], character: Character | null) {
@@ -106,6 +143,19 @@ function renderMap(maps: MapTile[], character: Character | null) {
         
         cell.addEventListener('click', () => {
           showCellInfo(tile);
+        });
+        
+        cell.addEventListener('mouseenter', (e: MouseEvent) => {
+          showTileModal(tile, e);
+        });
+        
+        cell.addEventListener('mousemove', (e: MouseEvent) => {
+          tileModal.style.left = `${e.clientX + 15}px`;
+          tileModal.style.top = `${e.clientY + 15}px`;
+        });
+        
+        cell.addEventListener('mouseleave', () => {
+          hideTileModal();
         });
       } else {
         cell.style.background = '#0a0a0a';
