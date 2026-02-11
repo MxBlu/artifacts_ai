@@ -72,7 +72,7 @@ This agent assists in building a game player and client for an API-driven MMO us
 - **DO NOT** create README.md, SUMMARY.md, or other summary files unless explicitly requested
 - **DO NOT** add extensive inline comments for straightforward code
 - **DO** add comments for complex algorithms, API quirks, or non-obvious logic
-- **DO** track all changes in `AGENTIC_CHANGES.md`
+- **DO** track all changes in `AGENTIC_CHANGES.md` in reverse chronological order (always add to the top)
 
 ## Change Tracking
 

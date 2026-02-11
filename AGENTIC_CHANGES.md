@@ -1,18 +1,10 @@
 # Agentic Changes Log
 
-## [2026-02-12 09:34] - Add auto bank deposit
+## [2026-02-12 10:30] - Toast status positioning
 
 ### Changed
-- File: `src/main.ts`
-  - Added inventory-full checks and auto-deposit flow in gather automation
-
-## [2026-02-12 10:12] - Show resource level requirements in hover
-
-### Changed
-- File: `src/api.ts`
-  - Added resource response types and `getResource()` API method
-- File: `src/main.ts`
-  - Added resource caching and hover modal requirement rendering
+- File: `index.html`
+  - Made status messages a fixed top toast to avoid layout shifts
 
 ## [2026-02-12 10:20] - Disable gather actions below level
 
@@ -20,11 +12,19 @@
 - File: `src/main.ts`
   - Grey out gather actions and automation when resource level is unmet
 
-## [2026-02-12 10:30] - Toast status positioning
+  ## [2026-02-12 10:12] - Show resource level requirements in hover
+
+  ### Changed
+  - File: `src/api.ts`
+    - Added resource response types and `getResource()` API method
+  - File: `src/main.ts`
+    - Added resource caching and hover modal requirement rendering
+
+## [2026-02-12 09:34] - Add auto bank deposit
 
 ### Changed
-- File: `index.html`
-  - Made status messages a fixed top toast to avoid layout shifts
+- File: `src/main.ts`
+  - Added inventory-full checks and auto-deposit flow in gather automation
 
 ## [2026-02-12 09:18] - Add bank modal
 
