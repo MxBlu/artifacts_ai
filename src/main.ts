@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character, FightData } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData, Monster } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -30,6 +30,8 @@ let contextMenuTarget: { tile: MapTile } | null = null;
 let timerUpdateInterval: number | null = null;
 let lastCooldownState: boolean | null = null;
 let pendingFightTimeout: number | null = null;
+let activeMonsterRequestId = 0;
+const monsterCache = new Map<string, Monster>();
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -103,6 +105,66 @@ function renderFightResult(fightData: FightData, monsterLabel: string) {
     </div>
     ${logsHtml}
   `;
+}
+
+function renderMonsterInfo(monster: Monster): string {
+  const effects = monster.effects && monster.effects.length > 0
+    ? monster.effects.map(effect => `${effect.code} (${effect.value})`).join(', ')
+    : 'None';
+
+  const drops = monster.drops && monster.drops.length > 0
+    ? monster.drops.map(drop => {
+        const qtyMin = drop.quantity_min ?? 1;
+        const qtyMax = drop.quantity_max ?? qtyMin;
+        const qtyLabel = qtyMin === qtyMax ? `${qtyMin}` : `${qtyMin}-${qtyMax}`;
+        return `${drop.code} (${qtyLabel}, ${drop.rate}%)`;
+      }).join(', ')
+    : 'None';
+
+  return [
+    `<div class="info-item"><span class="info-label">Name:</span> <span class="info-value">${escapeHtml(monster.name)}</span></div>`,
+    `<div class="info-item"><span class="info-label">Type:</span> <span class="info-value">${escapeHtml(monster.type)}</span></div>`,
+    `<div class="info-item"><span class="info-label">Level:</span> <span class="info-value">${monster.level}</span></div>`,
+    `<div class="info-item"><span class="info-label">HP:</span> <span class="info-value">${monster.hp}</span></div>`,
+    `<div class="info-item"><span class="info-label">Attacks:</span> <span class="info-value">F ${monster.attack_fire} / E ${monster.attack_earth} / W ${monster.attack_water} / A ${monster.attack_air}</span></div>`,
+    `<div class="info-item"><span class="info-label">Resists:</span> <span class="info-value">F ${monster.res_fire}% / E ${monster.res_earth}% / W ${monster.res_water}% / A ${monster.res_air}%</span></div>`,
+    `<div class="info-item"><span class="info-label">Crit:</span> <span class="info-value">${monster.critical_strike}%</span></div>`,
+    `<div class="info-item"><span class="info-label">Initiative:</span> <span class="info-value">${monster.initiative}</span></div>`,
+    `<div class="info-item"><span class="info-label">Gold:</span> <span class="info-value">${monster.min_gold}-${monster.max_gold}</span></div>`,
+    `<div class="info-item"><span class="info-label">Effects:</span> <span class="info-value">${escapeHtml(effects)}</span></div>`,
+    `<div class="info-item"><span class="info-label">Drops:</span> <span class="info-value">${escapeHtml(drops)}</span></div>`,
+  ].join('');
+}
+
+async function loadMonsterDetails(code: string) {
+  if (!api) return;
+
+  const section = document.getElementById('section-tile-monster');
+  if (!section) return;
+
+  if (monsterCache.has(code)) {
+    section.innerHTML = renderMonsterInfo(monsterCache.get(code) as Monster);
+    return;
+  }
+
+  const requestId = ++activeMonsterRequestId;
+  section.innerHTML = '<div class="info-item"><span class="info-value" style="color: #666;">Loading monster details...</span></div>';
+
+  try {
+    const monster = await api.getMonster(code);
+    monsterCache.set(code, monster);
+    if (requestId !== activeMonsterRequestId) {
+      return;
+    }
+    section.innerHTML = renderMonsterInfo(monster);
+  } catch (error: any) {
+    console.error('Monster fetch error:', error);
+    if (requestId !== activeMonsterRequestId) {
+      return;
+    }
+    const message = error.response?.data?.error?.message || error.message || 'Failed to load monster';
+    section.innerHTML = `<div class="info-item"><span class="info-value" style="color: #ff6b6b;">${escapeHtml(message)}</span></div>`;
+  }
 }
 
 function isMonsterTile(tile: MapTile): boolean {
@@ -580,6 +642,14 @@ function showCellInfo(tile: MapTile) {
   }
   
   html += '</div></div>';
+
+  if (tile.interactions.content && tile.interactions.content.type.toLowerCase() === 'monster') {
+    html += '<div class="info-section">';
+    html += '<div class="info-section-header" data-section="tile-monster">Monster</div>';
+    html += '<div class="info-section-content" id="section-tile-monster">';
+    html += '<div class="info-item"><span class="info-value" style="color: #666;">Loading monster details...</span></div>';
+    html += '</div></div>';
+  }
   
   // Details section (collapsible)
   html += '<div class="info-section">';
@@ -591,6 +661,10 @@ function showCellInfo(tile: MapTile) {
   
   html += '</div>';
   cellInfo.innerHTML = html;
+
+  if (tile.interactions.content && tile.interactions.content.type.toLowerCase() === 'monster') {
+    loadMonsterDetails(tile.interactions.content.code);
+  }
 }
 
 function updateCharacterInfo(character: Character) {

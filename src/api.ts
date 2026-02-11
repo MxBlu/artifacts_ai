@@ -111,6 +111,44 @@ export interface RestResponse {
   data: RestData;
 }
 
+export interface MonsterEffect {
+  code: string;
+  value: number;
+}
+
+export interface MonsterDrop {
+  code: string;
+  rate: number;
+  quantity_min?: number;
+  quantity_max?: number;
+}
+
+export interface Monster {
+  name: string;
+  code: string;
+  level: number;
+  type: 'normal' | 'elite' | 'boss';
+  hp: number;
+  attack_fire: number;
+  attack_earth: number;
+  attack_water: number;
+  attack_air: number;
+  res_fire: number;
+  res_earth: number;
+  res_water: number;
+  res_air: number;
+  critical_strike: number;
+  initiative: number;
+  effects?: MonsterEffect[];
+  min_gold: number;
+  max_gold: number;
+  drops: MonsterDrop[];
+}
+
+export interface MonsterResponse {
+  data: Monster;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -176,6 +214,11 @@ export class ArtifactsAPI {
     const response = await this.client.post<RestResponse>(
       `/my/${characterName}/action/rest`
     );
+    return response.data.data;
+  }
+
+  async getMonster(code: string): Promise<Monster> {
+    const response = await this.client.get<MonsterResponse>(`/monsters/${code}`);
     return response.data.data;
   }
 }

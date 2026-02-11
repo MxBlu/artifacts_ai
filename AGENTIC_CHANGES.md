@@ -49,6 +49,15 @@
   - Schedule the fight automatically after moving and cooldown expiration
   - Added shared fight execution helper and pending timeout tracking
 
+## [2026-02-11 11:18] - Show monster stats in map info
+
+### Changed
+- File: `src/api.ts`
+  - Added monster types and `getMonster()` API method
+- File: `src/main.ts`
+  - Fetch monster details for monster tiles and display them in a collapsible section
+  - Added monster caching and request de-duplication
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
