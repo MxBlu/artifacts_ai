@@ -28,6 +28,7 @@ const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
 const fightMenuItem = document.getElementById('fightMenuItem') as HTMLDivElement;
 const fightLoopBtn = document.getElementById('fightLoopBtn') as HTMLButtonElement;
 const fightLoopSlot = document.getElementById('fightLoopSlot') as HTMLSpanElement;
+const woodcutMenuItem = document.getElementById('woodcutMenuItem') as HTMLDivElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -36,6 +37,7 @@ let contextMenuTarget: { tile: MapTile } | null = null;
 let timerUpdateInterval: number | null = null;
 let lastCooldownState: boolean | null = null;
 let pendingFightTimeout: number | null = null;
+let pendingGatherTimeout: number | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
@@ -638,6 +640,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
       fightMenuItem.classList.remove('disabled');
     }
   }
+
+  const hasTree = isTreeResource(tile);
+  woodcutMenuItem.style.display = hasTree ? 'flex' : 'none';
+
+  if (hasTree) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+      woodcutMenuItem.classList.add('disabled');
+    } else {
+      woodcutMenuItem.classList.remove('disabled');
+    }
+  }
 }
 
 function hideContextMenu() {
@@ -759,6 +772,82 @@ async function handleRestAction() {
   } catch (error: any) {
     console.error('Rest error:', error);
     const message = error.response?.data?.error?.message || error.message || 'Rest failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+function scheduleGatherAfterCooldown() {
+  if (!currentCharacter || !api) return;
+  if (pendingGatherTimeout) {
+    clearTimeout(pendingGatherTimeout);
+    pendingGatherTimeout = null;
+  }
+
+  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+  showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to gather...`, 'info');
+
+  pendingGatherTimeout = window.setTimeout(() => {
+    pendingGatherTimeout = null;
+    handleGatherAction();
+  }, delayMs);
+}
+
+async function handleGatherAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleGatherAfterCooldown();
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+
+  if (!isTreeResource(tile)) {
+    showStatus('No tree on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        scheduleGatherAfterCooldown();
+        return;
+      }
+    } catch (error: any) {
+      console.error('Move before gather error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  try {
+    showStatus('Gathering wood...', 'info');
+    const gatherData = await api.gather(currentCharacter.name);
+    currentCharacter = gatherData.character;
+    lastCooldownReason = gatherData.cooldown.reason || 'woodcutting';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = gatherData.cooldown.total_seconds;
+    showStatus(`Woodcutting complete. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Gather error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Gathering failed';
     showStatus(`Error: ${message}`, 'error');
   }
 }
@@ -1189,6 +1278,12 @@ fightLoopSlot.addEventListener('click', (event) => {
   }
   hideContextMenu();
   startFightAutomation(targetTile);
+});
+
+woodcutMenuItem.addEventListener('click', () => {
+  if (!woodcutMenuItem.classList.contains('disabled')) {
+    handleGatherAction();
+  }
 });
 
 restBtn.addEventListener('click', () => {

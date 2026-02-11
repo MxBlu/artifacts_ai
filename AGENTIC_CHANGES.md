@@ -192,6 +192,17 @@
   - Render tree and fishing labels based on resource codes
   - Added toggle handlers for resource labels
 
+## [2026-02-11 13:33] - Add woodcut action on trees
+
+### Changed
+- File: `index.html`
+  - Added Cut Wood option to the context menu
+- File: `src/api.ts`
+  - Added gathering response types and `gather()` API method
+- File: `src/main.ts`
+  - Added woodcut context menu visibility and action handling
+  - Move to the tree tile if needed, then gather
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

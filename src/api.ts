@@ -111,6 +111,25 @@ export interface RestResponse {
   data: RestData;
 }
 
+export interface GatheringData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  details: {
+    xp: number;
+    items: Array<{ code: string; quantity: number }>;
+  };
+  character: Character;
+}
+
+export interface GatheringResponse {
+  data: GatheringData;
+}
+
 export interface MonsterEffect {
   code: string;
   value: number;
@@ -213,6 +232,13 @@ export class ArtifactsAPI {
   async restCharacter(characterName: string): Promise<RestData> {
     const response = await this.client.post<RestResponse>(
       `/my/${characterName}/action/rest`
+    );
+    return response.data.data;
+  }
+
+  async gather(characterName: string): Promise<GatheringData> {
+    const response = await this.client.post<GatheringResponse>(
+      `/my/${characterName}/action/gathering`
     );
     return response.data.data;
   }
