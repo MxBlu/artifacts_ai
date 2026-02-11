@@ -174,6 +174,14 @@
 - File: `src/main.ts`
   - Removed remaining seconds from the cooldown label text
 
+## [2026-02-11 13:18] - Add map label toggles
+
+### Changed
+- File: `index.html`
+  - Added map label controls under the map
+- File: `src/main.ts`
+  - Toggle monster labels when rendering the map
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

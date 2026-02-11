@@ -12,6 +12,7 @@ const loadBtn = document.getElementById('loadBtn') as HTMLButtonElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
+const toggleMonsterLabels = document.getElementById('toggleMonsterLabels') as HTMLInputElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
 const fightInfo = document.getElementById('fightInfo') as HTMLDivElement;
@@ -798,7 +799,7 @@ function renderMap(maps: MapTile[], character: Character | null) {
         };
         cell.appendChild(img);
 
-        if (isMonsterTile(tile)) {
+        if (isMonsterTile(tile) && toggleMonsterLabels.checked) {
           const monsterIcon = document.createElement('div');
           monsterIcon.className = 'monster-icon';
           const monsterCode = tile.interactions.content?.code || 'monster';
@@ -1098,6 +1099,10 @@ function saveConfigToStorage() {
 // Event listeners
 loadBtn.addEventListener('click', loadMapAndCharacter);
 saveBtn.addEventListener('click', saveConfigToStorage);
+
+toggleMonsterLabels.addEventListener('change', () => {
+  renderMap(currentMap, currentCharacter);
+});
 
 // Allow Enter key to trigger load
 characterNameInput.addEventListener('keypress', (e) => {

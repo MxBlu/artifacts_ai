@@ -109,6 +109,27 @@
       max-height: calc(100vh - 180px);
     }
 
+    .map-label-controls {
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: #aaa;
+      font-size: 12px;
+    }
+
+    .map-label-controls label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .map-label-controls input[type="checkbox"] {
+      width: auto;
+      accent-color: #00d9ff;
+    }
+
     .cell-info-panel {
       background: #16213e;
       padding: 20px;
@@ -747,6 +768,10 @@
       <div class="map-container">
         <div id="mapGrid" class="map-grid">
           <!-- Map will be rendered here -->
+        </div>
+        <div class="map-label-controls">
+          <span>Labels:</span>
+          <label><input type="checkbox" id="toggleMonsterLabels" checked>Monsters</label>
         </div>
       </div>
 
