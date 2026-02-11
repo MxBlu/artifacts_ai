@@ -168,6 +168,12 @@
   - Track the last cooldown reason from actions
   - Display the cooldown reason in the timers pane when available
 
+## [2026-02-11 13:12] - Simplify cooldown label text
+
+### Changed
+- File: `src/main.ts`
+  - Removed remaining seconds from the cooldown label text
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

@@ -501,7 +501,7 @@ function updateTimers() {
     html += 'Ready';
   } else {
     const reasonText = lastCooldownReason ? ` · ${lastCooldownReason}` : '';
-    html += remaining + 's remaining' + reasonText;
+    html += 'Cooldown' + reasonText;
   }
   html += '</div></div></div>';
 
