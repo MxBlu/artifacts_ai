@@ -301,6 +301,15 @@
   - Render mining labels and wire mining UI handlers
   - Fixed mining-related inventory typing and cooldown scheduling
 
+## [2026-02-11 15:41] - Add alchemy field labels
+
+### Changed
+- File: `index.html`
+  - Added alchemy field label toggle and styling
+- File: `src/main.ts`
+  - Added alchemy field detection and map label rendering
+  - Wired the field label toggle
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

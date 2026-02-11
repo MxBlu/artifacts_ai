@@ -16,6 +16,7 @@ const toggleMonsterLabels = document.getElementById('toggleMonsterLabels') as HT
 const toggleTreeLabels = document.getElementById('toggleTreeLabels') as HTMLInputElement;
 const toggleFishingLabels = document.getElementById('toggleFishingLabels') as HTMLInputElement;
 const toggleMiningLabels = document.getElementById('toggleMiningLabels') as HTMLInputElement;
+const toggleAlchemyLabels = document.getElementById('toggleAlchemyLabels') as HTMLInputElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
 const fightInfo = document.getElementById('fightInfo') as HTMLDivElement;
@@ -443,6 +444,17 @@ function isMiningNode(tile: MapTile): boolean {
   const content = tile.interactions.content;
   if (!content || !content.code) return false;
   return content.code.toLowerCase().endsWith('_rocks');
+}
+
+function isAlchemyField(tile: MapTile): boolean {
+  const content = tile.interactions.content;
+  if (!content || !content.code) return false;
+  if (content.type?.toLowerCase() === 'monster') return false;
+  if (content.type?.toLowerCase() === 'workshop') return false;
+  if (isTreeResource(tile)) return false;
+  if (isFishingSpot(tile)) return false;
+  if (isMiningNode(tile)) return false;
+  return true;
 }
 
 function isCharacterOnTile(character: Character | null, tile: MapTile): boolean {
@@ -1734,6 +1746,13 @@ function renderMap(maps: MapTile[], character: Character | null) {
           miningIcon.textContent = 'Rock';
           cell.appendChild(miningIcon);
         }
+
+        if (toggleAlchemyLabels.checked && isAlchemyField(tile)) {
+          const fieldIcon = document.createElement('div');
+          fieldIcon.className = 'resource-icon field';
+          fieldIcon.textContent = 'Field';
+          cell.appendChild(fieldIcon);
+        }
         
         // Check if character is at this location
         if (character && character.x === x && character.y === y) {
@@ -2066,6 +2085,10 @@ toggleFishingLabels.addEventListener('change', () => {
 });
 
 toggleMiningLabels.addEventListener('change', () => {
+  renderMap(currentMap, currentCharacter);
+});
+
+toggleAlchemyLabels.addEventListener('change', () => {
   renderMap(currentMap, currentCharacter);
 });
 
