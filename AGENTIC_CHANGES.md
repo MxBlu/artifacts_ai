@@ -270,6 +270,14 @@
 - File: `src/main.ts`
   - Added craft buttons in the modal and handler to craft items
 
+## [2026-02-11 15:05] - Add craft quantity input
+
+### Changed
+- File: `index.html`
+  - Added craft quantity input styling
+- File: `src/main.ts`
+  - Added quantity input to crafting modal and send quantity to the API
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

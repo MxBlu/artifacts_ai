@@ -217,14 +217,15 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
         : 'None';
       const quantity = item.craft?.quantity || 1;
 
-      const canCraft = !locked && !isOnCooldown(character);
+      const canCraft = !locked;
 
       return `
         <div class="craft-item ${locked ? 'locked' : ''}">
           <div class="craft-item-header">
             <span>${item.name} (${item.code})</span>
-            <span>
+            <span class="craft-item-controls">
               Lvl ${craftLevel}
+              <input class="craft-qty" type="number" min="1" value="1" data-code="${item.code}" />
               <button class="craft-btn" data-code="${item.code}" ${canCraft ? '' : 'disabled'}>Craft</button>
             </span>
           </div>
@@ -621,6 +622,7 @@ async function runGatherAutomation(token: number) {
   updateAutomationControls();
 }
 
+
 function startFightAutomation(tile: MapTile) {
   if (!api || !currentCharacter) {
     showStatus('Load a character first', 'error');
@@ -692,6 +694,7 @@ function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing') {
   runGatherAutomation(gatherAutomationToken);
 }
 
+
 function stopFightAutomation(message: string) {
   if (!fightAutomationActive) {
     return;
@@ -719,6 +722,7 @@ function stopGatherAutomation(message: string) {
   renderFightState(message, 'info');
   showStatus(message, 'info');
 }
+
 
 function stopAllAutomation(message: string) {
   if (fightAutomationActive) {
@@ -1431,7 +1435,7 @@ async function handleCraftAction() {
   openCraftModal(skill, content.code, items, currentCharacter);
 }
 
-async function handleCraftItem(code: string) {
+async function handleCraftItem(code: string, quantity: number) {
   if (!currentCharacter || !api) {
     return;
   }
@@ -1443,8 +1447,8 @@ async function handleCraftItem(code: string) {
   }
 
   try {
-    showStatus(`Crafting ${code}...`, 'info');
-    const craftData = await api.craftItem(currentCharacter.name, code, 1);
+    showStatus(`Crafting ${code} x${quantity}...`, 'info');
+    const craftData = await api.craftItem(currentCharacter.name, code, quantity);
     currentCharacter = craftData.character;
     lastCooldownReason = craftData.cooldown.reason || 'crafting';
 
@@ -1452,7 +1456,7 @@ async function handleCraftItem(code: string) {
     updateTimers();
 
     const cooldown = craftData.cooldown.total_seconds;
-    showStatus(`Crafted ${code}. Cooldown: ${cooldown}s`, 'success');
+    showStatus(`Crafted ${code} x${quantity}. Cooldown: ${cooldown}s`, 'success');
   } catch (error: any) {
     console.error('Craft error:', error);
     const message = error.response?.data?.error?.message || error.message || 'Craft failed';
@@ -1997,7 +2001,11 @@ craftModalBody.addEventListener('click', (event) => {
   }
   const code = button.dataset.code;
   if (code) {
-    handleCraftItem(code);
+    const container = button.closest('.craft-item');
+    const quantityInput = container?.querySelector('.craft-qty') as HTMLInputElement | null;
+    const rawQuantity = quantityInput?.value ? Number.parseInt(quantityInput.value, 10) : 1;
+    const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+    handleCraftItem(code, quantity);
   }
 });
 
