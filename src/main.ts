@@ -40,6 +40,8 @@ let fightAutomationToken = 0;
 let fightAutomationActive = false;
 let fightAutomationTarget: MapTile | null = null;
 let fightAutomationMonsterCode: string | null = null;
+let fightAutomationStartedAt: number | null = null;
+let fightAutomationStatus: string | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -219,6 +221,11 @@ function updateAutomationControls() {
   stopAutomationBtn.disabled = !fightAutomationActive;
 }
 
+function setAutomationStatus(status: string | null) {
+  fightAutomationStatus = status;
+  updateTimers();
+}
+
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -228,6 +235,7 @@ async function waitForCooldownReady(token: number, reason: string) {
   const remaining = getRemainingCooldown(currentCharacter);
   if (remaining <= 0) return;
   renderFightState(`${reason} Waiting ${remaining}s...`, 'info');
+  setAutomationStatus(`${reason} waiting ${remaining}s`);
   await sleep(remaining * 1000 + 50);
 }
 
@@ -254,6 +262,7 @@ async function runFightAutomation(token: number) {
     if (!isCharacterOnTile(currentCharacter, tile)) {
       try {
         renderFightState(`Auto-fight: moving to (${tile.x}, ${tile.y})...`, 'info');
+        setAutomationStatus(`Moving to (${tile.x}, ${tile.y})`);
         showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
         const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
         currentCharacter = moveData.character;
@@ -280,6 +289,7 @@ async function runFightAutomation(token: number) {
 
     try {
       renderFightState(`Auto-fight: fighting ${monsterCode}...`, 'info');
+      setAutomationStatus(`Fighting ${monsterCode}`);
       showStatus(`Fighting ${monsterCode}...`, 'info');
       const fightData = await api.fightCharacter(currentCharacter.name);
       const updatedCharacter = fightData.characters.find(c => c.name === currentCharacter?.name) || fightData.characters[0];
@@ -314,6 +324,7 @@ async function runFightAutomation(token: number) {
 
       try {
         renderFightState('Auto-fight: resting...', 'info');
+        setAutomationStatus('Resting');
         showStatus('Resting...', 'info');
         const restData = await api.restCharacter(currentCharacter.name);
         currentCharacter = restData.character;
@@ -331,6 +342,8 @@ async function runFightAutomation(token: number) {
   }
 
   fightAutomationActive = false;
+  fightAutomationStartedAt = null;
+  setAutomationStatus(null);
   updateAutomationControls();
 }
 
@@ -359,9 +372,11 @@ function startFightAutomation(tile: MapTile) {
   fightAutomationTarget = tile;
   fightAutomationMonsterCode = tile.interactions.content?.code || 'monster';
   fightAutomationToken += 1;
+  fightAutomationStartedAt = Date.now();
   updateAutomationControls();
 
   renderFightState(`Auto-fight started for ${fightAutomationMonsterCode}.`, 'info');
+  setAutomationStatus(`Starting ${fightAutomationMonsterCode}`);
   showStatus('Auto-fight started', 'success');
 
   runFightAutomation(fightAutomationToken);
@@ -372,8 +387,10 @@ function stopFightAutomation(message: string) {
     return;
   }
   fightAutomationActive = false;
+  fightAutomationStartedAt = null;
   fightAutomationToken += 1;
   updateAutomationControls();
+  setAutomationStatus(null);
   renderFightState(message, 'info');
   showStatus(message, 'info');
 }
@@ -472,6 +489,19 @@ function updateTimers() {
   html += '<div class="timer-value ' + (isReady ? 'ready' : 'cooldown') + '">';
   html += isReady ? 'Ready' : remaining + 's remaining';
   html += '</div></div></div>';
+
+  if (fightAutomationActive && fightAutomationStartedAt) {
+    const elapsedSeconds = Math.floor((Date.now() - fightAutomationStartedAt) / 1000);
+    const actionLabel = fightAutomationStatus ? fightAutomationStatus : 'Running';
+    html += '<div class="timer active">';
+    html += '<div class="timer-pie" style="background: conic-gradient(#51cf66 360deg, #0f3460 0deg)">';
+    html += '<div class="timer-pie-inner">∞</div></div>';
+    html += '<div class="timer-info">';
+    html += '<div class="timer-label">Auto</div>';
+    html += '<div class="timer-value cooldown">' + actionLabel + '</div>';
+    html += '<div class="timer-value">' + elapsedSeconds + 's</div>';
+    html += '</div></div>';
+  }
   
   timersContainer.innerHTML = html;
 

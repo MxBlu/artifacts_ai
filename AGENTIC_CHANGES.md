@@ -142,6 +142,13 @@
 - File: `src/main.ts`
   - Preserve the selected tile before hiding the context menu when starting automation
 
+## [2026-02-11 12:52] - Show automation timer in pane
+
+### Changed
+- File: `src/main.ts`
+  - Track automation start time and status
+  - Render automation action and elapsed time in the timers pane
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
