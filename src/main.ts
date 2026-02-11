@@ -308,7 +308,7 @@ function closeCraftModal() {
 function renderBankModal(details: BankDetails, items: SimpleItem[], character: Character) {
   bankModalTitle.textContent = 'Bank';
 
-  const inventoryItems = (character.inventory || []).filter(entry => entry && entry.code && entry.quantity > 0);
+  const inventoryItems = (character.inventory || []).filter((entry: any) => entry && entry.code && entry.quantity > 0);
   const inventoryHtml = inventoryItems.length
     ? inventoryItems.map((entry: any) => {
         const qtyControl = entry.quantity > 1
@@ -569,6 +569,21 @@ function isCharacterOnTile(character: Character | null, tile: MapTile): boolean 
   return character.x === tile.x && character.y === tile.y && character.layer === tile.layer;
 }
 
+function getInventoryTotal(character: Character): number {
+  if (!character.inventory) return 0;
+  return character.inventory.reduce((total: number, entry: any) => total + (entry.quantity || 0), 0);
+}
+
+function isInventoryFull(character: Character): boolean {
+  if (!character.inventory_max_items) return false;
+  return getInventoryTotal(character) >= character.inventory_max_items;
+}
+
+function getBankTile(): MapTile | null {
+  const bankTile = currentMap.find(tile => isBankTile(tile));
+  return bankTile || null;
+}
+
 function canRest(character: Character | null): boolean {
   if (!character) return false;
   if (isOnCooldown(character)) return false;
@@ -727,6 +742,17 @@ async function runGatherAutomation(token: number) {
     }
 
     const tile = gatherAutomationTarget;
+
+    if (isInventoryFull(currentCharacter)) {
+      const deposited = await runAutoBankDeposit(token, tile);
+      if (!deposited) {
+        break;
+      }
+      if (token !== gatherAutomationToken || !gatherAutomationActive) {
+        break;
+      }
+      continue;
+    }
     const isValidTarget = gatherAutomationMode === 'woodcutting'
       ? isTreeResource(tile)
       : gatherAutomationMode === 'mining'
@@ -794,6 +820,115 @@ async function runGatherAutomation(token: number) {
   gatherAutomationLabel = null;
   gatherAutomationMode = null;
   updateAutomationControls();
+}
+
+async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<boolean> {
+  if (!api || !currentCharacter) {
+    return false;
+  }
+
+  const bankTile = getBankTile();
+  if (!bankTile) {
+    renderFightState('Auto-gather stopped: no bank found on this map', 'error');
+    showStatus('No bank found on this map', 'error');
+    return false;
+  }
+
+  if (!isCharacterOnTile(currentCharacter, bankTile)) {
+    try {
+      renderFightState(`Auto-gather: moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
+      setAutomationStatus('Moving to bank');
+      showStatus(`Moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, bankTile.x, bankTile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Move to bank complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-gather bank move error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      renderFightState(`Auto-gather stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  if (token !== gatherAutomationToken || !gatherAutomationActive) {
+    return false;
+  }
+
+  const inventoryItems = (currentCharacter.inventory || [])
+    .filter((entry: any) => entry && entry.code && entry.quantity > 0)
+    .map((entry: any) => ({ code: entry.code, quantity: entry.quantity }));
+
+  if (inventoryItems.length === 0) {
+    return true;
+  }
+
+  for (let i = 0; i < inventoryItems.length; i += 20) {
+    if (token !== gatherAutomationToken || !gatherAutomationActive) {
+      return false;
+    }
+
+    try {
+      setAutomationStatus('Depositing items');
+      showStatus('Depositing inventory items...', 'info');
+      const chunk = inventoryItems.slice(i, i + 20);
+      const result = await api.depositBankItems(currentCharacter.name, chunk);
+      currentCharacter = result.character;
+      lastCooldownReason = result.cooldown.reason || 'bank deposit';
+
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Bank deposit complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-gather bank deposit error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Deposit failed';
+      renderFightState(`Auto-gather stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  if (token !== gatherAutomationToken || !gatherAutomationActive) {
+    return false;
+  }
+
+  if (!isCharacterOnTile(currentCharacter, returnTile)) {
+    try {
+      renderFightState(`Auto-gather: returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
+      setAutomationStatus('Returning to resource');
+      showStatus(`Returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, returnTile.x, returnTile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Return to resource complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-gather return move error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      renderFightState(`Auto-gather stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  return true;
 }
 
 

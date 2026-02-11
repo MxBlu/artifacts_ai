@@ -351,6 +351,12 @@
   - Hide empty inventory slots in the bank modal
   - Refresh bank modal controls when cooldown state changes
 
+## [2026-02-12 09:34] - Add auto bank deposit
+
+### Changed
+- File: `src/main.ts`
+  - Added inventory-full checks and auto-deposit flow in gather automation
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed
