@@ -168,6 +168,23 @@ export interface MonsterResponse {
   data: Monster;
 }
 
+export interface EquipmentData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  slot: string;
+  item: any;
+  character: Character;
+}
+
+export interface EquipmentResponse {
+  data: EquipmentData;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -245,6 +262,14 @@ export class ArtifactsAPI {
 
   async getMonster(code: string): Promise<Monster> {
     const response = await this.client.get<MonsterResponse>(`/monsters/${code}`);
+    return response.data.data;
+  }
+
+  async unequipItem(characterName: string, slot: string, quantity = 1): Promise<EquipmentData> {
+    const response = await this.client.post<EquipmentResponse>(
+      `/my/${characterName}/action/unequip`,
+      { slot, quantity }
+    );
     return response.data.data;
   }
 }

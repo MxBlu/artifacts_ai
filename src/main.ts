@@ -950,6 +950,35 @@ async function handleRestAction() {
   }
 }
 
+async function handleUnequipAction(slot: string) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Unequipping ${slot}...`, 'info');
+    const equipData = await api.unequipItem(currentCharacter.name, slot);
+    currentCharacter = equipData.character;
+    lastCooldownReason = equipData.cooldown.reason || 'unequip';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = equipData.cooldown.total_seconds;
+    showStatus(`Unequipped ${slot}. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Unequip error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Unequip failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 function scheduleGatherAfterCooldown(tile: MapTile) {
   if (!currentCharacter || !api) return;
   if (pendingGatherTimeout) {
@@ -1407,23 +1436,26 @@ function updateCharacterInfo(character: Character) {
   html += '<div class="info-section-content" id="section-char-equipment">';
   
   const equipment = [
-    { slot: 'Weapon', value: character.weapon_slot },
-    { slot: 'Shield', value: character.shield_slot },
-    { slot: 'Helmet', value: character.helmet_slot },
-    { slot: 'Body Armor', value: character.body_armor_slot },
-    { slot: 'Leg Armor', value: character.leg_armor_slot },
-    { slot: 'Boots', value: character.boots_slot },
-    { slot: 'Ring 1', value: character.ring1_slot },
-    { slot: 'Ring 2', value: character.ring2_slot },
-    { slot: 'Amulet', value: character.amulet_slot },
-    { slot: 'Artifact 1', value: character.artifact1_slot },
-    { slot: 'Artifact 2', value: character.artifact2_slot },
-    { slot: 'Artifact 3', value: character.artifact3_slot },
+    { label: 'Weapon', slot: 'weapon', value: character.weapon_slot },
+    { label: 'Shield', slot: 'shield', value: character.shield_slot },
+    { label: 'Helmet', slot: 'helmet', value: character.helmet_slot },
+    { label: 'Body Armor', slot: 'body_armor', value: character.body_armor_slot },
+    { label: 'Leg Armor', slot: 'leg_armor', value: character.leg_armor_slot },
+    { label: 'Boots', slot: 'boots', value: character.boots_slot },
+    { label: 'Ring 1', slot: 'ring1', value: character.ring1_slot },
+    { label: 'Ring 2', slot: 'ring2', value: character.ring2_slot },
+    { label: 'Amulet', slot: 'amulet', value: character.amulet_slot },
+    { label: 'Artifact 1', slot: 'artifact1', value: character.artifact1_slot },
+    { label: 'Artifact 2', slot: 'artifact2', value: character.artifact2_slot },
+    { label: 'Artifact 3', slot: 'artifact3', value: character.artifact3_slot },
   ];
   
   equipment.forEach(item => {
     if (item.value) {
-      html += `<div class="info-item"><span class="info-label">${item.slot}:</span> <span class="info-value">${item.value}</span></div>`;
+      html += '<div class="info-item">';
+      html += `<span class="info-label">${item.label}:</span> <span class="info-value">${item.value}</span>`;
+      html += `<button class="unequip-btn" data-slot="${item.slot}">Unequip</button>`;
+      html += '</div>';
     }
   });
   
@@ -1669,5 +1701,17 @@ document.addEventListener('click', (e) => {
       content.classList.toggle('visible');
       target.classList.toggle('expanded');
     }
+  }
+});
+
+characterInfo.addEventListener('click', (e) => {
+  const target = e.target as HTMLElement;
+  const button = target.closest('.unequip-btn') as HTMLButtonElement | null;
+  if (!button) {
+    return;
+  }
+  const slot = button.dataset.slot;
+  if (slot) {
+    handleUnequipAction(slot);
   }
 });

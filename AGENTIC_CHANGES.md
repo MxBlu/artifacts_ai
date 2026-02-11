@@ -227,6 +227,17 @@
   - Added gather automation loop for woodcutting and fishing
   - Stop button now cancels any active automation
 
+## [2026-02-11 14:12] - Add unequip buttons in equipment section
+
+### Changed
+- File: `index.html`
+  - Added styling for unequip buttons in the equipment list
+- File: `src/api.ts`
+  - Added unequip response types and `unequipItem()` API method
+- File: `src/main.ts`
+  - Added unequip buttons in the equipment collapsible
+  - Added handler to call unequip and refresh character info
+
 ## [2026-02-11 13:55] - Show action errors above map
 
 ### Changed
