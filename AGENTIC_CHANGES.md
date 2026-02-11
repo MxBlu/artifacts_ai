@@ -218,6 +218,15 @@
   - Added fishing context menu visibility and action handling
   - Move to the fishing tile if needed, then gather
 
+## [2026-02-11 14:05] - Add gather automation loops
+
+### Changed
+- File: `index.html`
+  - Added automation loop action slots for woodcutting and fishing
+- File: `src/main.ts`
+  - Added gather automation loop for woodcutting and fishing
+  - Stop button now cancels any active automation
+
 ## [2026-02-11 13:55] - Show action errors above map
 
 ### Changed

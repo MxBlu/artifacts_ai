@@ -30,6 +30,10 @@ const fightLoopBtn = document.getElementById('fightLoopBtn') as HTMLButtonElemen
 const fightLoopSlot = document.getElementById('fightLoopSlot') as HTMLSpanElement;
 const woodcutMenuItem = document.getElementById('woodcutMenuItem') as HTMLDivElement;
 const fishMenuItem = document.getElementById('fishMenuItem') as HTMLDivElement;
+const woodcutLoopBtn = document.getElementById('woodcutLoopBtn') as HTMLButtonElement;
+const woodcutLoopSlot = document.getElementById('woodcutLoopSlot') as HTMLSpanElement;
+const fishLoopBtn = document.getElementById('fishLoopBtn') as HTMLButtonElement;
+const fishLoopSlot = document.getElementById('fishLoopSlot') as HTMLSpanElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -53,6 +57,12 @@ let fightAutomationStartedAt: number | null = null;
 let fightAutomationStatus: string | null = null;
 let fightAutomationLabel: string | null = null;
 let lastCooldownReason: string | null = null;
+let gatherAutomationToken = 0;
+let gatherAutomationActive = false;
+let gatherAutomationMode: 'woodcutting' | 'fishing' | null = null;
+let gatherAutomationTarget: MapTile | null = null;
+let gatherAutomationStartedAt: number | null = null;
+let gatherAutomationLabel: string | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -241,7 +251,7 @@ function canRest(character: Character | null): boolean {
 }
 
 function updateAutomationControls() {
-  stopAutomationBtn.disabled = !fightAutomationActive;
+  stopAutomationBtn.disabled = !fightAutomationActive && !gatherAutomationActive;
 }
 
 function setAutomationStatus(status: string | null) {
@@ -374,6 +384,87 @@ async function runFightAutomation(token: number) {
   updateAutomationControls();
 }
 
+async function runGatherAutomation(token: number) {
+  if (!gatherAutomationTarget || !gatherAutomationMode) {
+    return;
+  }
+
+  while (gatherAutomationActive && token === gatherAutomationToken) {
+    if (!api || !currentCharacter) {
+      break;
+    }
+
+    if (isOnCooldown(currentCharacter)) {
+      await waitForCooldownReady(token, 'Cooldown active.');
+      if (token !== gatherAutomationToken || !gatherAutomationActive) {
+        break;
+      }
+    }
+
+    const tile = gatherAutomationTarget;
+    const isValidTarget = gatherAutomationMode === 'woodcutting'
+      ? isTreeResource(tile)
+      : isFishingSpot(tile);
+
+    if (!isValidTarget) {
+      renderFightState('Auto-gather stopped: invalid target', 'error');
+      break;
+    }
+
+    if (!isCharacterOnTile(currentCharacter, tile)) {
+      try {
+        renderFightState(`Auto-gather: moving to (${tile.x}, ${tile.y})...`, 'info');
+        showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+        const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+        currentCharacter = moveData.character;
+        lastCooldownReason = moveData.cooldown.reason || 'move';
+
+        renderMap(currentMap, currentCharacter);
+        updateCharacterInfo(currentCharacter);
+        updateTimers();
+
+        if (isOnCooldown(currentCharacter)) {
+          await waitForCooldownReady(token, 'Move complete.');
+        }
+      } catch (error: any) {
+        console.error('Auto-gather move error:', error);
+        const message = error.response?.data?.error?.message || error.message || 'Move failed';
+        renderFightState(`Auto-gather stopped: ${message}`, 'error');
+        showStatus(`Error: ${message}`, 'error');
+        break;
+      }
+    }
+
+    if (token !== gatherAutomationToken || !gatherAutomationActive) {
+      break;
+    }
+
+    try {
+      const actionLabel = gatherAutomationMode === 'woodcutting' ? 'Gathering wood...' : 'Fishing...';
+      renderFightState(`Auto-gather: ${actionLabel}`, 'info');
+      showStatus(actionLabel, 'info');
+      const gatherData = await api.gather(currentCharacter.name);
+      currentCharacter = gatherData.character;
+      lastCooldownReason = gatherData.cooldown.reason || gatherAutomationMode;
+
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+    } catch (error: any) {
+      console.error('Auto-gather error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Gathering failed';
+      renderFightState(`Auto-gather stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      break;
+    }
+  }
+
+  gatherAutomationActive = false;
+  gatherAutomationStartedAt = null;
+  gatherAutomationLabel = null;
+  gatherAutomationMode = null;
+  updateAutomationControls();
+}
+
 function startFightAutomation(tile: MapTile) {
   if (!api || !currentCharacter) {
     showStatus('Load a character first', 'error');
@@ -410,6 +501,41 @@ function startFightAutomation(tile: MapTile) {
   runFightAutomation(fightAutomationToken);
 }
 
+function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing') {
+  if (!api || !currentCharacter) {
+    showStatus('Load a character first', 'error');
+    return;
+  }
+
+  if (fightAutomationActive || gatherAutomationActive) {
+    showStatus('Automation already running', 'info');
+    return;
+  }
+
+  const isValidTarget = mode === 'woodcutting' ? isTreeResource(tile) : isFishingSpot(tile);
+  if (!isValidTarget) {
+    showStatus('No matching resource on this tile', 'error');
+    return;
+  }
+
+  gatherAutomationActive = true;
+  gatherAutomationMode = mode;
+  gatherAutomationTarget = tile;
+  gatherAutomationToken += 1;
+  gatherAutomationStartedAt = Date.now();
+
+  const resourceCode = tile.interactions.content?.code || mode;
+  gatherAutomationLabel = mode === 'woodcutting'
+    ? `Auto: Woodcutting ${resourceCode}`
+    : `Auto: Fishing ${resourceCode}`;
+
+  updateAutomationControls();
+  renderFightState(`${gatherAutomationLabel} started.`, 'info');
+  showStatus('Auto-gather started', 'success');
+
+  runGatherAutomation(gatherAutomationToken);
+}
+
 function stopFightAutomation(message: string) {
   if (!fightAutomationActive) {
     return;
@@ -422,6 +548,29 @@ function stopFightAutomation(message: string) {
   setAutomationStatus(null);
   renderFightState(message, 'info');
   showStatus(message, 'info');
+}
+
+function stopGatherAutomation(message: string) {
+  if (!gatherAutomationActive) {
+    return;
+  }
+  gatherAutomationActive = false;
+  gatherAutomationStartedAt = null;
+  gatherAutomationLabel = null;
+  gatherAutomationMode = null;
+  gatherAutomationToken += 1;
+  updateAutomationControls();
+  renderFightState(message, 'info');
+  showStatus(message, 'info');
+}
+
+function stopAllAutomation(message: string) {
+  if (fightAutomationActive) {
+    stopFightAutomation(message);
+  }
+  if (gatherAutomationActive) {
+    stopGatherAutomation(message);
+  }
 }
 
 function scheduleFightAfterCooldown(monsterCode: string) {
@@ -529,6 +678,17 @@ function updateTimers() {
   if (fightAutomationActive && fightAutomationStartedAt) {
     const elapsedSeconds = Math.floor((Date.now() - fightAutomationStartedAt) / 1000);
     const actionLabel = fightAutomationLabel ? fightAutomationLabel : 'Auto: Running';
+    html += '<div class="timer active">';
+    html += '<div class="timer-pie" style="background: conic-gradient(#51cf66 360deg, #0f3460 0deg)">';
+    html += '<div class="timer-pie-inner">∞</div></div>';
+    html += '<div class="timer-info">';
+    html += '<div class="timer-label">Auto</div>';
+    html += '<div class="timer-value cooldown">' + actionLabel + '</div>';
+    html += '<div class="timer-value">' + elapsedSeconds + 's</div>';
+    html += '</div></div>';
+  } else if (gatherAutomationActive && gatherAutomationStartedAt) {
+    const elapsedSeconds = Math.floor((Date.now() - gatherAutomationStartedAt) / 1000);
+    const actionLabel = gatherAutomationLabel ? gatherAutomationLabel : 'Auto: Gathering';
     html += '<div class="timer active">';
     html += '<div class="timer-pie" style="background: conic-gradient(#51cf66 360deg, #0f3460 0deg)">';
     html += '<div class="timer-pie-inner">∞</div></div>';
@@ -1414,6 +1574,58 @@ fightLoopSlot.addEventListener('click', (event) => {
   startFightAutomation(targetTile);
 });
 
+woodcutLoopBtn.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!contextMenuTarget) {
+    return;
+  }
+  const targetTile = contextMenuTarget.tile;
+  if (!isTreeResource(targetTile)) {
+    return;
+  }
+  hideContextMenu();
+  startGatherAutomation(targetTile, 'woodcutting');
+});
+
+woodcutLoopSlot.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!contextMenuTarget) {
+    return;
+  }
+  const targetTile = contextMenuTarget.tile;
+  if (!isTreeResource(targetTile)) {
+    return;
+  }
+  hideContextMenu();
+  startGatherAutomation(targetTile, 'woodcutting');
+});
+
+fishLoopBtn.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!contextMenuTarget) {
+    return;
+  }
+  const targetTile = contextMenuTarget.tile;
+  if (!isFishingSpot(targetTile)) {
+    return;
+  }
+  hideContextMenu();
+  startGatherAutomation(targetTile, 'fishing');
+});
+
+fishLoopSlot.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!contextMenuTarget) {
+    return;
+  }
+  const targetTile = contextMenuTarget.tile;
+  if (!isFishingSpot(targetTile)) {
+    return;
+  }
+  hideContextMenu();
+  startGatherAutomation(targetTile, 'fishing');
+});
+
 woodcutMenuItem.addEventListener('click', () => {
   if (!woodcutMenuItem.classList.contains('disabled')) {
     handleGatherAction();
@@ -1433,7 +1645,7 @@ restBtn.addEventListener('click', () => {
 });
 
 stopAutomationBtn.addEventListener('click', () => {
-  stopFightAutomation('Auto-fight stopped');
+  stopAllAutomation('Automation stopped');
 });
 
 // Close context menu when clicking outside
