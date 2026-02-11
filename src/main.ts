@@ -1065,6 +1065,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
     }
   }
 
+  const hasMining = isMiningNode(tile);
+  miningMenuItem.style.display = hasMining ? 'flex' : 'none';
+
+  if (hasMining) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+      miningMenuItem.classList.add('disabled');
+    } else {
+      miningMenuItem.classList.remove('disabled');
+    }
+  }
+
   const isWorkshop = tile.interactions.content?.type?.toLowerCase() === 'workshop';
   craftMenuItem.style.display = isWorkshop ? 'flex' : 'none';
 

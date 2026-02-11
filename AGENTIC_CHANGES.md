@@ -320,6 +320,12 @@
   - Added NPC detection and map label rendering
   - Wired the NPC label toggle
 
+## [2026-02-11 15:54] - Fix mining context menu
+
+### Changed
+- File: `src/main.ts`
+  - Only show mining context menu option when tile is a mining node
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed
