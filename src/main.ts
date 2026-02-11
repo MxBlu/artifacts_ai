@@ -32,6 +32,7 @@ let lastCooldownState: boolean | null = null;
 let pendingFightTimeout: number | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
+const monsterRequests = new Set<string>();
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -153,17 +154,40 @@ async function loadMonsterDetails(code: string) {
   try {
     const monster = await api.getMonster(code);
     monsterCache.set(code, monster);
+    monsterRequests.delete(code);
     if (requestId !== activeMonsterRequestId) {
       return;
     }
     section.innerHTML = renderMonsterInfo(monster);
   } catch (error: any) {
     console.error('Monster fetch error:', error);
+    monsterRequests.delete(code);
     if (requestId !== activeMonsterRequestId) {
       return;
     }
     const message = error.response?.data?.error?.message || error.message || 'Failed to load monster';
     section.innerHTML = `<div class="info-item"><span class="info-value" style="color: #ff6b6b;">${escapeHtml(message)}</span></div>`;
+  }
+}
+
+async function ensureMonsterLevelBadge(code: string) {
+  if (monsterCache.has(code) || monsterRequests.has(code) || !api) {
+    return;
+  }
+
+  monsterRequests.add(code);
+
+  try {
+    const monster = await api.getMonster(code);
+    monsterCache.set(code, monster);
+    const badges = document.querySelectorAll(`.monster-icon[data-monster-code="${code}"]`);
+    badges.forEach(badge => {
+      badge.textContent = `M${monster.level}`;
+    });
+  } catch (error) {
+    console.error('Monster badge fetch error:', error);
+  } finally {
+    monsterRequests.delete(code);
   }
 }
 
@@ -557,8 +581,12 @@ function renderMap(maps: MapTile[], character: Character | null) {
         if (isMonsterTile(tile)) {
           const monsterIcon = document.createElement('div');
           monsterIcon.className = 'monster-icon';
-          monsterIcon.textContent = 'M';
+          const monsterCode = tile.interactions.content?.code || 'monster';
+          monsterIcon.dataset.monsterCode = monsterCode;
+          const cachedMonster = monsterCache.get(monsterCode);
+          monsterIcon.textContent = cachedMonster ? `M${cachedMonster.level}` : 'M?';
           cell.appendChild(monsterIcon);
+          ensureMonsterLevelBadge(monsterCode);
         }
         
         // Check if character is at this location

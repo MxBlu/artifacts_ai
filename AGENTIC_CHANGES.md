@@ -66,6 +66,14 @@
 - File: `src/main.ts`
   - Render a monster icon in the top-left corner of monster tiles
 
+## [2026-02-11 11:30] - Add monster level to tile badge
+
+### Changed
+- File: `src/main.ts`
+  - Fetch monster levels for tile badges with caching and de-duplication
+- File: `index.html`
+  - Adjusted monster badge font size to fit level text
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
