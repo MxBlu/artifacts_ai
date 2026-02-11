@@ -86,6 +86,18 @@
 - File: `index.html`
   - Increased monster badge width to better fit level text
 
+## [2026-02-11 11:42] - Widen monster badges more
+
+### Changed
+- File: `index.html`
+  - Increased monster badge width to 46% (max 52px)
+
+## [2026-02-11 11:45] - Widen monster badges further
+
+### Changed
+- File: `index.html`
+  - Increased monster badge width to 58% (max 68px)
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
