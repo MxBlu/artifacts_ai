@@ -308,7 +308,7 @@ function closeCraftModal() {
 function renderBankModal(details: BankDetails, items: SimpleItem[], character: Character) {
   bankModalTitle.textContent = 'Bank';
 
-  const inventoryItems = character.inventory || [];
+  const inventoryItems = (character.inventory || []).filter(entry => entry && entry.code && entry.quantity > 0);
   const inventoryHtml = inventoryItems.length
     ? inventoryItems.map((entry: any) => {
         const qtyControl = entry.quantity > 1

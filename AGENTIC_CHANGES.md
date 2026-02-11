@@ -348,6 +348,7 @@
   - Added bank API types and methods for details, items, and transactions
 - File: `src/main.ts`
   - Added bank modal rendering and banking actions
+  - Hide empty inventory slots in the bank modal
 
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
