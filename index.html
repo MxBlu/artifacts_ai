@@ -993,6 +993,148 @@
       font-size: 16px;
       cursor: pointer;
     }
+
+    .bank-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3200;
+    }
+
+    .bank-modal.visible {
+      display: flex;
+    }
+
+    .bank-modal-content {
+      background: #16213e;
+      border: 2px solid #00d9ff;
+      border-radius: 10px;
+      width: min(900px, 92vw);
+      max-height: 82vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .bank-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #0f3460;
+      color: #00d9ff;
+      font-weight: bold;
+    }
+
+    .bank-modal-body {
+      padding: 12px 16px 18px;
+      overflow-y: auto;
+    }
+
+    .bank-section {
+      background: #0f3460;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 12px;
+      color: #eee;
+      font-size: 13px;
+    }
+
+    .bank-section h4 {
+      color: #00d9ff;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .bank-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 10px 16px;
+    }
+
+    .bank-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      margin: 4px 0;
+    }
+
+    .bank-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .bank-input {
+      width: 100px;
+      background: #0a0a1a;
+      border: 1px solid #00d9ff;
+      border-radius: 4px;
+      color: #fff;
+      padding: 4px 6px;
+      font-size: 12px;
+    }
+
+    .bank-btn {
+      background: #00d9ff;
+      color: #0a0a1a;
+      border: none;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .bank-btn.secondary {
+      background: #51cf66;
+    }
+
+    .bank-btn:disabled {
+      background: #2c3e50;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .bank-qty {
+      width: 48px;
+      background: #0a0a1a;
+      border: 1px solid #00d9ff;
+      border-radius: 4px;
+      color: #fff;
+      padding: 2px 4px;
+      font-size: 11px;
+      margin-left: 6px;
+    }
+
+    .bank-qty-single {
+      margin-left: 6px;
+      color: #aaa;
+      font-size: 11px;
+      padding: 2px 4px;
+    }
+
+    .bank-item-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .bank-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      padding: 6px 8px;
+      background: rgba(10, 10, 26, 0.6);
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -1119,6 +1261,9 @@
       <div id="craftMenuItem" class="context-menu-item">
         <span class="context-menu-label">Craft</span>
       </div>
+      <div id="bankMenuItem" class="context-menu-item">
+        <span class="context-menu-label">Bank</span>
+      </div>
     </div>
   </div>
 
@@ -1129,6 +1274,16 @@
         <button id="craftModalClose" class="craft-close" aria-label="Close crafting">×</button>
       </div>
       <div id="craftModalBody" class="craft-modal-body"></div>
+    </div>
+  </div>
+
+  <div id="bankModal" class="bank-modal">
+    <div class="bank-modal-content">
+      <div class="bank-modal-header">
+        <span id="bankModalTitle">Bank</span>
+        <button id="bankModalClose" class="craft-close" aria-label="Close bank">×</button>
+      </div>
+      <div id="bankModalBody" class="bank-modal-body"></div>
     </div>
   </div>
 

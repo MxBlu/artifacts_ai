@@ -192,6 +192,11 @@ export interface ItemsResponse {
   data: Item[];
 }
 
+export interface SimpleItem {
+  code: string;
+  quantity: number;
+}
+
 export interface CraftingData {
   cooldown: {
     total_seconds: number;
@@ -226,6 +231,78 @@ export interface EquipmentData {
 
 export interface EquipmentResponse {
   data: EquipmentData;
+}
+
+export interface BankDetails {
+  slots: number;
+  expansions: number;
+  next_expansion_cost: number;
+  gold: number;
+}
+
+export interface BankDetailsResponse {
+  data: BankDetails;
+}
+
+export interface BankItemsPage {
+  data: SimpleItem[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
+}
+
+export interface BankGoldTransactionData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  bank: {
+    quantity: number;
+  };
+  character: Character;
+}
+
+export interface BankGoldTransactionResponse {
+  data: BankGoldTransactionData;
+}
+
+export interface BankItemTransactionData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  items: SimpleItem[];
+  bank: SimpleItem[];
+  character: Character;
+}
+
+export interface BankItemTransactionResponse {
+  data: BankItemTransactionData;
+}
+
+export interface BankExtensionTransactionData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  transaction: {
+    price: number;
+  };
+  character: Character;
+}
+
+export interface BankExtensionTransactionResponse {
+  data: BankExtensionTransactionData;
 }
 
 export interface UseItemData {
@@ -359,6 +436,74 @@ export class ArtifactsAPI {
     const response = await this.client.post<CraftingResponse>(
       `/my/${characterName}/action/crafting`,
       { code, quantity }
+    );
+    return response.data.data;
+  }
+
+  async getBankDetails(): Promise<BankDetails> {
+    const response = await this.client.get<BankDetailsResponse>('/my/bank');
+    return response.data.data;
+  }
+
+  async getBankItems(page = 1, size = 100): Promise<BankItemsPage> {
+    const response = await this.client.get<BankItemsPage>('/my/bank/items', {
+      params: { page, size }
+    });
+    return response.data;
+  }
+
+  async getAllBankItems(): Promise<SimpleItem[]> {
+    const items: SimpleItem[] = [];
+    let page = 1;
+    const size = 100;
+
+    while (true) {
+      const response = await this.getBankItems(page, size);
+      if (!response.data || response.data.length === 0) {
+        break;
+      }
+      items.push(...response.data);
+      page += 1;
+    }
+
+    return items;
+  }
+
+  async depositBankItems(characterName: string, items: SimpleItem[]): Promise<BankItemTransactionData> {
+    const response = await this.client.post<BankItemTransactionResponse>(
+      `/my/${characterName}/action/bank/deposit/item`,
+      items
+    );
+    return response.data.data;
+  }
+
+  async withdrawBankItems(characterName: string, items: SimpleItem[]): Promise<BankItemTransactionData> {
+    const response = await this.client.post<BankItemTransactionResponse>(
+      `/my/${characterName}/action/bank/withdraw/item`,
+      items
+    );
+    return response.data.data;
+  }
+
+  async depositBankGold(characterName: string, quantity: number): Promise<BankGoldTransactionData> {
+    const response = await this.client.post<BankGoldTransactionResponse>(
+      `/my/${characterName}/action/bank/deposit/gold`,
+      { quantity }
+    );
+    return response.data.data;
+  }
+
+  async withdrawBankGold(characterName: string, quantity: number): Promise<BankGoldTransactionData> {
+    const response = await this.client.post<BankGoldTransactionResponse>(
+      `/my/${characterName}/action/bank/withdraw/gold`,
+      { quantity }
+    );
+    return response.data.data;
+  }
+
+  async buyBankExpansion(characterName: string): Promise<BankExtensionTransactionData> {
+    const response = await this.client.post<BankExtensionTransactionResponse>(
+      `/my/${characterName}/action/bank/buy_expansion`
     );
     return response.data.data;
   }

@@ -339,6 +339,16 @@
 - File: `src/main.ts`
   - Show a loading status while fetching workshop item lists
 
+## [2026-02-12 09:18] - Add bank modal
+
+### Changed
+- File: `index.html`
+  - Added bank modal markup, styles, and context menu option
+- File: `src/api.ts`
+  - Added bank API types and methods for details, items, and transactions
+- File: `src/main.ts`
+  - Added bank modal rendering and banking actions
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

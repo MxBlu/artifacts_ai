@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -41,10 +41,15 @@ const miningLoopSlot = document.getElementById('miningLoopSlot') as HTMLSpanElem
 const fishLoopBtn = document.getElementById('fishLoopBtn') as HTMLButtonElement;
 const fishLoopSlot = document.getElementById('fishLoopSlot') as HTMLSpanElement;
 const craftMenuItem = document.getElementById('craftMenuItem') as HTMLDivElement;
+const bankMenuItem = document.getElementById('bankMenuItem') as HTMLDivElement;
 const craftModal = document.getElementById('craftModal') as HTMLDivElement;
 const craftModalTitle = document.getElementById('craftModalTitle') as HTMLSpanElement;
 const craftModalBody = document.getElementById('craftModalBody') as HTMLDivElement;
 const craftModalClose = document.getElementById('craftModalClose') as HTMLButtonElement;
+const bankModal = document.getElementById('bankModal') as HTMLDivElement;
+const bankModalTitle = document.getElementById('bankModalTitle') as HTMLSpanElement;
+const bankModalBody = document.getElementById('bankModalBody') as HTMLDivElement;
+const bankModalClose = document.getElementById('bankModalClose') as HTMLButtonElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -80,6 +85,8 @@ let gatherAutomationMode: 'woodcutting' | 'fishing' | 'mining' | null = null;
 let gatherAutomationTarget: MapTile | null = null;
 let gatherAutomationStartedAt: number | null = null;
 let gatherAutomationLabel: string | null = null;
+let bankDetails: BankDetails | null = null;
+let bankItems: SimpleItem[] = [];
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -286,8 +293,90 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
   craftModal.classList.add('visible');
 }
 
+function openBankModal() {
+  bankModal.classList.add('visible');
+}
+
+function closeBankModal() {
+  bankModal.classList.remove('visible');
+}
+
 function closeCraftModal() {
   craftModal.classList.remove('visible');
+}
+
+function renderBankModal(details: BankDetails, items: SimpleItem[], character: Character) {
+  bankModalTitle.textContent = 'Bank';
+
+  const inventoryItems = character.inventory || [];
+  const inventoryHtml = inventoryItems.length
+    ? inventoryItems.map((entry: any) => {
+        const qtyControl = entry.quantity > 1
+          ? `<select class="bank-qty" data-code="${entry.code}">
+              ${Array.from({ length: entry.quantity }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}
+            </select>`
+          : '<span class="bank-qty-single">1x</span>';
+        const disabled = isOnCooldown(character) ? 'disabled' : '';
+        return `
+          <div class="bank-item">
+            <span>${entry.code} x${entry.quantity}</span>
+            <span>
+              ${qtyControl}
+              <button class="bank-btn" data-action="deposit-item" data-code="${entry.code}" ${disabled}>Deposit</button>
+            </span>
+          </div>
+        `;
+      }).join('')
+    : '<div class="fight-empty">Inventory is empty</div>';
+
+  const bankItemsHtml = items.length
+    ? items.map(entry => {
+        const qtyControl = entry.quantity > 1
+          ? `<select class="bank-qty" data-code="${entry.code}" data-scope="bank">
+              ${Array.from({ length: entry.quantity }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}
+            </select>`
+          : '<span class="bank-qty-single">1x</span>';
+        const disabled = isOnCooldown(character) ? 'disabled' : '';
+        return `
+          <div class="bank-item">
+            <span>${entry.code} x${entry.quantity}</span>
+            <span>
+              ${qtyControl}
+              <button class="bank-btn secondary" data-action="withdraw-item" data-code="${entry.code}" ${disabled}>Withdraw</button>
+            </span>
+          </div>
+        `;
+      }).join('')
+    : '<div class="fight-empty">Bank is empty</div>';
+
+  bankModalBody.innerHTML = `
+    <div class="bank-section">
+      <h4>Bank Summary</h4>
+      <div class="bank-grid">
+        <div class="bank-row"><span>Gold</span><span>${details.gold.toLocaleString()}</span></div>
+        <div class="bank-row"><span>Slots</span><span>${details.slots}</span></div>
+        <div class="bank-row"><span>Expansions</span><span>${details.expansions}</span></div>
+        <div class="bank-row"><span>Next Expansion</span><span>${details.next_expansion_cost.toLocaleString()} gold</span></div>
+      </div>
+      <div class="bank-actions" style="margin-top: 10px;">
+        <input id="bankDepositGold" class="bank-input" type="number" min="1" placeholder="Deposit gold" />
+        <button class="bank-btn" data-action="deposit-gold">Deposit</button>
+        <input id="bankWithdrawGold" class="bank-input" type="number" min="1" placeholder="Withdraw gold" />
+        <button class="bank-btn secondary" data-action="withdraw-gold">Withdraw</button>
+        <button class="bank-btn" data-action="buy-expansion">Buy Expansion</button>
+      </div>
+    </div>
+    <div class="bank-grid">
+      <div class="bank-section">
+        <h4>Inventory</h4>
+        <div class="bank-item-list">${inventoryHtml}</div>
+      </div>
+      <div class="bank-section">
+        <h4>Bank Items</h4>
+        <div class="bank-item-list">${bankItemsHtml}</div>
+      </div>
+    </div>
+  `;
 }
 
 async function ensureItemDetails(code: string) {
@@ -448,6 +537,15 @@ function isMiningNode(tile: MapTile): boolean {
   const content = tile.interactions.content;
   if (!content || !content.code) return false;
   return content.code.toLowerCase().endsWith('_rocks');
+}
+
+function isBankTile(tile: MapTile): boolean {
+  const content = tile.interactions.content;
+  if (!content) return false;
+  const type = content.type?.toLowerCase();
+  if (type === 'bank') return true;
+  if (content.code && content.code.toLowerCase().includes('bank')) return true;
+  return false;
 }
 
 function isNpcNode(tile: MapTile): boolean {
@@ -1079,6 +1177,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
     }
   }
 
+  const hasBank = isBankTile(tile);
+  bankMenuItem.style.display = hasBank ? 'flex' : 'none';
+
+  if (hasBank) {
+    if (!currentCharacter) {
+      bankMenuItem.classList.add('disabled');
+    } else {
+      bankMenuItem.classList.remove('disabled');
+    }
+  }
+
   const isWorkshop = tile.interactions.content?.type?.toLowerCase() === 'workshop';
   craftMenuItem.style.display = isWorkshop ? 'flex' : 'none';
 
@@ -1686,6 +1795,197 @@ async function handleCraftItem(code: string, quantity: number) {
   }
 }
 
+async function handleBankAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+  if (!isBankTile(tile)) {
+    showStatus('No bank on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+    } catch (error: any) {
+      console.error('Move before bank error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  openBankModal();
+  bankModalBody.innerHTML = '<div class="fight-empty">Loading bank...</div>';
+
+  try {
+    showStatus('Loading bank details...', 'info');
+    const [details, items] = await Promise.all([
+      api.getBankDetails(),
+      api.getAllBankItems()
+    ]);
+    bankDetails = details;
+    bankItems = items;
+    renderBankModal(bankDetails, bankItems, currentCharacter);
+  } catch (error: any) {
+    console.error('Bank load error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Failed to load bank';
+    showStatus(`Error: ${message}`, 'error');
+    bankModalBody.innerHTML = `<div class="fight-empty">${message}</div>`;
+  }
+}
+
+async function handleBankDepositItem(code: string, quantity: number) {
+  if (!currentCharacter || !api || !bankDetails) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Depositing ${code} x${quantity}...`, 'info');
+    const result = await api.depositBankItems(currentCharacter.name, [{ code, quantity }]);
+    currentCharacter = result.character;
+    bankItems = result.bank;
+    lastCooldownReason = result.cooldown.reason || 'bank deposit';
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderBankModal(bankDetails, bankItems, currentCharacter);
+    showStatus(`Deposited ${code} x${quantity}.`, 'success');
+  } catch (error: any) {
+    console.error('Bank deposit error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Deposit failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleBankWithdrawItem(code: string, quantity: number) {
+  if (!currentCharacter || !api || !bankDetails) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Withdrawing ${code} x${quantity}...`, 'info');
+    const result = await api.withdrawBankItems(currentCharacter.name, [{ code, quantity }]);
+    currentCharacter = result.character;
+    bankItems = result.bank;
+    lastCooldownReason = result.cooldown.reason || 'bank withdraw';
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderBankModal(bankDetails, bankItems, currentCharacter);
+    showStatus(`Withdrew ${code} x${quantity}.`, 'success');
+  } catch (error: any) {
+    console.error('Bank withdraw error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Withdraw failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleBankDepositGold(quantity: number) {
+  if (!currentCharacter || !api || !bankDetails) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Depositing ${quantity} gold...`, 'info');
+    const result = await api.depositBankGold(currentCharacter.name, quantity);
+    currentCharacter = result.character;
+    bankDetails = { ...bankDetails, gold: result.bank.quantity };
+    lastCooldownReason = result.cooldown.reason || 'bank deposit';
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderBankModal(bankDetails, bankItems, currentCharacter);
+    showStatus(`Deposited ${quantity} gold.`, 'success');
+  } catch (error: any) {
+    console.error('Bank gold deposit error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Deposit failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleBankWithdrawGold(quantity: number) {
+  if (!currentCharacter || !api || !bankDetails) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Withdrawing ${quantity} gold...`, 'info');
+    const result = await api.withdrawBankGold(currentCharacter.name, quantity);
+    currentCharacter = result.character;
+    bankDetails = { ...bankDetails, gold: result.bank.quantity };
+    lastCooldownReason = result.cooldown.reason || 'bank withdraw';
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderBankModal(bankDetails, bankItems, currentCharacter);
+    showStatus(`Withdrew ${quantity} gold.`, 'success');
+  } catch (error: any) {
+    console.error('Bank gold withdraw error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Withdraw failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleBankBuyExpansion() {
+  if (!currentCharacter || !api || !bankDetails) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus('Buying bank expansion...', 'info');
+    const result = await api.buyBankExpansion(currentCharacter.name);
+    currentCharacter = result.character;
+    lastCooldownReason = result.cooldown.reason || 'bank expansion';
+    bankDetails = await api.getBankDetails();
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderBankModal(bankDetails, bankItems, currentCharacter);
+    showStatus(`Bank expansion bought (${result.transaction.price} gold).`, 'success');
+  } catch (error: any) {
+    console.error('Bank expansion error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Expansion failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 function renderMap(maps: MapTile[], character: Character | null) {
   if (maps.length === 0) {
     mapGrid.innerHTML = '<p>No map data available</p>';
@@ -2276,6 +2576,11 @@ craftMenuItem.addEventListener('click', () => {
     handleCraftAction();
   }
 });
+bankMenuItem.addEventListener('click', () => {
+  if (!bankMenuItem.classList.contains('disabled')) {
+    handleBankAction();
+  }
+});
 
 restBtn.addEventListener('click', () => {
   if (!restBtn.disabled) {
@@ -2293,6 +2598,12 @@ craftModal.addEventListener('click', (event) => {
     closeCraftModal();
   }
 });
+bankModalClose.addEventListener('click', closeBankModal);
+bankModal.addEventListener('click', (event) => {
+  if (event.target === bankModal) {
+    closeBankModal();
+  }
+});
 
 craftModalBody.addEventListener('click', (event) => {
   const target = event.target as HTMLElement;
@@ -2307,6 +2618,60 @@ craftModalBody.addEventListener('click', (event) => {
     const rawQuantity = quantitySelect?.value ? Number.parseInt(quantitySelect.value, 10) : 1;
     const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
     handleCraftItem(code, quantity);
+  }
+});
+
+bankModalBody.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement;
+  const button = target.closest('.bank-btn') as HTMLButtonElement | null;
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.action;
+  if (!action) {
+    return;
+  }
+
+  if (action === 'deposit-item' || action === 'withdraw-item') {
+    const code = button.dataset.code;
+    if (!code) {
+      return;
+    }
+    const container = button.closest('.bank-item');
+    const qtySelect = container?.querySelector('.bank-qty') as HTMLSelectElement | null;
+    const rawQuantity = qtySelect?.value ? Number.parseInt(qtySelect.value, 10) : 1;
+    const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+    if (action === 'deposit-item') {
+      handleBankDepositItem(code, quantity);
+    } else {
+      handleBankWithdrawItem(code, quantity);
+    }
+    return;
+  }
+
+  if (action === 'deposit-gold') {
+    const input = bankModalBody.querySelector('#bankDepositGold') as HTMLInputElement | null;
+    const rawQuantity = input?.value ? Number.parseInt(input.value, 10) : 0;
+    const quantity = Number.isFinite(rawQuantity) ? rawQuantity : 0;
+    if (quantity > 0) {
+      handleBankDepositGold(quantity);
+    }
+    return;
+  }
+
+  if (action === 'withdraw-gold') {
+    const input = bankModalBody.querySelector('#bankWithdrawGold') as HTMLInputElement | null;
+    const rawQuantity = input?.value ? Number.parseInt(input.value, 10) : 0;
+    const quantity = Number.isFinite(rawQuantity) ? rawQuantity : 0;
+    if (quantity > 0) {
+      handleBankWithdrawGold(quantity);
+    }
+    return;
+  }
+
+  if (action === 'buy-expansion') {
+    handleBankBuyExpansion();
   }
 });
 
