@@ -24,6 +24,7 @@ const contextMenu = document.getElementById('contextMenu') as HTMLDivElement;
 const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
 const fightMenuItem = document.getElementById('fightMenuItem') as HTMLDivElement;
 const fightLoopBtn = document.getElementById('fightLoopBtn') as HTMLButtonElement;
+const fightLoopSlot = document.getElementById('fightLoopSlot') as HTMLSpanElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -1080,11 +1081,25 @@ fightLoopBtn.addEventListener('click', (event) => {
   if (!contextMenuTarget) {
     return;
   }
-  if (!isMonsterTile(contextMenuTarget.tile)) {
+  const targetTile = contextMenuTarget.tile;
+  if (!isMonsterTile(targetTile)) {
     return;
   }
   hideContextMenu();
-  startFightAutomation(contextMenuTarget.tile);
+  startFightAutomation(targetTile);
+});
+
+fightLoopSlot.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!contextMenuTarget) {
+    return;
+  }
+  const targetTile = contextMenuTarget.tile;
+  if (!isMonsterTile(targetTile)) {
+    return;
+  }
+  hideContextMenu();
+  startFightAutomation(targetTile);
 });
 
 restBtn.addEventListener('click', () => {

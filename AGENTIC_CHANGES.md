@@ -136,6 +136,12 @@
 - File: `index.html`
   - Added separate hover styling for the fight label and automation action slot
 
+## [2026-02-11 12:40] - Fix fight loop click target
+
+### Changed
+- File: `src/main.ts`
+  - Preserve the selected tile before hiding the context menu when starting automation
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
