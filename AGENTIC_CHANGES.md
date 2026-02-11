@@ -326,6 +326,13 @@
 - File: `src/main.ts`
   - Only show mining context menu option when tile is a mining node
 
+## [2026-02-11 16:00] - Add mining workshop support
+
+### Changed
+- File: `src/main.ts`
+  - Added mining workshop detection in craft skill detection
+  - Added mining level retrieval in skill level function
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

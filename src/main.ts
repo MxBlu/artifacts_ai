@@ -171,6 +171,7 @@ function getCraftSkillFromWorkshop(code: string): string | null {
   if (normalized.includes('jewel')) return 'jewelrycrafting';
   if (normalized.includes('cook')) return 'cooking';
   if (normalized.includes('alch')) return 'alchemy';
+  if (normalized.includes('mining')) return 'mining';
   return null;
 }
 
@@ -186,6 +187,8 @@ function getSkillLevel(character: Character, skill: string): number {
       return character.cooking_level || 0;
     case 'alchemy':
       return character.alchemy_level || 0;
+    case 'mining':
+      return character.mining_level || 0;
     default:
       return 0;
   }
