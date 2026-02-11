@@ -152,6 +152,10 @@ function getEquipSlotForItem(item: Item, character: Character): string | null {
   }
 }
 
+function isConsumableItem(item: Item): boolean {
+  return item.type === 'consumable';
+}
+
 function getCraftSkillFromWorkshop(code: string): string | null {
   const normalized = code.toLowerCase();
   if (normalized.includes('weapon')) return 'weaponcrafting';
@@ -1224,6 +1228,35 @@ async function handleEquipAction(code: string) {
   }
 }
 
+async function handleUseItem(code: string, quantity: number) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Using ${code} x${quantity}...`, 'info');
+    const useData = await api.useItem(currentCharacter.name, code, quantity);
+    currentCharacter = useData.character;
+    lastCooldownReason = useData.cooldown.reason || 'use';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = useData.cooldown.total_seconds;
+    showStatus(`Used ${code} x${quantity}. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Use item error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Use failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 function scheduleGatherAfterCooldown(tile: MapTile) {
   if (!currentCharacter || !api) return;
   if (pendingGatherTimeout) {
@@ -1794,10 +1827,24 @@ function updateCharacterInfo(character: Character) {
     character.inventory.forEach((item: any) => {
       const itemDetails = itemCache.get(item.code);
       const equipSlot = itemDetails ? getEquipSlotForItem(itemDetails, character) : null;
+      const isConsumable = itemDetails ? isConsumableItem(itemDetails) : false;
       html += '<div class="info-item">';
       html += `<span class="info-value">${item.code} x${item.quantity}</span>`;
       if (itemDetails && equipSlot) {
         html += `<button class="equip-btn" data-code="${item.code}">Equip</button>`;
+      }
+      if (itemDetails && isConsumable) {
+        if (item.quantity > 1) {
+          html += `<select class="use-qty" data-code="${item.code}">`;
+          for (let i = 1; i <= item.quantity; i += 1) {
+            html += `<option value="${i}">${i}x</option>`;
+          }
+          html += '</select>';
+        } else {
+          html += '<span class="use-qty-single">1x</span>';
+        }
+        const disabled = isOnCooldown(character) ? 'disabled' : '';
+        html += `<button class="use-btn" data-code="${item.code}" ${disabled}>Use</button>`;
       }
       html += '</div>';
 
@@ -2076,6 +2123,17 @@ characterInfo.addEventListener('click', (e) => {
       const code = equipButton.dataset.code;
       if (code) {
         handleEquipAction(code);
+      }
+    }
+    const useButton = target.closest('.use-btn') as HTMLButtonElement | null;
+    if (useButton) {
+      const code = useButton.dataset.code;
+      if (code) {
+        const container = useButton.closest('.info-item');
+        const quantitySelect = container?.querySelector('.use-qty') as HTMLSelectElement | null;
+        const rawQuantity = quantitySelect?.value ? Number.parseInt(quantitySelect.value, 10) : 1;
+        const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+        handleUseItem(code, quantity);
       }
     }
     return;

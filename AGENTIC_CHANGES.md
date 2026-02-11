@@ -281,6 +281,16 @@
   - Moved craft quantity control before required level in the modal
   - Close the crafting modal when crafting starts
 
+## [2026-02-11 15:24] - Add consumable item use
+
+### Changed
+- File: `src/api.ts`
+  - Added use item response types and `useItem()` API method
+- File: `src/main.ts`
+  - Added consumable detection, inventory use controls, and use action handler
+- File: `index.html`
+  - Added styling for use item button and quantity selector
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

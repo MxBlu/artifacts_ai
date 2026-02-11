@@ -228,6 +228,22 @@ export interface EquipmentResponse {
   data: EquipmentData;
 }
 
+export interface UseItemData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  item: Item;
+  character: Character;
+}
+
+export interface UseItemResponse {
+  data: UseItemData;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -342,6 +358,14 @@ export class ArtifactsAPI {
   async craftItem(characterName: string, code: string, quantity = 1): Promise<CraftingData> {
     const response = await this.client.post<CraftingResponse>(
       `/my/${characterName}/action/crafting`,
+      { code, quantity }
+    );
+    return response.data.data;
+  }
+
+  async useItem(characterName: string, code: string, quantity = 1): Promise<UseItemData> {
+    const response = await this.client.post<UseItemResponse>(
+      `/my/${characterName}/action/use`,
       { code, quantity }
     );
     return response.data.data;
