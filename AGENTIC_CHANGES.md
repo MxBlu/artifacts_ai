@@ -1,343 +1,10 @@
 # Agentic Changes Log
 
-## [2026-02-11 10:15] - Add fight action from map tiles
-
-### Changed
-- File: `src/api.ts`
-  - Added fight response types and `fightCharacter()` API method
-- File: `src/main.ts`
-  - Added monster tile checks and fight action handler
-  - Added context menu enable/disable logic for fighting
-- File: `index.html`
-  - Added "Fight Monster" item to the tile context menu
-- File: `GAME_KNOWLEDGE.md`
-  - Documented fight action request shape and tile requirement
-
-## [2026-02-11 10:22] - Gate fight menu and auto-move before fight
+## [2026-02-12 09:34] - Add auto bank deposit
 
 ### Changed
 - File: `src/main.ts`
-  - Hide fight option when no monster is present on the tile
-  - Auto-move to the target tile before attempting the fight
-  - Inform the user when movement cooldown prevents immediate fighting
-
-## [2026-02-11 10:40] - Add fight status panel with logs
-
-### Changed
-- File: `index.html`
-  - Added Fight Status panel and styles for fight summaries and logs
-- File: `src/main.ts`
-  - Render fight status during move and fight actions
-  - Show fight summary details and logs after combat
-
-## [2026-02-11 10:58] - Add rest action to timers pane
-
-### Changed
-- File: `index.html`
-  - Added a Rest button to the timers pane
-  - Updated timers pane layout to align controls
-- File: `src/api.ts`
-  - Added rest response types and `restCharacter()` API method
-- File: `src/main.ts`
-  - Added rest action handler and cooldown/HP checks
-  - Disabled Rest button when on cooldown or at full HP
-
-## [2026-02-11 11:05] - Auto-fight after move cooldown
-
-### Changed
-- File: `src/main.ts`
-  - Schedule the fight automatically after moving and cooldown expiration
-  - Added shared fight execution helper and pending timeout tracking
-
-## [2026-02-11 11:18] - Show monster stats in map info
-
-### Changed
-- File: `src/api.ts`
-  - Added monster types and `getMonster()` API method
-- File: `src/main.ts`
-  - Fetch monster details for monster tiles and display them in a collapsible section
-  - Added monster caching and request de-duplication
-
-## [2026-02-11 11:24] - Show monster icon on tiles
-
-### Changed
-- File: `index.html`
-  - Added styling for a small monster icon badge on tiles
-- File: `src/main.ts`
-  - Render a monster icon in the top-left corner of monster tiles
-
-## [2026-02-11 11:30] - Add monster level to tile badge
-
-### Changed
-- File: `src/main.ts`
-  - Fetch monster levels for tile badges with caching and de-duplication
-- File: `index.html`
-  - Adjusted monster badge font size to fit level text
-
-## [2026-02-11 11:34] - Widen monster badges
-
-### Changed
-- File: `index.html`
-  - Increased monster badge width to fit up to three characters
-
-## [2026-02-11 11:38] - Widen monster badges again
-
-### Changed
-- File: `index.html`
-  - Increased monster badge width to better fit level text
-
-## [2026-02-11 11:42] - Widen monster badges more
-
-### Changed
-- File: `index.html`
-  - Increased monster badge width to 46% (max 52px)
-
-## [2026-02-11 11:45] - Widen monster badges further
-
-### Changed
-- File: `index.html`
-  - Increased monster badge width to 58% (max 68px)
-
-## [2026-02-11 12:05] - Add fight automation loop
-
-### Changed
-- File: `index.html`
-  - Added fight loop icon button in the context menu
-  - Added stop button next to Rest in the timers pane
-- File: `src/main.ts`
-  - Added fight automation loop that moves, fights, rests until stopped
-  - Added start/stop handlers and automation status updates
-
-## [2026-02-11 12:12] - Add action slot for fight loop icon
-
-### Changed
-- File: `index.html`
-  - Added fixed right-side action segment with divider for the fight loop icon
-  - Updated context menu item layout to support consistent action slots
-
-## [2026-02-11 12:20] - Allow fight loop start during cooldown
-
-### Changed
-- File: `src/main.ts`
-  - Only disable the fight menu when no character is loaded
-  - Allow the loop icon to start automation even while on cooldown
-
-## [2026-02-11 12:27] - Widen fight loop hitbox
-
-### Changed
-- File: `index.html`
-  - Added an action slot id so the whole segment is clickable
-- File: `src/main.ts`
-  - Start automation when clicking the action slot segment
-
-## [2026-02-11 12:33] - Separate fight menu hover highlights
-
-### Changed
-- File: `index.html`
-  - Added separate hover styling for the fight label and automation action slot
-
-## [2026-02-11 12:40] - Fix fight loop click target
-
-### Changed
-- File: `src/main.ts`
-  - Preserve the selected tile before hiding the context menu when starting automation
-
-## [2026-02-11 12:52] - Show automation timer in pane
-
-### Changed
-- File: `src/main.ts`
-  - Track automation start time and status
-  - Render automation action and elapsed time in the timers pane
-
-## [2026-02-11 12:58] - Keep automation timer label constant
-
-### Changed
-- File: `src/main.ts`
-  - Pin the automation timer label to the started action
-
-## [2026-02-11 13:02] - Fix automation label source
-
-### Changed
-- File: `src/main.ts`
-  - Use a constant automation label in the timer pane
-
-## [2026-02-11 13:08] - Show cooldown action reason
-
-### Changed
-- File: `src/main.ts`
-  - Track the last cooldown reason from actions
-  - Display the cooldown reason in the timers pane when available
-
-## [2026-02-11 13:12] - Simplify cooldown label text
-
-### Changed
-- File: `src/main.ts`
-  - Removed remaining seconds from the cooldown label text
-
-## [2026-02-11 13:18] - Add map label toggles
-
-### Changed
-- File: `index.html`
-  - Added map label controls under the map
-- File: `src/main.ts`
-  - Toggle monster labels when rendering the map
-
-## [2026-02-11 13:24] - Add resource label toggles
-
-### Changed
-- File: `index.html`
-  - Added toggles for tree and fishing labels
-  - Added resource label badge styling
-- File: `src/main.ts`
-  - Render tree and fishing labels based on resource codes
-  - Added toggle handlers for resource labels
-
-## [2026-02-11 13:33] - Add woodcut action on trees
-
-### Changed
-- File: `index.html`
-  - Added Cut Wood option to the context menu
-- File: `src/api.ts`
-  - Added gathering response types and `gather()` API method
-- File: `src/main.ts`
-  - Added woodcut context menu visibility and action handling
-  - Move to the tree tile if needed, then gather
-
-## [2026-02-11 13:41] - Retry woodcut after move cooldown
-
-### Changed
-- File: `src/main.ts`
-  - Persist target tile and auto-gather after move cooldown expires
-
-## [2026-02-11 13:48] - Add fishing action
-
-### Changed
-- File: `index.html`
-  - Added Fish option to the context menu
-- File: `src/main.ts`
-  - Added fishing context menu visibility and action handling
-  - Move to the fishing tile if needed, then gather
-
-## [2026-02-11 14:05] - Add gather automation loops
-
-### Changed
-- File: `index.html`
-  - Added automation loop action slots for woodcutting and fishing
-- File: `src/main.ts`
-  - Added gather automation loop for woodcutting and fishing
-  - Stop button now cancels any active automation
-
-## [2026-02-11 14:12] - Add unequip buttons in equipment section
-
-### Changed
-- File: `index.html`
-  - Added styling for unequip buttons in the equipment list
-- File: `src/api.ts`
-  - Added unequip response types and `unequipItem()` API method
-- File: `src/main.ts`
-  - Added unequip buttons in the equipment collapsible
-  - Added handler to call unequip and refresh character info
-
-## [2026-02-11 14:22] - Add equip buttons in inventory
-
-### Changed
-- File: `index.html`
-  - Added equip button styling in inventory list
-- File: `src/api.ts`
-  - Added item fetch types and `equipItem()` API method
-- File: `src/main.ts`
-  - Added item cache and slot resolution for equippable items
-  - Added equip buttons for inventory items and handler to equip
-
-## [2026-02-11 14:35] - Add crafting modal
-
-### Changed
-- File: `index.html`
-  - Added Craft context menu item and crafting modal UI
-- File: `src/api.ts`
-  - Added item craft fields and global items fetch
-- File: `src/main.ts`
-  - Added workshop skill detection, item filtering, and crafting modal rendering
-  - Move to workshop tile before opening the modal
-
-## [2026-02-11 14:44] - Add craft action
-
-### Changed
-- File: `index.html`
-  - Added craft button styling in the modal
-- File: `src/api.ts`
-  - Added crafting response types and `craftItem()` API method
-- File: `src/main.ts`
-  - Added craft buttons in the modal and handler to craft items
-
-## [2026-02-11 15:05] - Add craft quantity input
-
-### Changed
-- File: `index.html`
-  - Added craft quantity dropdown styling
-- File: `src/main.ts`
-  - Calculate max craftable quantities from inventory and render dropdown when >1
-  - Use dropdown quantity when crafting
-  - Moved craft quantity control before required level in the modal
-  - Close the crafting modal when crafting starts
-
-## [2026-02-11 15:24] - Add consumable item use
-
-### Changed
-- File: `src/api.ts`
-  - Added use item response types and `useItem()` API method
-- File: `src/main.ts`
-  - Added consumable detection, inventory use controls, and use action handler
-- File: `index.html`
-  - Added styling for use item button and quantity selector
-
-## [2026-02-11 15:33] - Add mining support
-
-### Changed
-- File: `index.html`
-  - Added mining label toggle, rock badge styling, and context menu action
-- File: `src/main.ts`
-  - Added mining node detection, mining actions, and automation loop support
-  - Render mining labels and wire mining UI handlers
-  - Fixed mining-related inventory typing and cooldown scheduling
-
-## [2026-02-11 15:41] - Add alchemy field labels
-
-### Changed
-- File: `index.html`
-  - Added alchemy field label toggle and styling
-- File: `src/main.ts`
-  - Added alchemy field detection and map label rendering
-  - Wired the field label toggle
-
-## [2026-02-11 15:49] - Add NPC labels
-
-### Changed
-- File: `index.html`
-  - Added NPC label toggle and styling
-- File: `src/main.ts`
-  - Limited field labels to resource nodes only
-  - Added NPC detection and map label rendering
-  - Wired the NPC label toggle
-
-## [2026-02-11 15:54] - Fix mining context menu
-
-### Changed
-- File: `src/main.ts`
-  - Only show mining context menu option when tile is a mining node
-
-## [2026-02-11 16:00] - Add mining workshop support
-
-### Changed
-- File: `src/main.ts`
-  - Added mining workshop detection in craft skill detection
-  - Added mining level retrieval in skill level function
-
-## [2026-02-12 09:05] - Add workshop loading status
-
-### Changed
-- File: `src/main.ts`
-  - Show a loading status while fetching workshop item lists
+  - Added inventory-full checks and auto-deposit flow in gather automation
 
 ## [2026-02-12 09:18] - Add bank modal
 
@@ -351,11 +18,95 @@
   - Hide empty inventory slots in the bank modal
   - Refresh bank modal controls when cooldown state changes
 
-## [2026-02-12 09:34] - Add auto bank deposit
+## [2026-02-12 09:05] - Add workshop loading status
 
 ### Changed
 - File: `src/main.ts`
-  - Added inventory-full checks and auto-deposit flow in gather automation
+  - Show a loading status while fetching workshop item lists
+
+## [2026-02-11 16:00] - Add mining workshop support
+
+### Changed
+- File: `src/main.ts`
+  - Added mining workshop detection in craft skill detection
+  - Added mining level retrieval in skill level function
+
+## [2026-02-11 15:54] - Fix mining context menu
+
+### Changed
+- File: `src/main.ts`
+  - Only show mining context menu option when tile is a mining node
+
+## [2026-02-11 15:49] - Add NPC labels
+
+### Changed
+- File: `index.html`
+  - Added NPC label toggle and styling
+- File: `src/main.ts`
+  - Limited field labels to resource nodes only
+  - Added NPC detection and map label rendering
+  - Wired the NPC label toggle
+
+## [2026-02-11 15:41] - Add alchemy field labels
+
+### Changed
+- File: `index.html`
+  - Added alchemy field label toggle and styling
+- File: `src/main.ts`
+  - Added alchemy field detection and map label rendering
+  - Wired the field label toggle
+
+## [2026-02-11 15:33] - Add mining support
+
+### Changed
+- File: `index.html`
+  - Added mining label toggle, rock badge styling, and context menu action
+- File: `src/main.ts`
+  - Added mining node detection, mining actions, and automation loop support
+  - Render mining labels and wire mining UI handlers
+  - Fixed mining-related inventory typing and cooldown scheduling
+
+## [2026-02-11 15:24] - Add consumable item use
+
+### Changed
+- File: `src/api.ts`
+  - Added use item response types and `useItem()` API method
+- File: `src/main.ts`
+  - Added consumable detection, inventory use controls, and use action handler
+- File: `index.html`
+  - Added styling for use item button and quantity selector
+
+## [2026-02-11 15:05] - Add craft quantity input
+
+### Changed
+- File: `index.html`
+  - Added craft quantity dropdown styling
+- File: `src/main.ts`
+  - Calculate max craftable quantities from inventory and render dropdown when >1
+  - Use dropdown quantity when crafting
+  - Moved craft quantity control before required level in the modal
+  - Close the crafting modal when crafting starts
+
+## [2026-02-11 14:44] - Add craft action
+
+### Changed
+- File: `index.html`
+  - Added craft button styling in the modal
+- File: `src/api.ts`
+  - Added crafting response types and `craftItem()` API method
+- File: `src/main.ts`
+  - Added craft buttons in the modal and handler to craft items
+
+## [2026-02-11 14:35] - Add crafting modal
+
+### Changed
+- File: `index.html`
+  - Added Craft context menu item and crafting modal UI
+- File: `src/api.ts`
+  - Added item craft fields and global items fetch
+- File: `src/main.ts`
+  - Added workshop skill detection, item filtering, and crafting modal rendering
+  - Move to workshop tile before opening the modal
 
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
@@ -363,12 +114,36 @@
 - File: `src/main.ts`
   - Only render Equip buttons for items with a valid slot
 
-## [2026-02-11 14:36] - Update page title
+## [2026-02-11 14:22] - Add equip buttons in inventory
 
 ### Changed
 - File: `index.html`
-  - Renamed page title to Artifacts MMO Client
-  - Removed the page title heading
+  - Added equip button styling in inventory list
+- File: `src/api.ts`
+  - Added item fetch types and `equipItem()` API method
+- File: `src/main.ts`
+  - Added item cache and slot resolution for equippable items
+  - Added equip buttons for inventory items and handler to equip
+
+## [2026-02-11 14:12] - Add unequip buttons in equipment section
+
+### Changed
+- File: `index.html`
+  - Added styling for unequip buttons in the equipment list
+- File: `src/api.ts`
+  - Added unequip response types and `unequipItem()` API method
+- File: `src/main.ts`
+  - Added unequip buttons in the equipment collapsible
+  - Added handler to call unequip and refresh character info
+
+## [2026-02-11 14:05] - Add gather automation loops
+
+### Changed
+- File: `index.html`
+  - Added automation loop action slots for woodcutting and fishing
+- File: `src/main.ts`
+  - Added gather automation loop for woodcutting and fishing
+  - Stop button now cancels any active automation
 
 ## [2026-02-11 13:55] - Show action errors above map
 
@@ -377,6 +152,224 @@
   - Moved status message above the map area
 - File: `src/main.ts`
   - Display error statuses for 15 seconds before hiding
+
+## [2026-02-11 13:48] - Add fishing action
+
+### Changed
+- File: `index.html`
+  - Added Fish option to the context menu
+- File: `src/main.ts`
+  - Added fishing context menu visibility and action handling
+  - Move to the fishing tile if needed, then gather
+
+## [2026-02-11 13:41] - Retry woodcut after move cooldown
+
+### Changed
+- File: `src/main.ts`
+  - Persist target tile and auto-gather after move cooldown expires
+
+## [2026-02-11 13:33] - Add woodcut action on trees
+
+### Changed
+- File: `index.html`
+  - Added Cut Wood option to the context menu
+- File: `src/api.ts`
+  - Added gathering response types and `gather()` API method
+- File: `src/main.ts`
+  - Added woodcut context menu visibility and action handling
+  - Move to the tree tile if needed, then gather
+
+## [2026-02-11 13:24] - Add resource label toggles
+
+### Changed
+- File: `index.html`
+  - Added toggles for tree and fishing labels
+  - Added resource label badge styling
+- File: `src/main.ts`
+  - Render tree and fishing labels based on resource codes
+  - Added toggle handlers for resource labels
+
+## [2026-02-11 13:18] - Add map label toggles
+
+### Changed
+- File: `index.html`
+  - Added map label controls under the map
+- File: `src/main.ts`
+  - Toggle monster labels when rendering the map
+
+## [2026-02-11 13:12] - Simplify cooldown label text
+
+### Changed
+- File: `src/main.ts`
+  - Removed remaining seconds from the cooldown label text
+
+## [2026-02-11 13:08] - Show cooldown action reason
+
+### Changed
+- File: `src/main.ts`
+  - Track the last cooldown reason from actions
+  - Display the cooldown reason in the timers pane when available
+
+## [2026-02-11 13:02] - Fix automation label source
+
+### Changed
+- File: `src/main.ts`
+  - Use a constant automation label in the timer pane
+
+## [2026-02-11 12:58] - Keep automation timer label constant
+
+### Changed
+- File: `src/main.ts`
+  - Pin the automation timer label to the started action
+
+## [2026-02-11 12:52] - Show automation timer in pane
+
+### Changed
+- File: `src/main.ts`
+  - Track automation start time and status
+  - Render automation action and elapsed time in the timers pane
+
+## [2026-02-11 12:40] - Fix fight loop click target
+
+### Changed
+- File: `src/main.ts`
+  - Preserve the selected tile before hiding the context menu when starting automation
+
+## [2026-02-11 12:33] - Separate fight menu hover highlights
+
+### Changed
+- File: `index.html`
+  - Added separate hover styling for the fight label and automation action slot
+
+## [2026-02-11 12:27] - Widen fight loop hitbox
+
+### Changed
+- File: `index.html`
+  - Added an action slot id so the whole segment is clickable
+- File: `src/main.ts`
+  - Start automation when clicking the action slot segment
+
+## [2026-02-11 12:20] - Allow fight loop start during cooldown
+
+### Changed
+- File: `src/main.ts`
+  - Only disable the fight menu when no character is loaded
+  - Allow the loop icon to start automation even while on cooldown
+
+## [2026-02-11 12:12] - Add action slot for fight loop icon
+
+### Changed
+- File: `index.html`
+  - Added fixed right-side action segment with divider for the fight loop icon
+  - Updated context menu item layout to support consistent action slots
+
+## [2026-02-11 12:05] - Add fight automation loop
+
+### Changed
+- File: `index.html`
+  - Added fight loop icon button in the context menu
+  - Added stop button next to Rest in the timers pane
+- File: `src/main.ts`
+  - Added fight automation loop that moves, fights, rests until stopped
+  - Added start/stop handlers and automation status updates
+
+## [2026-02-11 11:45] - Widen monster badges further
+
+### Changed
+- File: `index.html`
+  - Increased monster badge width to 58% (max 68px)
+
+## [2026-02-11 11:42] - Widen monster badges more
+
+### Changed
+- File: `index.html`
+  - Increased monster badge width to 46% (max 52px)
+
+## [2026-02-11 11:38] - Widen monster badges again
+
+### Changed
+- File: `index.html`
+  - Increased monster badge width to better fit level text
+
+## [2026-02-11 11:34] - Widen monster badges
+
+### Changed
+- File: `index.html`
+  - Increased monster badge width to fit up to three characters
+
+## [2026-02-11 11:30] - Add monster level to tile badge
+
+### Changed
+- File: `src/main.ts`
+  - Fetch monster levels for tile badges with caching and de-duplication
+- File: `index.html`
+  - Adjusted monster badge font size to fit level text
+
+## [2026-02-11 11:24] - Show monster icon on tiles
+
+### Changed
+- File: `index.html`
+  - Added styling for a small monster icon badge on tiles
+- File: `src/main.ts`
+  - Render a monster icon in the top-left corner of monster tiles
+
+## [2026-02-11 11:18] - Show monster stats in map info
+
+### Changed
+- File: `src/api.ts`
+  - Added monster types and `getMonster()` API method
+- File: `src/main.ts`
+  - Fetch monster details for monster tiles and display them in a collapsible section
+  - Added monster caching and request de-duplication
+
+## [2026-02-11 11:05] - Auto-fight after move cooldown
+
+### Changed
+- File: `src/main.ts`
+  - Schedule the fight automatically after moving and cooldown expiration
+  - Added shared fight execution helper and pending timeout tracking
+
+## [2026-02-11 10:58] - Add rest action to timers pane
+
+### Changed
+- File: `index.html`
+  - Added a Rest button to the timers pane
+  - Updated timers pane layout to align controls
+- File: `src/api.ts`
+  - Added rest response types and `restCharacter()` API method
+- File: `src/main.ts`
+  - Added rest action handler and cooldown/HP checks
+  - Disabled Rest button when on cooldown or at full HP
+
+## [2026-02-11 10:40] - Add fight status panel with logs
+
+### Changed
+- File: `index.html`
+  - Added Fight Status panel and styles for fight summaries and logs
+- File: `src/main.ts`
+  - Render fight status during move and fight actions
+  - Show fight summary details and logs after combat
+
+## [2026-02-11 10:22] - Gate fight menu and auto-move before fight
+
+### Changed
+- File: `src/main.ts`
+  - Hide fight option when no monster is present on the tile
+  - Auto-move to the target tile before attempting the fight
+  - Inform the user when movement cooldown prevents immediate fighting
+
+## [2026-02-11 10:15] - Add fight action from map tiles
+
+### Changed
+- File: `src/api.ts`
+  - Added fight response types and `fightCharacter()` API method
+- File: `src/main.ts`
+  - Added monster tile checks and fight action handler
+  - Added context menu enable/disable logic for fighting
+- File: `index.html`
+  - Added "Fight Monster" item to the tile context menu
+- File: `GAME_KNOWLEDGE.md`
+  - Documented fight action request shape and tile requirement
 
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
@@ -509,7 +502,7 @@
 - Inventory (items with quantities)
 
 ### Notes
-- Tree view has 2 levels maximum (section → items)
+- Tree view has 2 levels maximum (section -> items)
 - Progress bars for XP and task completion
 - Cooldown displayed as red badge when active
 - Click section headers to expand/collapse
