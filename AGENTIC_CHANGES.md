@@ -14,6 +14,12 @@
 - File: `src/main.ts`
   - Added resource caching and hover modal requirement rendering
 
+## [2026-02-12 10:20] - Disable gather actions below level
+
+### Changed
+- File: `src/main.ts`
+  - Grey out gather actions and automation when resource level is unmet
+
 ## [2026-02-12 09:18] - Add bank modal
 
 ### Changed

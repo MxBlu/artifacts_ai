@@ -588,6 +588,54 @@ function isAlchemyField(tile: MapTile): boolean {
   return true;
 }
 
+function meetsResourceRequirement(tile: MapTile, character: Character | null): boolean {
+  if (!character) return false;
+  const content = tile.interactions.content;
+  if (!content || content.type?.toLowerCase() !== 'resource') return true;
+  const resource = resourceCache.get(content.code);
+  if (!resource) return true;
+  const level = getGatheringLevel(character, resource.skill);
+  return level >= resource.level;
+}
+
+async function ensureResourceDetails(code: string) {
+  if (!api || resourceCache.has(code) || resourceRequests.has(code)) {
+    return;
+  }
+
+  resourceRequests.add(code);
+  try {
+    const resource = await api.getResource(code);
+    resourceCache.set(code, resource);
+  } catch (error) {
+    console.error('Resource fetch error:', error);
+  } finally {
+    resourceRequests.delete(code);
+  }
+}
+
+function updateGatherMenuState(tile: MapTile) {
+  const meetsRequirement = meetsResourceRequirement(tile, currentCharacter);
+
+  if (isTreeResource(tile)) {
+    const disabled = !currentCharacter || isOnCooldown(currentCharacter) || !meetsRequirement;
+    woodcutMenuItem.classList.toggle('disabled', disabled);
+    woodcutLoopBtn.disabled = disabled;
+  }
+
+  if (isFishingSpot(tile)) {
+    const disabled = !currentCharacter || isOnCooldown(currentCharacter) || !meetsRequirement;
+    fishMenuItem.classList.toggle('disabled', disabled);
+    fishLoopBtn.disabled = disabled;
+  }
+
+  if (isMiningNode(tile)) {
+    const disabled = !currentCharacter || isOnCooldown(currentCharacter) || !meetsRequirement;
+    miningMenuItem.classList.toggle('disabled', disabled);
+    miningLoopBtn.disabled = disabled;
+  }
+}
+
 function isCharacterOnTile(character: Character | null, tile: MapTile): boolean {
   if (!character) return false;
   return character.x === tile.x && character.y === tile.y && character.layer === tile.layer;
@@ -1360,33 +1408,21 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
   woodcutMenuItem.style.display = hasTree ? 'flex' : 'none';
 
   if (hasTree) {
-    if (!currentCharacter || isOnCooldown(currentCharacter)) {
-      woodcutMenuItem.classList.add('disabled');
-    } else {
-      woodcutMenuItem.classList.remove('disabled');
-    }
+    updateGatherMenuState(tile);
   }
 
   const hasFishing = isFishingSpot(tile);
   fishMenuItem.style.display = hasFishing ? 'flex' : 'none';
 
   if (hasFishing) {
-    if (!currentCharacter || isOnCooldown(currentCharacter)) {
-      fishMenuItem.classList.add('disabled');
-    } else {
-      fishMenuItem.classList.remove('disabled');
-    }
+    updateGatherMenuState(tile);
   }
 
   const hasMining = isMiningNode(tile);
   miningMenuItem.style.display = hasMining ? 'flex' : 'none';
 
   if (hasMining) {
-    if (!currentCharacter || isOnCooldown(currentCharacter)) {
-      miningMenuItem.classList.add('disabled');
-    } else {
-      miningMenuItem.classList.remove('disabled');
-    }
+    updateGatherMenuState(tile);
   }
 
   const hasBank = isBankTile(tile);
@@ -1409,6 +1445,15 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
     } else {
       craftMenuItem.classList.remove('disabled');
     }
+  }
+
+  const content = tile.interactions.content;
+  if (content && content.type?.toLowerCase() === 'resource') {
+    ensureResourceDetails(content.code).then(() => {
+      if (contextMenuTarget?.tile === tile && contextMenu.classList.contains('visible')) {
+        updateGatherMenuState(tile);
+      }
+    });
   }
 }
 
@@ -2696,6 +2741,10 @@ woodcutLoopBtn.addEventListener('click', (event) => {
   if (!isTreeResource(targetTile)) {
     return;
   }
+  if (!meetsResourceRequirement(targetTile, currentCharacter)) {
+    showStatus('Requires higher woodcutting level', 'error');
+    return;
+  }
   hideContextMenu();
   startGatherAutomation(targetTile, 'woodcutting');
 });
@@ -2707,6 +2756,10 @@ woodcutLoopSlot.addEventListener('click', (event) => {
   }
   const targetTile = contextMenuTarget.tile;
   if (!isTreeResource(targetTile)) {
+    return;
+  }
+  if (!meetsResourceRequirement(targetTile, currentCharacter)) {
+    showStatus('Requires higher woodcutting level', 'error');
     return;
   }
   hideContextMenu();
@@ -2722,6 +2775,10 @@ miningLoopBtn.addEventListener('click', (event) => {
   if (!isMiningNode(targetTile)) {
     return;
   }
+  if (!meetsResourceRequirement(targetTile, currentCharacter)) {
+    showStatus('Requires higher mining level', 'error');
+    return;
+  }
   hideContextMenu();
   startGatherAutomation(targetTile, 'mining');
 });
@@ -2733,6 +2790,10 @@ miningLoopSlot.addEventListener('click', (event) => {
   }
   const targetTile = contextMenuTarget.tile;
   if (!isMiningNode(targetTile)) {
+    return;
+  }
+  if (!meetsResourceRequirement(targetTile, currentCharacter)) {
+    showStatus('Requires higher mining level', 'error');
     return;
   }
   hideContextMenu();
@@ -2748,6 +2809,10 @@ fishLoopBtn.addEventListener('click', (event) => {
   if (!isFishingSpot(targetTile)) {
     return;
   }
+  if (!meetsResourceRequirement(targetTile, currentCharacter)) {
+    showStatus('Requires higher fishing level', 'error');
+    return;
+  }
   hideContextMenu();
   startGatherAutomation(targetTile, 'fishing');
 });
@@ -2759,6 +2824,10 @@ fishLoopSlot.addEventListener('click', (event) => {
   }
   const targetTile = contextMenuTarget.tile;
   if (!isFishingSpot(targetTile)) {
+    return;
+  }
+  if (!meetsResourceRequirement(targetTile, currentCharacter)) {
+    showStatus('Requires higher fishing level', 'error');
     return;
   }
   hideContextMenu();
