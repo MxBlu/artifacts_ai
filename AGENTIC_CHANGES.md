@@ -218,6 +218,14 @@
   - Added fishing context menu visibility and action handling
   - Move to the fishing tile if needed, then gather
 
+## [2026-02-11 13:55] - Show action errors above map
+
+### Changed
+- File: `index.html`
+  - Moved status message above the map area
+- File: `src/main.ts`
+  - Display error statuses for 15 seconds before hiding
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

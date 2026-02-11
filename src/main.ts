@@ -578,12 +578,11 @@ function showStatus(message: string, type: 'error' | 'success' | 'info') {
   statusDiv.textContent = message;
   statusDiv.className = `status ${type}`;
   statusDiv.style.display = 'block';
-  
-  if (type === 'success' || type === 'info') {
-    setTimeout(() => {
-      statusDiv.style.display = 'none';
-    }, 5000);
-  }
+
+  const timeoutMs = type === 'error' ? 15000 : 5000;
+  setTimeout(() => {
+    statusDiv.style.display = 'none';
+  }, timeoutMs);
 }
 
 function showTileModal(tile: MapTile, event: MouseEvent) {
