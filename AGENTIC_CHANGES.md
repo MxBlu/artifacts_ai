@@ -80,6 +80,12 @@
 - File: `index.html`
   - Increased monster badge width to fit up to three characters
 
+## [2026-02-11 11:38] - Widen monster badges again
+
+### Changed
+- File: `index.html`
+  - Increased monster badge width to better fit level text
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
