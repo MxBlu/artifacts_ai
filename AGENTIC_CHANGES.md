@@ -209,6 +209,15 @@
 - File: `src/main.ts`
   - Persist target tile and auto-gather after move cooldown expires
 
+## [2026-02-11 13:48] - Add fishing action
+
+### Changed
+- File: `index.html`
+  - Added Fish option to the context menu
+- File: `src/main.ts`
+  - Added fishing context menu visibility and action handling
+  - Move to the fishing tile if needed, then gather
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

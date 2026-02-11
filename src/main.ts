@@ -29,6 +29,7 @@ const fightMenuItem = document.getElementById('fightMenuItem') as HTMLDivElement
 const fightLoopBtn = document.getElementById('fightLoopBtn') as HTMLButtonElement;
 const fightLoopSlot = document.getElementById('fightLoopSlot') as HTMLSpanElement;
 const woodcutMenuItem = document.getElementById('woodcutMenuItem') as HTMLDivElement;
+const fishMenuItem = document.getElementById('fishMenuItem') as HTMLDivElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -39,6 +40,8 @@ let lastCooldownState: boolean | null = null;
 let pendingFightTimeout: number | null = null;
 let pendingGatherTimeout: number | null = null;
 let pendingGatherTarget: MapTile | null = null;
+let pendingFishingTimeout: number | null = null;
+let pendingFishingTarget: MapTile | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
@@ -652,6 +655,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
       woodcutMenuItem.classList.remove('disabled');
     }
   }
+
+  const hasFishing = isFishingSpot(tile);
+  fishMenuItem.style.display = hasFishing ? 'flex' : 'none';
+
+  if (hasFishing) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+      fishMenuItem.classList.add('disabled');
+    } else {
+      fishMenuItem.classList.remove('disabled');
+    }
+  }
 }
 
 function hideContextMenu() {
@@ -797,6 +811,59 @@ function scheduleGatherAfterCooldown(tile: MapTile) {
   }, delayMs);
 }
 
+function scheduleFishingAfterCooldown(tile: MapTile) {
+  if (!currentCharacter || !api) return;
+  if (pendingFishingTimeout) {
+    clearTimeout(pendingFishingTimeout);
+    pendingFishingTimeout = null;
+  }
+
+  pendingFishingTarget = tile;
+
+  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+  showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to fish...`, 'info');
+
+  pendingFishingTimeout = window.setTimeout(() => {
+    pendingFishingTimeout = null;
+    if (pendingFishingTarget) {
+      handleFishingAfterMove(pendingFishingTarget);
+    }
+  }, delayMs);
+}
+
+async function handleFishingAfterMove(tile: MapTile) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleFishingAfterCooldown(tile);
+    return;
+  }
+
+  if (!isFishingSpot(tile)) {
+    showStatus('No fishing spot on this tile', 'error');
+    return;
+  }
+
+  try {
+    showStatus('Fishing...', 'info');
+    const gatherData = await api.gather(currentCharacter.name);
+    currentCharacter = gatherData.character;
+    lastCooldownReason = gatherData.cooldown.reason || 'fishing';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = gatherData.cooldown.total_seconds;
+    showStatus(`Fishing complete. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Fishing error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Fishing failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 async function handleGatherAfterMove(tile: MapTile) {
   if (!currentCharacter || !api) {
     return;
@@ -873,6 +940,51 @@ async function handleGatherAction() {
   }
 
   handleGatherAfterMove(tile);
+}
+
+async function handleFishingAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleFishingAfterCooldown(contextMenuTarget.tile);
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+
+  if (!isFishingSpot(tile)) {
+    showStatus('No fishing spot on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        scheduleFishingAfterCooldown(tile);
+        return;
+      }
+    } catch (error: any) {
+      console.error('Move before fishing error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  handleFishingAfterMove(tile);
 }
 
 function renderMap(maps: MapTile[], character: Character | null) {
@@ -1306,6 +1418,12 @@ fightLoopSlot.addEventListener('click', (event) => {
 woodcutMenuItem.addEventListener('click', () => {
   if (!woodcutMenuItem.classList.contains('disabled')) {
     handleGatherAction();
+  }
+});
+
+fishMenuItem.addEventListener('click', () => {
+  if (!fishMenuItem.classList.contains('disabled')) {
+    handleFishingAction();
   }
 });
 
