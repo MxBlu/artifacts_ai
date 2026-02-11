@@ -192,6 +192,25 @@ export interface ItemsResponse {
   data: Item[];
 }
 
+export interface CraftingData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  details: {
+    xp: number;
+    items: Array<{ code: string; quantity: number }>;
+  };
+  character: Character;
+}
+
+export interface CraftingResponse {
+  data: CraftingData;
+}
+
 export interface EquipmentData {
   cooldown: {
     total_seconds: number;
@@ -318,6 +337,14 @@ export class ArtifactsAPI {
     }
 
     return items;
+  }
+
+  async craftItem(characterName: string, code: string, quantity = 1): Promise<CraftingData> {
+    const response = await this.client.post<CraftingResponse>(
+      `/my/${characterName}/action/crafting`,
+      { code, quantity }
+    );
+    return response.data.data;
   }
 
   async unequipItem(characterName: string, slot: string, quantity = 1): Promise<EquipmentData> {

@@ -217,11 +217,16 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
         : 'None';
       const quantity = item.craft?.quantity || 1;
 
+      const canCraft = !locked && !isOnCooldown(character);
+
       return `
         <div class="craft-item ${locked ? 'locked' : ''}">
           <div class="craft-item-header">
             <span>${item.name} (${item.code})</span>
-            <span>Lvl ${craftLevel}</span>
+            <span>
+              Lvl ${craftLevel}
+              <button class="craft-btn" data-code="${item.code}" ${canCraft ? '' : 'disabled'}>Craft</button>
+            </span>
           </div>
           <div class="craft-item-meta">Makes: ${quantity} · Requires: ${ingredients}</div>
         </div>
@@ -1426,6 +1431,35 @@ async function handleCraftAction() {
   openCraftModal(skill, content.code, items, currentCharacter);
 }
 
+async function handleCraftItem(code: string) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Crafting ${code}...`, 'info');
+    const craftData = await api.craftItem(currentCharacter.name, code, 1);
+    currentCharacter = craftData.character;
+    lastCooldownReason = craftData.cooldown.reason || 'crafting';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = craftData.cooldown.total_seconds;
+    showStatus(`Crafted ${code}. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Craft error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Craft failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 function renderMap(maps: MapTile[], character: Character | null) {
   if (maps.length === 0) {
     mapGrid.innerHTML = '<p>No map data available</p>';
@@ -1952,6 +1986,18 @@ craftModalClose.addEventListener('click', closeCraftModal);
 craftModal.addEventListener('click', (event) => {
   if (event.target === craftModal) {
     closeCraftModal();
+  }
+});
+
+craftModalBody.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement;
+  const button = target.closest('.craft-btn') as HTMLButtonElement | null;
+  if (!button) {
+    return;
+  }
+  const code = button.dataset.code;
+  if (code) {
+    handleCraftItem(code);
   }
 });
 

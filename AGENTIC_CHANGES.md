@@ -260,6 +260,16 @@
   - Added workshop skill detection, item filtering, and crafting modal rendering
   - Move to workshop tile before opening the modal
 
+## [2026-02-11 14:44] - Add craft action
+
+### Changed
+- File: `index.html`
+  - Added craft button styling in the modal
+- File: `src/api.ts`
+  - Added crafting response types and `craftItem()` API method
+- File: `src/main.ts`
+  - Added craft buttons in the modal and handler to craft items
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed
