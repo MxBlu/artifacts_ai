@@ -34,6 +34,11 @@ const woodcutLoopBtn = document.getElementById('woodcutLoopBtn') as HTMLButtonEl
 const woodcutLoopSlot = document.getElementById('woodcutLoopSlot') as HTMLSpanElement;
 const fishLoopBtn = document.getElementById('fishLoopBtn') as HTMLButtonElement;
 const fishLoopSlot = document.getElementById('fishLoopSlot') as HTMLSpanElement;
+const craftMenuItem = document.getElementById('craftMenuItem') as HTMLDivElement;
+const craftModal = document.getElementById('craftModal') as HTMLDivElement;
+const craftModalTitle = document.getElementById('craftModalTitle') as HTMLSpanElement;
+const craftModalBody = document.getElementById('craftModalBody') as HTMLDivElement;
+const craftModalClose = document.getElementById('craftModalClose') as HTMLButtonElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -51,6 +56,8 @@ const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
 const itemCache = new Map<string, Item>();
 const itemRequests = new Set<string>();
+let allItemsCache: Item[] | null = null;
+let allItemsLoading: Promise<Item[]> | null = null;
 let fightAutomationToken = 0;
 let fightAutomationActive = false;
 let fightAutomationTarget: MapTile | null = null;
@@ -143,6 +150,90 @@ function getEquipSlotForItem(item: Item, character: Character): string | null {
     default:
       return null;
   }
+}
+
+function getCraftSkillFromWorkshop(code: string): string | null {
+  const normalized = code.toLowerCase();
+  if (normalized.includes('weapon')) return 'weaponcrafting';
+  if (normalized.includes('gear')) return 'gearcrafting';
+  if (normalized.includes('jewel')) return 'jewelrycrafting';
+  if (normalized.includes('cook')) return 'cooking';
+  if (normalized.includes('alch')) return 'alchemy';
+  return null;
+}
+
+function getSkillLevel(character: Character, skill: string): number {
+  switch (skill) {
+    case 'weaponcrafting':
+      return character.weaponcrafting_level || 0;
+    case 'gearcrafting':
+      return character.gearcrafting_level || 0;
+    case 'jewelrycrafting':
+      return character.jewelrycrafting_level || 0;
+    case 'cooking':
+      return character.cooking_level || 0;
+    case 'alchemy':
+      return character.alchemy_level || 0;
+    default:
+      return 0;
+  }
+}
+
+async function ensureAllItems(): Promise<Item[]> {
+  if (allItemsCache) {
+    return allItemsCache;
+  }
+
+  if (!allItemsLoading && api) {
+    allItemsLoading = api.getAllItems();
+  }
+
+  if (!allItemsLoading) {
+    return [];
+  }
+
+  const items = await allItemsLoading;
+  allItemsCache = items;
+  allItemsLoading = null;
+  return items;
+}
+
+function openCraftModal(skill: string, workshopCode: string, items: Item[], character: Character) {
+  const skillLevel = getSkillLevel(character, skill);
+  const filtered = items
+    .filter(item => item.craft && item.craft.skill === skill)
+    .sort((a, b) => (a.craft?.level || 0) - (b.craft?.level || 0));
+
+  craftModalTitle.textContent = `Crafting: ${skill} (${workshopCode})`;
+
+  if (filtered.length === 0) {
+    craftModalBody.innerHTML = '<div class="fight-empty">No craftable items found</div>';
+  } else {
+    craftModalBody.innerHTML = filtered.map(item => {
+      const craftLevel = item.craft?.level || 0;
+      const locked = craftLevel > skillLevel;
+      const ingredients = item.craft?.items?.length
+        ? item.craft?.items.map(req => `${req.code} x${req.quantity}`).join(', ')
+        : 'None';
+      const quantity = item.craft?.quantity || 1;
+
+      return `
+        <div class="craft-item ${locked ? 'locked' : ''}">
+          <div class="craft-item-header">
+            <span>${item.name} (${item.code})</span>
+            <span>Lvl ${craftLevel}</span>
+          </div>
+          <div class="craft-item-meta">Makes: ${quantity} · Requires: ${ingredients}</div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  craftModal.classList.add('visible');
+}
+
+function closeCraftModal() {
+  craftModal.classList.remove('visible');
 }
 
 async function ensureItemDetails(code: string) {
@@ -885,6 +976,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
       fishMenuItem.classList.remove('disabled');
     }
   }
+
+  const isWorkshop = tile.interactions.content?.type?.toLowerCase() === 'workshop';
+  craftMenuItem.style.display = isWorkshop ? 'flex' : 'none';
+
+  if (isWorkshop) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+      craftMenuItem.classList.add('disabled');
+    } else {
+      craftMenuItem.classList.remove('disabled');
+    }
+  }
 }
 
 function hideContextMenu() {
@@ -1274,6 +1376,54 @@ async function handleFishingAction() {
   }
 
   handleFishingAfterMove(tile);
+}
+
+async function handleCraftAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+  const content = tile.interactions.content;
+  if (!content || content.type.toLowerCase() !== 'workshop') {
+    showStatus('No workshop on this tile', 'error');
+    return;
+  }
+
+  const skill = getCraftSkillFromWorkshop(content.code);
+  if (!skill) {
+    showStatus(`Unknown workshop type: ${content.code}`, 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+    } catch (error: any) {
+      console.error('Move before craft error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  const items = await ensureAllItems();
+  openCraftModal(skill, content.code, items, currentCharacter);
 }
 
 function renderMap(maps: MapTile[], character: Character | null) {
@@ -1782,6 +1932,12 @@ fishMenuItem.addEventListener('click', () => {
   }
 });
 
+craftMenuItem.addEventListener('click', () => {
+  if (!craftMenuItem.classList.contains('disabled')) {
+    handleCraftAction();
+  }
+});
+
 restBtn.addEventListener('click', () => {
   if (!restBtn.disabled) {
     handleRestAction();
@@ -1790,6 +1946,13 @@ restBtn.addEventListener('click', () => {
 
 stopAutomationBtn.addEventListener('click', () => {
   stopAllAutomation('Automation stopped');
+});
+
+craftModalClose.addEventListener('click', closeCraftModal);
+craftModal.addEventListener('click', (event) => {
+  if (event.target === craftModal) {
+    closeCraftModal();
+  }
 });
 
 // Close context menu when clicking outside

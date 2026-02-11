@@ -249,6 +249,17 @@
   - Added item cache and slot resolution for equippable items
   - Added equip buttons for inventory items and handler to equip
 
+## [2026-02-11 14:35] - Add crafting modal
+
+### Changed
+- File: `index.html`
+  - Added Craft context menu item and crafting modal UI
+- File: `src/api.ts`
+  - Added item craft fields and global items fetch
+- File: `src/main.ts`
+  - Added workshop skill detection, item filtering, and crafting modal rendering
+  - Move to workshop tile before opening the modal
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

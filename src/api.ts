@@ -175,11 +175,21 @@ export interface Item {
   type: string;
   subtype: string;
   description: string;
+  craft?: {
+    skill?: string;
+    level?: number;
+    items?: Array<{ code: string; quantity: number }>;
+    quantity?: number;
+  };
   tradeable: boolean;
 }
 
 export interface ItemResponse {
   data: Item;
+}
+
+export interface ItemsResponse {
+  data: Item[];
 }
 
 export interface EquipmentData {
@@ -282,6 +292,32 @@ export class ArtifactsAPI {
   async getItem(code: string): Promise<Item> {
     const response = await this.client.get<ItemResponse>(`/items/${code}`);
     return response.data.data;
+  }
+
+  async getAllItems(): Promise<Item[]> {
+    const items: Item[] = [];
+    let page = 1;
+    const size = 100;
+
+    while (true) {
+      const response = await this.client.get<ItemsResponse>(`/items`, {
+        params: { page, size }
+      });
+
+      if (!response.data.data || response.data.data.length === 0) {
+        break;
+      }
+
+      items.push(...response.data.data);
+
+      if (response.data.data.length < size) {
+        break;
+      }
+
+      page++;
+    }
+
+    return items;
   }
 
   async unequipItem(characterName: string, slot: string, quantity = 1): Promise<EquipmentData> {
