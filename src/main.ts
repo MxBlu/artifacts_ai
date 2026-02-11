@@ -179,6 +179,33 @@ function getSkillLevel(character: Character, skill: string): number {
   }
 }
 
+function getMaxCraftable(item: Item, character: Character): number {
+  const requirements = item.craft?.items || [];
+  if (requirements.length === 0) {
+    return 1;
+  }
+
+  const inventoryMap = new Map<string, number>();
+  if (character.inventory) {
+    character.inventory.forEach(entry => {
+      inventoryMap.set(entry.code, entry.quantity);
+    });
+  }
+
+  let maxCraftable = Number.POSITIVE_INFINITY;
+  requirements.forEach(req => {
+    const available = inventoryMap.get(req.code) || 0;
+    const possible = Math.floor(available / req.quantity);
+    maxCraftable = Math.min(maxCraftable, possible);
+  });
+
+  if (!Number.isFinite(maxCraftable)) {
+    return 0;
+  }
+
+  return Math.max(0, maxCraftable);
+}
+
 async function ensureAllItems(): Promise<Item[]> {
   if (allItemsCache) {
     return allItemsCache;
@@ -216,8 +243,14 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
         ? item.craft?.items.map(req => `${req.code} x${req.quantity}`).join(', ')
         : 'None';
       const quantity = item.craft?.quantity || 1;
+      const maxCraftable = getMaxCraftable(item, character);
+      const canCraft = !locked && maxCraftable > 0;
 
-      const canCraft = !locked;
+      const quantityControl = maxCraftable > 1
+        ? `<select class="craft-qty" data-code="${item.code}">
+            ${Array.from({ length: maxCraftable }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}
+          </select>`
+        : `<span class="craft-qty-single">${canCraft ? '1x' : '0x'}</span>`;
 
       return `
         <div class="craft-item ${locked ? 'locked' : ''}">
@@ -225,7 +258,7 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
             <span>${item.name} (${item.code})</span>
             <span class="craft-item-controls">
               Lvl ${craftLevel}
-              <input class="craft-qty" type="number" min="1" value="1" data-code="${item.code}" />
+              ${quantityControl}
               <button class="craft-btn" data-code="${item.code}" ${canCraft ? '' : 'disabled'}>Craft</button>
             </span>
           </div>
@@ -2002,8 +2035,8 @@ craftModalBody.addEventListener('click', (event) => {
   const code = button.dataset.code;
   if (code) {
     const container = button.closest('.craft-item');
-    const quantityInput = container?.querySelector('.craft-qty') as HTMLInputElement | null;
-    const rawQuantity = quantityInput?.value ? Number.parseInt(quantityInput.value, 10) : 1;
+    const quantitySelect = container?.querySelector('.craft-qty') as HTMLSelectElement | null;
+    const rawQuantity = quantitySelect?.value ? Number.parseInt(quantitySelect.value, 10) : 1;
     const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
     handleCraftItem(code, quantity);
   }

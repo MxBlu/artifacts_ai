@@ -274,9 +274,10 @@
 
 ### Changed
 - File: `index.html`
-  - Added craft quantity input styling
+  - Added craft quantity dropdown styling
 - File: `src/main.ts`
-  - Added quantity input to crafting modal and send quantity to the API
+  - Calculate max craftable quantities from inventory and render dropdown when >1
+  - Use dropdown quantity when crafting
 
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
