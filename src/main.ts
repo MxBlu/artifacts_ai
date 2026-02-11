@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails, Resource } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -69,6 +69,8 @@ const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
 const itemCache = new Map<string, Item>();
 const itemRequests = new Set<string>();
+const resourceCache = new Map<string, Resource>();
+const resourceRequests = new Set<string>();
 let allItemsCache: Item[] | null = null;
 let allItemsLoading: Promise<Item[]> | null = null;
 let fightAutomationToken = 0;
@@ -85,6 +87,8 @@ let gatherAutomationMode: 'woodcutting' | 'fishing' | 'mining' | null = null;
 let gatherAutomationTarget: MapTile | null = null;
 let gatherAutomationStartedAt: number | null = null;
 let gatherAutomationLabel: string | null = null;
+let activeTileModalResourceRequestId = 0;
+let activeTileModalResourceCode: string | null = null;
 let bankDetails: BankDetails | null = null;
 let bankItems: SimpleItem[] = [];
 
@@ -199,6 +203,26 @@ function getSkillLevel(character: Character, skill: string): number {
     default:
       return 0;
   }
+}
+
+function getGatheringLevel(character: Character, skill: string): number {
+  switch (skill) {
+    case 'mining':
+      return character.mining_level || 0;
+    case 'woodcutting':
+      return character.woodcutting_level || 0;
+    case 'fishing':
+      return character.fishing_level || 0;
+    case 'alchemy':
+      return character.alchemy_level || 0;
+    default:
+      return 0;
+  }
+}
+
+function formatSkillName(skill: string): string {
+  if (!skill) return 'Skill';
+  return skill.charAt(0).toUpperCase() + skill.slice(1);
 }
 
 function getMaxCraftable(item: Item, character: Character): number {
@@ -1227,23 +1251,19 @@ function showTileModal(tile: MapTile, event: MouseEvent) {
   tileModalTitle.textContent = tile.name;
   tileModalCoords.textContent = `Position: (${tile.x}, ${tile.y}) | Layer: ${tile.layer}`;
   
-  // Build interactions list
-  const interactions: string[] = [];
-  
-  if (tile.interactions.content) {
-    const content = tile.interactions.content;
-    interactions.push(`<div class="interaction-item"><span class="interaction-type">${content.type}</span>: ${content.code}</div>`);
-  }
-  
-  if (tile.interactions.transition) {
-    const trans = tile.interactions.transition;
-    interactions.push(`<div class="interaction-item"><span class="interaction-type">transition</span>: to (${trans.x}, ${trans.y}) layer ${trans.layer}</div>`);
-  }
-  
-  if (interactions.length === 0) {
-    tileModalInteractions.innerHTML = '<div class="no-interactions">No interactions available</div>';
+  tileModalInteractions.innerHTML = buildTileModalInteractions(tile);
+
+  const content = tile.interactions.content;
+  if (content && content.type?.toLowerCase() === 'resource') {
+    activeTileModalResourceCode = content.code;
+    const cachedResource = resourceCache.get(content.code);
+    if (cachedResource) {
+      tileModalInteractions.innerHTML = buildTileModalInteractions(tile, cachedResource);
+    } else {
+      loadTileModalResourceRequirement(tile, content.code);
+    }
   } else {
-    tileModalInteractions.innerHTML = interactions.join('');
+    activeTileModalResourceCode = null;
   }
   
   // Position modal near cursor
@@ -1254,6 +1274,60 @@ function showTileModal(tile: MapTile, event: MouseEvent) {
 
 function hideTileModal() {
   tileModal.classList.remove('visible');
+}
+
+function buildTileModalInteractions(tile: MapTile, resource?: Resource): string {
+  const interactions: string[] = [];
+
+  if (tile.interactions.content) {
+    const content = tile.interactions.content;
+    interactions.push(`<div class="interaction-item"><span class="interaction-type">${content.type}</span>: ${content.code}</div>`);
+
+    if (
+      resource &&
+      content.type?.toLowerCase() === 'resource' &&
+      currentCharacter &&
+      getGatheringLevel(currentCharacter, resource.skill) < resource.level
+    ) {
+      const skillName = formatSkillName(resource.skill);
+      interactions.push(`<div class="interaction-item"><span class="interaction-type">Requires</span> Lv ${resource.level} ${skillName}</div>`);
+    }
+  }
+
+  if (tile.interactions.transition) {
+    const trans = tile.interactions.transition;
+    interactions.push(`<div class="interaction-item"><span class="interaction-type">transition</span>: to (${trans.x}, ${trans.y}) layer ${trans.layer}</div>`);
+  }
+
+  if (interactions.length === 0) {
+    return '<div class="no-interactions">No interactions available</div>';
+  }
+
+  return interactions.join('');
+}
+
+async function loadTileModalResourceRequirement(tile: MapTile, code: string) {
+  if (!api || resourceCache.has(code) || resourceRequests.has(code)) {
+    return;
+  }
+
+  resourceRequests.add(code);
+  const requestId = ++activeTileModalResourceRequestId;
+
+  try {
+    const resource = await api.getResource(code);
+    resourceCache.set(code, resource);
+    if (requestId !== activeTileModalResourceRequestId) {
+      return;
+    }
+    if (activeTileModalResourceCode === code) {
+      tileModalInteractions.innerHTML = buildTileModalInteractions(tile, resource);
+    }
+  } catch (error) {
+    console.error('Resource fetch error:', error);
+  } finally {
+    resourceRequests.delete(code);
+  }
 }
 
 function showContextMenu(tile: MapTile, event: MouseEvent) {

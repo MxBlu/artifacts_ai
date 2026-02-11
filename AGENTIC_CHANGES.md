@@ -6,6 +6,14 @@
 - File: `src/main.ts`
   - Added inventory-full checks and auto-deposit flow in gather automation
 
+## [2026-02-12 10:12] - Show resource level requirements in hover
+
+### Changed
+- File: `src/api.ts`
+  - Added resource response types and `getResource()` API method
+- File: `src/main.ts`
+  - Added resource caching and hover modal requirement rendering
+
 ## [2026-02-12 09:18] - Add bank modal
 
 ### Changed

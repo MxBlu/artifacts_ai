@@ -192,6 +192,18 @@ export interface ItemsResponse {
   data: Item[];
 }
 
+export interface Resource {
+  name: string;
+  code: string;
+  skill: 'mining' | 'woodcutting' | 'fishing' | 'alchemy';
+  level: number;
+  drops: Array<{ code: string; rate: number; quantity_min?: number; quantity_max?: number }>;
+}
+
+export interface ResourceResponse {
+  data: Resource;
+}
+
 export interface SimpleItem {
   code: string;
   quantity: number;
@@ -430,6 +442,11 @@ export class ArtifactsAPI {
     }
 
     return items;
+  }
+
+  async getResource(code: string): Promise<Resource> {
+    const response = await this.client.get<ResourceResponse>(`/resources/${code}`);
+    return response.data.data;
   }
 
   async craftItem(characterName: string, code: string, quantity = 1): Promise<CraftingData> {
