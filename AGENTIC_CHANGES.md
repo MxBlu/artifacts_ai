@@ -310,6 +310,16 @@
   - Added alchemy field detection and map label rendering
   - Wired the field label toggle
 
+## [2026-02-11 15:49] - Add NPC labels
+
+### Changed
+- File: `index.html`
+  - Added NPC label toggle and styling
+- File: `src/main.ts`
+  - Limited field labels to resource nodes only
+  - Added NPC detection and map label rendering
+  - Wired the NPC label toggle
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed
