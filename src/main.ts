@@ -23,8 +23,10 @@ const tileModalInteractions = document.getElementById('tileModalInteractions') a
 const contextMenu = document.getElementById('contextMenu') as HTMLDivElement;
 const moveMenuItem = document.getElementById('moveMenuItem') as HTMLDivElement;
 const fightMenuItem = document.getElementById('fightMenuItem') as HTMLDivElement;
+const fightLoopBtn = document.getElementById('fightLoopBtn') as HTMLButtonElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
+const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
 
 let contextMenuTarget: { tile: MapTile } | null = null;
 let timerUpdateInterval: number | null = null;
@@ -33,6 +35,10 @@ let pendingFightTimeout: number | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
+let fightAutomationToken = 0;
+let fightAutomationActive = false;
+let fightAutomationTarget: MapTile | null = null;
+let fightAutomationMonsterCode: string | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -208,6 +214,169 @@ function canRest(character: Character | null): boolean {
   return character.hp < character.max_hp;
 }
 
+function updateAutomationControls() {
+  stopAutomationBtn.disabled = !fightAutomationActive;
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function waitForCooldownReady(token: number, reason: string) {
+  if (!currentCharacter) return;
+  const remaining = getRemainingCooldown(currentCharacter);
+  if (remaining <= 0) return;
+  renderFightState(`${reason} Waiting ${remaining}s...`, 'info');
+  await sleep(remaining * 1000 + 50);
+}
+
+async function runFightAutomation(token: number) {
+  if (!fightAutomationTarget || !fightAutomationMonsterCode) {
+    return;
+  }
+
+  while (fightAutomationActive && token === fightAutomationToken) {
+    if (!api || !currentCharacter) {
+      break;
+    }
+
+    if (isOnCooldown(currentCharacter)) {
+      await waitForCooldownReady(token, 'Cooldown active.');
+      if (token !== fightAutomationToken || !fightAutomationActive) {
+        break;
+      }
+    }
+
+    const tile = fightAutomationTarget;
+    const monsterCode = fightAutomationMonsterCode;
+
+    if (!isCharacterOnTile(currentCharacter, tile)) {
+      try {
+        renderFightState(`Auto-fight: moving to (${tile.x}, ${tile.y})...`, 'info');
+        showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+        const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+        currentCharacter = moveData.character;
+
+        renderMap(currentMap, currentCharacter);
+        updateCharacterInfo(currentCharacter);
+        updateTimers();
+
+        if (isOnCooldown(currentCharacter)) {
+          await waitForCooldownReady(token, 'Move complete.');
+        }
+      } catch (error: any) {
+        console.error('Auto-fight move error:', error);
+        const message = error.response?.data?.error?.message || error.message || 'Move failed';
+        renderFightState(`Auto-fight stopped: ${message}`, 'error');
+        showStatus(`Error: ${message}`, 'error');
+        break;
+      }
+    }
+
+    if (token !== fightAutomationToken || !fightAutomationActive) {
+      break;
+    }
+
+    try {
+      renderFightState(`Auto-fight: fighting ${monsterCode}...`, 'info');
+      showStatus(`Fighting ${monsterCode}...`, 'info');
+      const fightData = await api.fightCharacter(currentCharacter.name);
+      const updatedCharacter = fightData.characters.find(c => c.name === currentCharacter?.name) || fightData.characters[0];
+
+      if (updatedCharacter) {
+        currentCharacter = updatedCharacter;
+      }
+
+      renderFightResult(fightData, monsterCode);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+    } catch (error: any) {
+      console.error('Auto-fight error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Fight failed';
+      renderFightState(`Auto-fight stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      break;
+    }
+
+    if (token !== fightAutomationToken || !fightAutomationActive) {
+      break;
+    }
+
+    if (currentCharacter && currentCharacter.hp < currentCharacter.max_hp) {
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Post-fight cooldown.');
+      }
+
+      if (token !== fightAutomationToken || !fightAutomationActive) {
+        break;
+      }
+
+      try {
+        renderFightState('Auto-fight: resting...', 'info');
+        showStatus('Resting...', 'info');
+        const restData = await api.restCharacter(currentCharacter.name);
+        currentCharacter = restData.character;
+
+        updateCharacterInfo(currentCharacter);
+        updateTimers();
+      } catch (error: any) {
+        console.error('Auto-fight rest error:', error);
+        const message = error.response?.data?.error?.message || error.message || 'Rest failed';
+        renderFightState(`Auto-fight stopped: ${message}`, 'error');
+        showStatus(`Error: ${message}`, 'error');
+        break;
+      }
+    }
+  }
+
+  fightAutomationActive = false;
+  updateAutomationControls();
+}
+
+function startFightAutomation(tile: MapTile) {
+  if (!api || !currentCharacter) {
+    showStatus('Load a character first', 'error');
+    return;
+  }
+
+  if (!isMonsterTile(tile)) {
+    showStatus('No monster on this tile', 'error');
+    return;
+  }
+
+  if (fightAutomationActive) {
+    showStatus('Fight automation already running', 'info');
+    return;
+  }
+
+  if (pendingFightTimeout) {
+    clearTimeout(pendingFightTimeout);
+    pendingFightTimeout = null;
+  }
+
+  fightAutomationActive = true;
+  fightAutomationTarget = tile;
+  fightAutomationMonsterCode = tile.interactions.content?.code || 'monster';
+  fightAutomationToken += 1;
+  updateAutomationControls();
+
+  renderFightState(`Auto-fight started for ${fightAutomationMonsterCode}.`, 'info');
+  showStatus('Auto-fight started', 'success');
+
+  runFightAutomation(fightAutomationToken);
+}
+
+function stopFightAutomation(message: string) {
+  if (!fightAutomationActive) {
+    return;
+  }
+  fightAutomationActive = false;
+  fightAutomationToken += 1;
+  updateAutomationControls();
+  renderFightState(message, 'info');
+  showStatus(message, 'info');
+}
+
 function scheduleFightAfterCooldown(monsterCode: string) {
   if (!currentCharacter) return;
   if (pendingFightTimeout) {
@@ -267,6 +436,7 @@ function updateTimers() {
   if (!currentCharacter) {
     timersContainer.innerHTML = '<div style="color: #666; font-style: italic;">No character loaded</div>';
     restBtn.disabled = true;
+    stopAutomationBtn.disabled = true;
     return;
   }
 
@@ -305,6 +475,7 @@ function updateTimers() {
   timersContainer.innerHTML = html;
 
   restBtn.disabled = !canRest(currentCharacter);
+  updateAutomationControls();
 }
 
 // Start timer updates
@@ -904,10 +1075,23 @@ fightMenuItem.addEventListener('click', () => {
   }
 });
 
+fightLoopBtn.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (fightMenuItem.classList.contains('disabled') || !contextMenuTarget) {
+    return;
+  }
+  hideContextMenu();
+  startFightAutomation(contextMenuTarget.tile);
+});
+
 restBtn.addEventListener('click', () => {
   if (!restBtn.disabled) {
     handleRestAction();
   }
+});
+
+stopAutomationBtn.addEventListener('click', () => {
+  stopFightAutomation('Auto-fight stopped');
 });
 
 // Close context menu when clicking outside

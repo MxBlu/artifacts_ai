@@ -98,6 +98,16 @@
 - File: `index.html`
   - Increased monster badge width to 58% (max 68px)
 
+## [2026-02-11 12:05] - Add fight automation loop
+
+### Changed
+- File: `index.html`
+  - Added fight loop icon button in the context menu
+  - Added stop button next to Rest in the timers pane
+- File: `src/main.ts`
+  - Added fight automation loop that moves, fights, rests until stopped
+  - Added start/stop handlers and automation status updates
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

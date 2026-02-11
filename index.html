@@ -223,6 +223,10 @@
       color: #eee;
       font-size: 13px;
       transition: background 0.1s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
     }
 
     .context-menu-item:hover {
@@ -238,6 +242,31 @@
     .context-menu-item.disabled:hover {
       background: transparent;
       color: #666;
+    }
+
+    .context-menu-action {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 1px solid rgba(0, 217, 255, 0.6);
+      background: rgba(15, 52, 96, 0.6);
+      color: #00d9ff;
+      cursor: pointer;
+      padding: 0;
+    }
+
+    .context-menu-action svg {
+      width: 14px;
+      height: 14px;
+    }
+
+    .context-menu-item.disabled .context-menu-action {
+      border-color: rgba(102, 102, 102, 0.6);
+      color: #666;
+      cursor: not-allowed;
     }
 
     .map-grid {
@@ -476,6 +505,12 @@
       flex: 1;
     }
 
+    .timer-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
     .rest-button {
       background: #51cf66;
       color: #0a0a1a;
@@ -494,6 +529,29 @@
     }
 
     .rest-button:disabled {
+      background: #2c3e50;
+      color: #666;
+      cursor: not-allowed;
+    }
+
+    .stop-button {
+      background: #ff6b6b;
+      color: #0a0a1a;
+      border: none;
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      white-space: nowrap;
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.2) inset;
+    }
+
+    .stop-button:hover {
+      background: #e55a5a;
+    }
+
+    .stop-button:disabled {
       background: #2c3e50;
       color: #666;
       cursor: not-allowed;
@@ -654,7 +712,10 @@
       <div id="timersContainer" class="timers-container">
         <!-- Timers will be rendered here -->
       </div>
-      <button id="restBtn" class="rest-button" disabled>Rest</button>
+      <div class="timer-actions">
+        <button id="restBtn" class="rest-button" disabled>Rest</button>
+        <button id="stopAutomationBtn" class="stop-button" disabled>Stop</button>
+      </div>
     </div>
     
     <div class="map-view-wrapper">
@@ -712,7 +773,15 @@
 
     <div id="contextMenu" class="context-menu">
       <div id="moveMenuItem" class="context-menu-item">Move Here</div>
-      <div id="fightMenuItem" class="context-menu-item">Fight Monster</div>
+      <div id="fightMenuItem" class="context-menu-item">
+        <span>Fight Monster</span>
+        <button id="fightLoopBtn" class="context-menu-action" title="Start fight loop">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 6a6 6 0 1 1-5.3 3.2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M5 4v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 
