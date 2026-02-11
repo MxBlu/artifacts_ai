@@ -291,6 +291,16 @@
 - File: `index.html`
   - Added styling for use item button and quantity selector
 
+## [2026-02-11 15:33] - Add mining support
+
+### Changed
+- File: `index.html`
+  - Added mining label toggle, rock badge styling, and context menu action
+- File: `src/main.ts`
+  - Added mining node detection, mining actions, and automation loop support
+  - Render mining labels and wire mining UI handlers
+  - Fixed mining-related inventory typing and cooldown scheduling
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

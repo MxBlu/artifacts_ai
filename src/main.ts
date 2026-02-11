@@ -15,6 +15,7 @@ const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
 const toggleMonsterLabels = document.getElementById('toggleMonsterLabels') as HTMLInputElement;
 const toggleTreeLabels = document.getElementById('toggleTreeLabels') as HTMLInputElement;
 const toggleFishingLabels = document.getElementById('toggleFishingLabels') as HTMLInputElement;
+const toggleMiningLabels = document.getElementById('toggleMiningLabels') as HTMLInputElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
 const fightInfo = document.getElementById('fightInfo') as HTMLDivElement;
@@ -32,6 +33,9 @@ const woodcutMenuItem = document.getElementById('woodcutMenuItem') as HTMLDivEle
 const fishMenuItem = document.getElementById('fishMenuItem') as HTMLDivElement;
 const woodcutLoopBtn = document.getElementById('woodcutLoopBtn') as HTMLButtonElement;
 const woodcutLoopSlot = document.getElementById('woodcutLoopSlot') as HTMLSpanElement;
+const miningMenuItem = document.getElementById('miningMenuItem') as HTMLDivElement;
+const miningLoopBtn = document.getElementById('miningLoopBtn') as HTMLButtonElement;
+const miningLoopSlot = document.getElementById('miningLoopSlot') as HTMLSpanElement;
 const fishLoopBtn = document.getElementById('fishLoopBtn') as HTMLButtonElement;
 const fishLoopSlot = document.getElementById('fishLoopSlot') as HTMLSpanElement;
 const craftMenuItem = document.getElementById('craftMenuItem') as HTMLDivElement;
@@ -51,6 +55,8 @@ let pendingGatherTimeout: number | null = null;
 let pendingGatherTarget: MapTile | null = null;
 let pendingFishingTimeout: number | null = null;
 let pendingFishingTarget: MapTile | null = null;
+let pendingMiningTimeout: number | null = null;
+let pendingMiningTarget: MapTile | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
@@ -68,7 +74,7 @@ let fightAutomationLabel: string | null = null;
 let lastCooldownReason: string | null = null;
 let gatherAutomationToken = 0;
 let gatherAutomationActive = false;
-let gatherAutomationMode: 'woodcutting' | 'fishing' | null = null;
+let gatherAutomationMode: 'woodcutting' | 'fishing' | 'mining' | null = null;
 let gatherAutomationTarget: MapTile | null = null;
 let gatherAutomationStartedAt: number | null = null;
 let gatherAutomationLabel: string | null = null;
@@ -191,7 +197,7 @@ function getMaxCraftable(item: Item, character: Character): number {
 
   const inventoryMap = new Map<string, number>();
   if (character.inventory) {
-    character.inventory.forEach(entry => {
+    character.inventory.forEach((entry: any) => {
       inventoryMap.set(entry.code, entry.quantity);
     });
   }
@@ -433,6 +439,12 @@ function isFishingSpot(tile: MapTile): boolean {
   return content.code.toLowerCase().endsWith('_spot');
 }
 
+function isMiningNode(tile: MapTile): boolean {
+  const content = tile.interactions.content;
+  if (!content || !content.code) return false;
+  return content.code.toLowerCase().endsWith('_rocks');
+}
+
 function isCharacterOnTile(character: Character | null, tile: MapTile): boolean {
   if (!character) return false;
   return character.x === tile.x && character.y === tile.y && character.layer === tile.layer;
@@ -598,6 +610,8 @@ async function runGatherAutomation(token: number) {
     const tile = gatherAutomationTarget;
     const isValidTarget = gatherAutomationMode === 'woodcutting'
       ? isTreeResource(tile)
+      : gatherAutomationMode === 'mining'
+      ? isMiningNode(tile)
       : isFishingSpot(tile);
 
     if (!isValidTarget) {
@@ -634,7 +648,11 @@ async function runGatherAutomation(token: number) {
     }
 
     try {
-      const actionLabel = gatherAutomationMode === 'woodcutting' ? 'Gathering wood...' : 'Fishing...';
+      const actionLabel = gatherAutomationMode === 'woodcutting'
+        ? 'Gathering wood...'
+        : gatherAutomationMode === 'mining'
+        ? 'Mining...'
+        : 'Fishing...';
       renderFightState(`Auto-gather: ${actionLabel}`, 'info');
       showStatus(actionLabel, 'info');
       const gatherData = await api.gather(currentCharacter.name);
@@ -696,7 +714,7 @@ function startFightAutomation(tile: MapTile) {
   runFightAutomation(fightAutomationToken);
 }
 
-function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing') {
+function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing' | 'mining') {
   if (!api || !currentCharacter) {
     showStatus('Load a character first', 'error');
     return;
@@ -707,7 +725,11 @@ function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing') {
     return;
   }
 
-  const isValidTarget = mode === 'woodcutting' ? isTreeResource(tile) : isFishingSpot(tile);
+  const isValidTarget = mode === 'woodcutting'
+    ? isTreeResource(tile)
+    : mode === 'mining'
+    ? isMiningNode(tile)
+    : isFishingSpot(tile);
   if (!isValidTarget) {
     showStatus('No matching resource on this tile', 'error');
     return;
@@ -722,6 +744,8 @@ function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing') {
   const resourceCode = tile.interactions.content?.code || mode;
   gatherAutomationLabel = mode === 'woodcutting'
     ? `Auto: Woodcutting ${resourceCode}`
+    : mode === 'mining'
+    ? `Auto: Mining ${resourceCode}`
     : `Auto: Fishing ${resourceCode}`;
 
   updateAutomationControls();
@@ -1277,6 +1301,26 @@ function scheduleGatherAfterCooldown(tile: MapTile) {
   }, delayMs);
 }
 
+function scheduleMiningAfterCooldown(tile: MapTile) {
+  if (!currentCharacter || !api) return;
+  if (pendingMiningTimeout) {
+    clearTimeout(pendingMiningTimeout);
+    pendingMiningTimeout = null;
+  }
+
+  pendingMiningTarget = tile;
+
+  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+  showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to mine...`, 'info');
+
+  pendingMiningTimeout = window.setTimeout(() => {
+    pendingMiningTimeout = null;
+    if (pendingMiningTarget) {
+      handleMiningAfterMove(pendingMiningTarget);
+    }
+  }, delayMs);
+}
+
 function scheduleFishingAfterCooldown(tile: MapTile) {
   if (!currentCharacter || !api) return;
   if (pendingFishingTimeout) {
@@ -1363,13 +1407,46 @@ async function handleGatherAfterMove(tile: MapTile) {
   }
 }
 
+async function handleMiningAfterMove(tile: MapTile) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleMiningAfterCooldown(tile);
+    return;
+  }
+
+  if (!isMiningNode(tile)) {
+    showStatus('No mining node on this tile', 'error');
+    return;
+  }
+
+  try {
+    showStatus('Mining...', 'info');
+    const gatherData = await api.gather(currentCharacter.name);
+    currentCharacter = gatherData.character;
+    lastCooldownReason = gatherData.cooldown.reason || 'mining';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = gatherData.cooldown.total_seconds;
+    showStatus(`Mining complete. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Mining error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Mining failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 async function handleGatherAction() {
   if (!contextMenuTarget || !currentCharacter || !api) {
     return;
   }
 
   if (isOnCooldown(currentCharacter)) {
-    scheduleGatherAfterCooldown(tile);
+    scheduleGatherAfterCooldown(contextMenuTarget.tile);
     return;
   }
 
@@ -1451,6 +1528,51 @@ async function handleFishingAction() {
   }
 
   handleFishingAfterMove(tile);
+}
+
+async function handleMiningAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleMiningAfterCooldown(contextMenuTarget.tile);
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+
+  if (!isMiningNode(tile)) {
+    showStatus('No mining node on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        scheduleMiningAfterCooldown(tile);
+        return;
+      }
+    } catch (error: any) {
+      console.error('Move before mining error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  handleMiningAfterMove(tile);
 }
 
 async function handleCraftAction() {
@@ -1604,6 +1726,13 @@ function renderMap(maps: MapTile[], character: Character | null) {
           fishingIcon.className = 'resource-icon fish';
           fishingIcon.textContent = 'Fish';
           cell.appendChild(fishingIcon);
+        }
+
+        if (toggleMiningLabels.checked && isMiningNode(tile)) {
+          const miningIcon = document.createElement('div');
+          miningIcon.className = 'resource-icon rocks';
+          miningIcon.textContent = 'Rock';
+          cell.appendChild(miningIcon);
         }
         
         // Check if character is at this location
@@ -1936,6 +2065,10 @@ toggleFishingLabels.addEventListener('change', () => {
   renderMap(currentMap, currentCharacter);
 });
 
+toggleMiningLabels.addEventListener('change', () => {
+  renderMap(currentMap, currentCharacter);
+});
+
 // Allow Enter key to trigger load
 characterNameInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
@@ -2013,6 +2146,32 @@ woodcutLoopSlot.addEventListener('click', (event) => {
   startGatherAutomation(targetTile, 'woodcutting');
 });
 
+miningLoopBtn.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!contextMenuTarget) {
+    return;
+  }
+  const targetTile = contextMenuTarget.tile;
+  if (!isMiningNode(targetTile)) {
+    return;
+  }
+  hideContextMenu();
+  startGatherAutomation(targetTile, 'mining');
+});
+
+miningLoopSlot.addEventListener('click', (event) => {
+  event.stopPropagation();
+  if (!contextMenuTarget) {
+    return;
+  }
+  const targetTile = contextMenuTarget.tile;
+  if (!isMiningNode(targetTile)) {
+    return;
+  }
+  hideContextMenu();
+  startGatherAutomation(targetTile, 'mining');
+});
+
 fishLoopBtn.addEventListener('click', (event) => {
   event.stopPropagation();
   if (!contextMenuTarget) {
@@ -2048,6 +2207,12 @@ woodcutMenuItem.addEventListener('click', () => {
 fishMenuItem.addEventListener('click', () => {
   if (!fishMenuItem.classList.contains('disabled')) {
     handleFishingAction();
+  }
+});
+
+miningMenuItem.addEventListener('click', () => {
+  if (!miningMenuItem.classList.contains('disabled')) {
+    handleMiningAction();
   }
 });
 

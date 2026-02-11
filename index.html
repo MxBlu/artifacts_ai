@@ -391,6 +391,12 @@
       color: #d0ebff;
     }
 
+    .map-cell .resource-icon.rocks {
+      background: rgba(72, 72, 72, 0.9);
+      border: 1px solid #adb5bd;
+      color: #f1f3f5;
+    }
+
     .map-cell img {
       image-rendering: pixelated;
       image-rendering: crisp-edges;
@@ -1004,6 +1010,7 @@
           <label><input type="checkbox" id="toggleMonsterLabels" checked>Monsters</label>
           <label><input type="checkbox" id="toggleTreeLabels" checked>Trees</label>
           <label><input type="checkbox" id="toggleFishingLabels" checked>Fishing</label>
+          <label><input type="checkbox" id="toggleMiningLabels" checked>Mining</label>
         </div>
       </div>
 
@@ -1069,6 +1076,16 @@
         <span class="context-menu-label">Cut Wood</span>
         <span id="woodcutLoopSlot" class="context-menu-action-slot" title="Start woodcut loop">
           <button id="woodcutLoopBtn" class="context-menu-action" title="Start woodcut loop">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </button>
+        </span>
+      </div>
+      <div id="miningMenuItem" class="context-menu-item">
+        <span class="context-menu-label">Mine</span>
+        <span id="miningLoopSlot" class="context-menu-action-slot" title="Start mining loop">
+          <button id="miningLoopBtn" class="context-menu-action" title="Start mining loop">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/>
             </svg>
