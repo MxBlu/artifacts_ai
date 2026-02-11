@@ -567,11 +567,11 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
   }
 
   const hasMonster = isMonsterTile(tile);
-  fightMenuItem.style.display = hasMonster ? 'block' : 'none';
+  fightMenuItem.style.display = hasMonster ? 'flex' : 'none';
 
   if (hasMonster) {
-    const canFight = !!currentCharacter && !isOnCooldown(currentCharacter);
-    if (!canFight) {
+    const hasCharacter = !!currentCharacter;
+    if (!hasCharacter) {
       fightMenuItem.classList.add('disabled');
     } else {
       fightMenuItem.classList.remove('disabled');
@@ -1077,7 +1077,10 @@ fightMenuItem.addEventListener('click', () => {
 
 fightLoopBtn.addEventListener('click', (event) => {
   event.stopPropagation();
-  if (fightMenuItem.classList.contains('disabled') || !contextMenuTarget) {
+  if (!contextMenuTarget) {
+    return;
+  }
+  if (!isMonsterTile(contextMenuTarget.tile)) {
     return;
   }
   hideContextMenu();

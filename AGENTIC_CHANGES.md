@@ -115,6 +115,13 @@
   - Added fixed right-side action segment with divider for the fight loop icon
   - Updated context menu item layout to support consistent action slots
 
+## [2026-02-11 12:20] - Allow fight loop start during cooldown
+
+### Changed
+- File: `src/main.ts`
+  - Only disable the fight menu when no character is loaded
+  - Allow the loop icon to start automation even while on cooldown
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
