@@ -43,6 +43,7 @@ let fightAutomationMonsterCode: string | null = null;
 let fightAutomationStartedAt: number | null = null;
 let fightAutomationStatus: string | null = null;
 let fightAutomationLabel: string | null = null;
+let lastCooldownReason: string | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -267,6 +268,7 @@ async function runFightAutomation(token: number) {
         showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
         const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
         currentCharacter = moveData.character;
+          lastCooldownReason = moveData.cooldown.reason || 'move';
 
         renderMap(currentMap, currentCharacter);
         updateCharacterInfo(currentCharacter);
@@ -298,6 +300,7 @@ async function runFightAutomation(token: number) {
       if (updatedCharacter) {
         currentCharacter = updatedCharacter;
       }
+        lastCooldownReason = fightData.cooldown.reason || 'fight';
 
       renderFightResult(fightData, monsterCode);
       updateCharacterInfo(currentCharacter);
@@ -329,6 +332,7 @@ async function runFightAutomation(token: number) {
         showStatus('Resting...', 'info');
         const restData = await api.restCharacter(currentCharacter.name);
         currentCharacter = restData.character;
+          lastCooldownReason = restData.cooldown.reason || 'rest';
 
         updateCharacterInfo(currentCharacter);
         updateTimers();
@@ -437,6 +441,8 @@ async function handleFightAfterMove(monsterCode: string) {
       currentCharacter = updatedCharacter;
     }
 
+    lastCooldownReason = fightData.cooldown.reason || 'fight';
+
     renderFightResult(fightData, monsterCode);
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -491,7 +497,12 @@ function updateTimers() {
   html += '<div class="timer-info">';
   html += '<div class="timer-label">Cooldown</div>';
   html += '<div class="timer-value ' + (isReady ? 'ready' : 'cooldown') + '">';
-  html += isReady ? 'Ready' : remaining + 's remaining';
+  if (isReady) {
+    html += 'Ready';
+  } else {
+    const reasonText = lastCooldownReason ? ` · ${lastCooldownReason}` : '';
+    html += remaining + 's remaining' + reasonText;
+  }
   html += '</div></div></div>';
 
   if (fightAutomationActive && fightAutomationStartedAt) {
@@ -637,6 +648,7 @@ async function handleMoveAction() {
     showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
     const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
     currentCharacter = moveData.character;
+    lastCooldownReason = moveData.cooldown.reason || 'move';
     
     // Re-render map to update character position
     renderMap(currentMap, currentCharacter);
@@ -680,6 +692,7 @@ async function handleFightAction() {
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -721,6 +734,7 @@ async function handleRestAction() {
     showStatus('Resting...', 'info');
     const restData = await api.restCharacter(currentCharacter.name);
     currentCharacter = restData.character;
+    lastCooldownReason = restData.cooldown.reason || 'rest';
 
     updateCharacterInfo(currentCharacter);
     updateTimers();

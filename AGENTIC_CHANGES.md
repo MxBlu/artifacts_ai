@@ -161,6 +161,13 @@
 - File: `src/main.ts`
   - Use a constant automation label in the timer pane
 
+## [2026-02-11 13:08] - Show cooldown action reason
+
+### Changed
+- File: `src/main.ts`
+  - Track the last cooldown reason from actions
+  - Display the cooldown reason in the timers pane when available
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
