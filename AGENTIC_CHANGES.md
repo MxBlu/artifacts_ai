@@ -203,6 +203,12 @@
   - Added woodcut context menu visibility and action handling
   - Move to the tree tile if needed, then gather
 
+## [2026-02-11 13:41] - Retry woodcut after move cooldown
+
+### Changed
+- File: `src/main.ts`
+  - Persist target tile and auto-gather after move cooldown expires
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

@@ -38,6 +38,7 @@ let timerUpdateInterval: number | null = null;
 let lastCooldownState: boolean | null = null;
 let pendingFightTimeout: number | null = null;
 let pendingGatherTimeout: number | null = null;
+let pendingGatherTarget: MapTile | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
@@ -776,20 +777,57 @@ async function handleRestAction() {
   }
 }
 
-function scheduleGatherAfterCooldown() {
+function scheduleGatherAfterCooldown(tile: MapTile) {
   if (!currentCharacter || !api) return;
   if (pendingGatherTimeout) {
     clearTimeout(pendingGatherTimeout);
     pendingGatherTimeout = null;
   }
 
+  pendingGatherTarget = tile;
+
   const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
   showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to gather...`, 'info');
 
   pendingGatherTimeout = window.setTimeout(() => {
     pendingGatherTimeout = null;
-    handleGatherAction();
+    if (pendingGatherTarget) {
+      handleGatherAfterMove(pendingGatherTarget);
+    }
   }, delayMs);
+}
+
+async function handleGatherAfterMove(tile: MapTile) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleGatherAfterCooldown(tile);
+    return;
+  }
+
+  if (!isTreeResource(tile)) {
+    showStatus('No tree on this tile', 'error');
+    return;
+  }
+
+  try {
+    showStatus('Gathering wood...', 'info');
+    const gatherData = await api.gather(currentCharacter.name);
+    currentCharacter = gatherData.character;
+    lastCooldownReason = gatherData.cooldown.reason || 'woodcutting';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = gatherData.cooldown.total_seconds;
+    showStatus(`Woodcutting complete. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Gather error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Gathering failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
 }
 
 async function handleGatherAction() {
@@ -798,7 +836,7 @@ async function handleGatherAction() {
   }
 
   if (isOnCooldown(currentCharacter)) {
-    scheduleGatherAfterCooldown();
+    scheduleGatherAfterCooldown(tile);
     return;
   }
 
@@ -823,7 +861,7 @@ async function handleGatherAction() {
       updateTimers();
 
       if (isOnCooldown(currentCharacter)) {
-        scheduleGatherAfterCooldown();
+        scheduleGatherAfterCooldown(tile);
         return;
       }
     } catch (error: any) {
@@ -834,22 +872,7 @@ async function handleGatherAction() {
     }
   }
 
-  try {
-    showStatus('Gathering wood...', 'info');
-    const gatherData = await api.gather(currentCharacter.name);
-    currentCharacter = gatherData.character;
-    lastCooldownReason = gatherData.cooldown.reason || 'woodcutting';
-
-    updateCharacterInfo(currentCharacter);
-    updateTimers();
-
-    const cooldown = gatherData.cooldown.total_seconds;
-    showStatus(`Woodcutting complete. Cooldown: ${cooldown}s`, 'success');
-  } catch (error: any) {
-    console.error('Gather error:', error);
-    const message = error.response?.data?.error?.message || error.message || 'Gathering failed';
-    showStatus(`Error: ${message}`, 'error');
-  }
+  handleGatherAfterMove(tile);
 }
 
 function renderMap(maps: MapTile[], character: Character | null) {
