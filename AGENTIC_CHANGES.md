@@ -149,6 +149,18 @@
   - Track automation start time and status
   - Render automation action and elapsed time in the timers pane
 
+## [2026-02-11 12:58] - Keep automation timer label constant
+
+### Changed
+- File: `src/main.ts`
+  - Pin the automation timer label to the started action
+
+## [2026-02-11 13:02] - Fix automation label source
+
+### Changed
+- File: `src/main.ts`
+  - Use a constant automation label in the timer pane
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

@@ -42,6 +42,7 @@ let fightAutomationTarget: MapTile | null = null;
 let fightAutomationMonsterCode: string | null = null;
 let fightAutomationStartedAt: number | null = null;
 let fightAutomationStatus: string | null = null;
+let fightAutomationLabel: string | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -343,6 +344,7 @@ async function runFightAutomation(token: number) {
 
   fightAutomationActive = false;
   fightAutomationStartedAt = null;
+  fightAutomationLabel = null;
   setAutomationStatus(null);
   updateAutomationControls();
 }
@@ -373,6 +375,7 @@ function startFightAutomation(tile: MapTile) {
   fightAutomationMonsterCode = tile.interactions.content?.code || 'monster';
   fightAutomationToken += 1;
   fightAutomationStartedAt = Date.now();
+  fightAutomationLabel = `Auto: Fighting ${fightAutomationMonsterCode}`;
   updateAutomationControls();
 
   renderFightState(`Auto-fight started for ${fightAutomationMonsterCode}.`, 'info');
@@ -388,6 +391,7 @@ function stopFightAutomation(message: string) {
   }
   fightAutomationActive = false;
   fightAutomationStartedAt = null;
+  fightAutomationLabel = null;
   fightAutomationToken += 1;
   updateAutomationControls();
   setAutomationStatus(null);
@@ -492,7 +496,7 @@ function updateTimers() {
 
   if (fightAutomationActive && fightAutomationStartedAt) {
     const elapsedSeconds = Math.floor((Date.now() - fightAutomationStartedAt) / 1000);
-    const actionLabel = fightAutomationStatus ? fightAutomationStatus : 'Running';
+    const actionLabel = fightAutomationLabel ? fightAutomationLabel : 'Auto: Running';
     html += '<div class="timer active">';
     html += '<div class="timer-pie" style="background: conic-gradient(#51cf66 360deg, #0f3460 0deg)">';
     html += '<div class="timer-pie-inner">∞</div></div>';
