@@ -246,9 +246,13 @@
       justify-content: center;
     }
 
-    .context-menu-item:hover {
+    .context-menu-label:hover {
       background: #00d9ff;
       color: #000;
+    }
+
+    .context-menu-action-slot:hover {
+      background: rgba(0, 217, 255, 0.2);
     }
 
     .context-menu-item.disabled {
@@ -256,9 +260,13 @@
       cursor: not-allowed;
     }
 
-    .context-menu-item.disabled:hover {
+    .context-menu-item.disabled .context-menu-label:hover {
       background: transparent;
       color: #666;
+    }
+
+    .context-menu-item.disabled .context-menu-action-slot:hover {
+      background: transparent;
     }
 
     .context-menu-action {
@@ -794,7 +802,7 @@
       </div>
       <div id="fightMenuItem" class="context-menu-item">
         <span class="context-menu-label">Fight Monster</span>
-        <span class="context-menu-action-slot">
+        <span id="fightLoopSlot" class="context-menu-action-slot" title="Start fight loop">
           <button id="fightLoopBtn" class="context-menu-action" title="Start fight loop">
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               <circle cx="12" cy="12" r="6" fill="none" stroke="currentColor" stroke-width="2"/>

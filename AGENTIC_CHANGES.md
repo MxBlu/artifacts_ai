@@ -122,6 +122,20 @@
   - Only disable the fight menu when no character is loaded
   - Allow the loop icon to start automation even while on cooldown
 
+## [2026-02-11 12:27] - Widen fight loop hitbox
+
+### Changed
+- File: `index.html`
+  - Added an action slot id so the whole segment is clickable
+- File: `src/main.ts`
+  - Start automation when clicking the action slot segment
+
+## [2026-02-11 12:33] - Separate fight menu hover highlights
+
+### Changed
+- File: `index.html`
+  - Added separate hover styling for the fight label and automation action slot
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
