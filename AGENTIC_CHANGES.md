@@ -182,6 +182,16 @@
 - File: `src/main.ts`
   - Toggle monster labels when rendering the map
 
+## [2026-02-11 13:24] - Add resource label toggles
+
+### Changed
+- File: `index.html`
+  - Added toggles for tree and fishing labels
+  - Added resource label badge styling
+- File: `src/main.ts`
+  - Render tree and fishing labels based on resource codes
+  - Added toggle handlers for resource labels
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

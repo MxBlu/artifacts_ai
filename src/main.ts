@@ -13,6 +13,8 @@ const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
 const toggleMonsterLabels = document.getElementById('toggleMonsterLabels') as HTMLInputElement;
+const toggleTreeLabels = document.getElementById('toggleTreeLabels') as HTMLInputElement;
+const toggleFishingLabels = document.getElementById('toggleFishingLabels') as HTMLInputElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
 const fightInfo = document.getElementById('fightInfo') as HTMLDivElement;
@@ -207,6 +209,18 @@ function isMonsterTile(tile: MapTile): boolean {
   const content = tile.interactions.content;
   if (!content || !content.type) return false;
   return content.type.toLowerCase() === 'monster';
+}
+
+function isTreeResource(tile: MapTile): boolean {
+  const content = tile.interactions.content;
+  if (!content || !content.code) return false;
+  return content.code.toLowerCase().endsWith('_tree');
+}
+
+function isFishingSpot(tile: MapTile): boolean {
+  const content = tile.interactions.content;
+  if (!content || !content.code) return false;
+  return content.code.toLowerCase().endsWith('_spot');
 }
 
 function isCharacterOnTile(character: Character | null, tile: MapTile): boolean {
@@ -809,6 +823,20 @@ function renderMap(maps: MapTile[], character: Character | null) {
           cell.appendChild(monsterIcon);
           ensureMonsterLevelBadge(monsterCode);
         }
+
+        if (toggleTreeLabels.checked && isTreeResource(tile)) {
+          const treeIcon = document.createElement('div');
+          treeIcon.className = 'resource-icon tree';
+          treeIcon.textContent = 'Tree';
+          cell.appendChild(treeIcon);
+        }
+
+        if (toggleFishingLabels.checked && isFishingSpot(tile)) {
+          const fishingIcon = document.createElement('div');
+          fishingIcon.className = 'resource-icon fish';
+          fishingIcon.textContent = 'Fish';
+          cell.appendChild(fishingIcon);
+        }
         
         // Check if character is at this location
         if (character && character.x === x && character.y === y) {
@@ -1101,6 +1129,14 @@ loadBtn.addEventListener('click', loadMapAndCharacter);
 saveBtn.addEventListener('click', saveConfigToStorage);
 
 toggleMonsterLabels.addEventListener('change', () => {
+  renderMap(currentMap, currentCharacter);
+});
+
+toggleTreeLabels.addEventListener('change', () => {
+  renderMap(currentMap, currentCharacter);
+});
+
+toggleFishingLabels.addEventListener('change', () => {
   renderMap(currentMap, currentCharacter);
 });
 

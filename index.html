@@ -358,6 +358,39 @@
       text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
     }
 
+    .map-cell .resource-icon {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 38%;
+      height: 22%;
+      min-width: 18px;
+      min-height: 14px;
+      max-width: 60px;
+      max-height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: bold;
+      z-index: 2;
+      pointer-events: none;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+    }
+
+    .map-cell .resource-icon.tree {
+      background: rgba(32, 77, 32, 0.9);
+      border: 1px solid #51cf66;
+      color: #c6f6d5;
+    }
+
+    .map-cell .resource-icon.fish {
+      background: rgba(18, 51, 92, 0.9);
+      border: 1px solid #4dabf7;
+      color: #d0ebff;
+    }
+
     .map-cell img {
       image-rendering: pixelated;
       image-rendering: crisp-edges;
@@ -772,6 +805,8 @@
         <div class="map-label-controls">
           <span>Labels:</span>
           <label><input type="checkbox" id="toggleMonsterLabels" checked>Monsters</label>
+          <label><input type="checkbox" id="toggleTreeLabels" checked>Trees</label>
+          <label><input type="checkbox" id="toggleFishingLabels" checked>Fishing</label>
         </div>
       </div>
 
