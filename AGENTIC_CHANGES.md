@@ -255,6 +255,13 @@
 - File: `src/main.ts`
   - Only render Equip buttons for items with a valid slot
 
+## [2026-02-11 14:36] - Update page title
+
+### Changed
+- File: `index.html`
+  - Renamed page title to Artifacts MMO Client
+  - Removed the page title heading
+
 ## [2026-02-11 13:55] - Show action errors above map
 
 ### Changed
