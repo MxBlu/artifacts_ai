@@ -333,6 +333,12 @@
   - Added mining workshop detection in craft skill detection
   - Added mining level retrieval in skill level function
 
+## [2026-02-12 09:05] - Add workshop loading status
+
+### Changed
+- File: `src/main.ts`
+  - Show a loading status while fetching workshop item lists
+
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
 ### Changed

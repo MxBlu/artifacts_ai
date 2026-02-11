@@ -1651,6 +1651,7 @@ async function handleCraftAction() {
     }
   }
 
+  showStatus('Loading workshop items...', 'info');
   const items = await ensureAllItems();
   openCraftModal(skill, content.code, items, currentCharacter);
 }
