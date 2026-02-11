@@ -108,6 +108,13 @@
   - Added fight automation loop that moves, fights, rests until stopped
   - Added start/stop handlers and automation status updates
 
+## [2026-02-11 12:12] - Add action slot for fight loop icon
+
+### Changed
+- File: `index.html`
+  - Added fixed right-side action segment with divider for the fight loop icon
+  - Updated context menu item layout to support consistent action slots
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed
