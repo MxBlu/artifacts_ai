@@ -349,6 +349,7 @@
 - File: `src/main.ts`
   - Added bank modal rendering and banking actions
   - Hide empty inventory slots in the bank modal
+  - Refresh bank modal controls when cooldown state changes
 
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 

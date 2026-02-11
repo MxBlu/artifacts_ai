@@ -989,6 +989,9 @@ function updateTimers() {
   } else if (lastCooldownState !== onCooldown) {
     lastCooldownState = onCooldown;
     updateCharacterInfo(currentCharacter);
+    if (bankModal.classList.contains('visible') && bankDetails && currentCharacter) {
+      renderBankModal(bankDetails, bankItems, currentCharacter);
+    }
   }
   
   let html = '<div class="timer ' + (isReady ? 'ready' : 'active') + '">';
