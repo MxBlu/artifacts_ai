@@ -58,6 +58,14 @@
   - Fetch monster details for monster tiles and display them in a collapsible section
   - Added monster caching and request de-duplication
 
+## [2026-02-11 11:24] - Show monster icon on tiles
+
+### Changed
+- File: `index.html`
+  - Added styling for a small monster icon badge on tiles
+- File: `src/main.ts`
+  - Render a monster icon in the top-left corner of monster tiles
+
 ## [2026-02-10 16:24] - Refresh status when cooldown expires
 
 ### Changed

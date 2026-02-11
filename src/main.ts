@@ -553,6 +553,13 @@ function renderMap(maps: MapTile[], character: Character | null) {
           cell.textContent = tile.skin?.substring(0, 3) || '·';
         };
         cell.appendChild(img);
+
+        if (isMonsterTile(tile)) {
+          const monsterIcon = document.createElement('div');
+          monsterIcon.className = 'monster-icon';
+          monsterIcon.textContent = 'M';
+          cell.appendChild(monsterIcon);
+        }
         
         // Check if character is at this location
         if (character && character.x === x && character.y === y) {
