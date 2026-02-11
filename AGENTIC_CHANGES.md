@@ -249,6 +249,12 @@
   - Added item cache and slot resolution for equippable items
   - Added equip buttons for inventory items and handler to equip
 
+## [2026-02-11 14:30] - Hide non-equipable buttons
+
+### Changed
+- File: `src/main.ts`
+  - Only render Equip buttons for items with a valid slot
+
 ## [2026-02-11 13:55] - Show action errors above map
 
 ### Changed

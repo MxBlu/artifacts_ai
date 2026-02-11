@@ -1572,11 +1572,11 @@ function updateCharacterInfo(character: Character) {
     character.inventory.forEach((item: any) => {
       const itemDetails = itemCache.get(item.code);
       const equipSlot = itemDetails ? getEquipSlotForItem(itemDetails, character) : null;
-      const equipable = !!itemDetails && !!equipSlot;
-      const equipLabel = itemDetails && !equipSlot ? 'No slot' : 'Equip';
       html += '<div class="info-item">';
       html += `<span class="info-value">${item.code} x${item.quantity}</span>`;
-      html += `<button class="equip-btn" data-code="${item.code}" ${equipable ? '' : 'disabled'}>${equipLabel}</button>`;
+      if (itemDetails && equipSlot) {
+        html += `<button class="equip-btn" data-code="${item.code}">Equip</button>`;
+      }
       html += '</div>';
 
       if (!itemDetails) {
