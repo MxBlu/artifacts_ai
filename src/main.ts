@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character, FightData, Monster } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -49,6 +49,8 @@ let pendingFishingTarget: MapTile | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
+const itemCache = new Map<string, Item>();
+const itemRequests = new Set<string>();
 let fightAutomationToken = 0;
 let fightAutomationActive = false;
 let fightAutomationTarget: MapTile | null = null;
@@ -103,6 +105,64 @@ function escapeHtml(value: string): string {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function getEquipSlotForItem(item: Item, character: Character): string | null {
+  switch (item.type) {
+    case 'weapon':
+      return 'weapon';
+    case 'shield':
+      return 'shield';
+    case 'helmet':
+      return 'helmet';
+    case 'body_armor':
+      return 'body_armor';
+    case 'leg_armor':
+      return 'leg_armor';
+    case 'boots':
+      return 'boots';
+    case 'amulet':
+      return 'amulet';
+    case 'ring':
+      if (!character.ring1_slot) return 'ring1';
+      if (!character.ring2_slot) return 'ring2';
+      return null;
+    case 'artifact':
+      if (!character.artifact1_slot) return 'artifact1';
+      if (!character.artifact2_slot) return 'artifact2';
+      if (!character.artifact3_slot) return 'artifact3';
+      return null;
+    case 'utility':
+      if (!character.utility1_slot) return 'utility1';
+      if (!character.utility2_slot) return 'utility2';
+      return null;
+    case 'bag':
+      return 'bag';
+    case 'rune':
+      return 'rune';
+    default:
+      return null;
+  }
+}
+
+async function ensureItemDetails(code: string) {
+  if (!api || itemCache.has(code) || itemRequests.has(code)) {
+    return;
+  }
+
+  itemRequests.add(code);
+
+  try {
+    const item = await api.getItem(code);
+    itemCache.set(code, item);
+    if (currentCharacter) {
+      updateCharacterInfo(currentCharacter);
+    }
+  } catch (error) {
+    console.error('Item fetch error:', error);
+  } finally {
+    itemRequests.delete(code);
+  }
 }
 
 function renderFightState(message: string, state: 'info' | 'error' = 'info') {
@@ -979,6 +1039,47 @@ async function handleUnequipAction(slot: string) {
   }
 }
 
+async function handleEquipAction(code: string) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  const item = itemCache.get(code);
+  if (!item) {
+    showStatus('Item details not loaded yet', 'error');
+    return;
+  }
+
+  const slot = getEquipSlotForItem(item, currentCharacter);
+  if (!slot) {
+    showStatus('No available slot for this item', 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Equipping ${code}...`, 'info');
+    const equipData = await api.equipItem(currentCharacter.name, code, slot);
+    currentCharacter = equipData.character;
+    lastCooldownReason = equipData.cooldown.reason || 'equip';
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = equipData.cooldown.total_seconds;
+    showStatus(`Equipped ${code}. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Equip error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Equip failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 function scheduleGatherAfterCooldown(tile: MapTile) {
   if (!currentCharacter || !api) return;
   if (pendingGatherTimeout) {
@@ -1469,7 +1570,18 @@ function updateCharacterInfo(character: Character) {
   
   if (character.inventory && character.inventory.length > 0) {
     character.inventory.forEach((item: any) => {
-      html += `<div class="info-item"><span class="info-value">${item.code} x${item.quantity}</span></div>`;
+      const itemDetails = itemCache.get(item.code);
+      const equipSlot = itemDetails ? getEquipSlotForItem(itemDetails, character) : null;
+      const equipable = !!itemDetails && !!equipSlot;
+      const equipLabel = itemDetails && !equipSlot ? 'No slot' : 'Equip';
+      html += '<div class="info-item">';
+      html += `<span class="info-value">${item.code} x${item.quantity}</span>`;
+      html += `<button class="equip-btn" data-code="${item.code}" ${equipable ? '' : 'disabled'}>${equipLabel}</button>`;
+      html += '</div>';
+
+      if (!itemDetails) {
+        ensureItemDetails(item.code);
+      }
     });
   } else {
     html += '<div class="info-item"><span class="info-value" style="color: #666;">Empty</span></div>';
@@ -1708,6 +1820,13 @@ characterInfo.addEventListener('click', (e) => {
   const target = e.target as HTMLElement;
   const button = target.closest('.unequip-btn') as HTMLButtonElement | null;
   if (!button) {
+    const equipButton = target.closest('.equip-btn') as HTMLButtonElement | null;
+    if (equipButton) {
+      const code = equipButton.dataset.code;
+      if (code) {
+        handleEquipAction(code);
+      }
+    }
     return;
   }
   const slot = button.dataset.slot;

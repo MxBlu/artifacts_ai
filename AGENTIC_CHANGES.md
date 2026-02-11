@@ -238,6 +238,17 @@
   - Added unequip buttons in the equipment collapsible
   - Added handler to call unequip and refresh character info
 
+## [2026-02-11 14:22] - Add equip buttons in inventory
+
+### Changed
+- File: `index.html`
+  - Added equip button styling in inventory list
+- File: `src/api.ts`
+  - Added item fetch types and `equipItem()` API method
+- File: `src/main.ts`
+  - Added item cache and slot resolution for equippable items
+  - Added equip buttons for inventory items and handler to equip
+
 ## [2026-02-11 13:55] - Show action errors above map
 
 ### Changed

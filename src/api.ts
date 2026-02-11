@@ -168,6 +168,20 @@ export interface MonsterResponse {
   data: Monster;
 }
 
+export interface Item {
+  name: string;
+  code: string;
+  level: number;
+  type: string;
+  subtype: string;
+  description: string;
+  tradeable: boolean;
+}
+
+export interface ItemResponse {
+  data: Item;
+}
+
 export interface EquipmentData {
   cooldown: {
     total_seconds: number;
@@ -265,10 +279,23 @@ export class ArtifactsAPI {
     return response.data.data;
   }
 
+  async getItem(code: string): Promise<Item> {
+    const response = await this.client.get<ItemResponse>(`/items/${code}`);
+    return response.data.data;
+  }
+
   async unequipItem(characterName: string, slot: string, quantity = 1): Promise<EquipmentData> {
     const response = await this.client.post<EquipmentResponse>(
       `/my/${characterName}/action/unequip`,
       { slot, quantity }
+    );
+    return response.data.data;
+  }
+
+  async equipItem(characterName: string, code: string, slot: string): Promise<EquipmentData> {
+    const response = await this.client.post<EquipmentResponse>(
+      `/my/${characterName}/action/equip`,
+      { code, slot }
     );
     return response.data.data;
   }
