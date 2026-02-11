@@ -257,8 +257,8 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
           <div class="craft-item-header">
             <span>${item.name} (${item.code})</span>
             <span class="craft-item-controls">
-              Lvl ${craftLevel}
               ${quantityControl}
+              Lvl ${craftLevel}
               <button class="craft-btn" data-code="${item.code}" ${canCraft ? '' : 'disabled'}>Craft</button>
             </span>
           </div>

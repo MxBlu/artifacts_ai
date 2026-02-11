@@ -278,6 +278,7 @@
 - File: `src/main.ts`
   - Calculate max craftable quantities from inventory and render dropdown when >1
   - Use dropdown quantity when crafting
+  - Moved craft quantity control before required level in the modal
 
 ## [2026-02-11 14:30] - Hide non-equipable buttons
 
