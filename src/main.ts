@@ -1480,6 +1480,7 @@ async function handleCraftItem(code: string, quantity: number) {
   }
 
   try {
+    closeCraftModal();
     showStatus(`Crafting ${code} x${quantity}...`, 'info');
     const craftData = await api.craftItem(currentCharacter.name, code, quantity);
     currentCharacter = craftData.character;
