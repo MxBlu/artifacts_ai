@@ -20,6 +20,12 @@
 - File: `src/main.ts`
   - Grey out gather actions and automation when resource level is unmet
 
+## [2026-02-12 10:30] - Toast status positioning
+
+### Changed
+- File: `index.html`
+  - Made status messages a fixed top toast to avoid layout shifts
+
 ## [2026-02-12 09:18] - Add bank modal
 
 ### Changed

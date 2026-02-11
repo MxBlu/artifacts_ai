@@ -78,10 +78,18 @@
     }
 
     .status {
-      margin-top: 10px;
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 4000;
+      margin-top: 0;
       padding: 10px;
       border-radius: 4px;
       background: #0f3460;
+      max-width: min(720px, 90vw);
+      text-align: center;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
     }
 
     .status.error {
