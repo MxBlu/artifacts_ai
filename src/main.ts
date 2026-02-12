@@ -2471,8 +2471,6 @@ function updateCharacterInfo(character: Character) {
   if (bankDetails) {
     const bankTotal = bankItems.reduce((total, entry) => total + entry.quantity, 0);
     html += `<div class="info-item"><span class="info-label">Bank Items:</span> <span class="info-value">${bankTotal.toLocaleString()}</span></div>`;
-  } else {
-    html += '<div class="info-item"><span class="info-label">Bank Items:</span> <span class="info-value">Unknown</span></div>';
   }
   
   // Cooldown badge if active
