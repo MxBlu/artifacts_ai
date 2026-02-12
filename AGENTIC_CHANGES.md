@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-12 15:47] - Add bank items section
+
+### Changed
+- File: `src/main.ts`
+  - Added a collapsible bank items section in character info
+
 ## [2026-02-12 10:45] - Show bank item total
 
 ### Changed

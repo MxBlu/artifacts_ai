@@ -2596,6 +2596,22 @@ function updateCharacterInfo(character: Character) {
   }
   
   html += '</div></div>';
+
+  if (bankDetails) {
+    html += '<div class="info-section">';
+    html += '<div class="info-section-header" data-section="char-bank">Bank Items</div>';
+    html += '<div class="info-section-content" id="section-char-bank">';
+
+    if (bankItems.length > 0) {
+      bankItems.forEach((entry) => {
+        html += `<div class="info-item"><span class="info-value">${entry.code} x${entry.quantity}</span></div>`;
+      });
+    } else {
+      html += '<div class="info-item"><span class="info-value" style="color: #666;">Empty</span></div>';
+    }
+
+    html += '</div></div>';
+  }
   
   html += '</div>';
   characterInfo.innerHTML = html;
