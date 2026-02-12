@@ -22,7 +22,7 @@ base_url="https://api.artifactsmmo.com"
 url="${base_url}${path}"
 
 if [[ -n "$body" ]]; then
-  curl -sS -X "$method" -H "$(cat auth_headers.txt)" -H "Content-Type: application/json" -d "$body" "$url"
+  curl -sS -X "$method" -H @auth_headers.txt -H "Content-Type: application/json" -d "$body" "$url"
 else
-  curl -sS -X "$method" -H "$(cat auth_headers.txt)" "$url"
+  curl -sS -X "$method" -H @auth_headers.txt "$url"
 fi
