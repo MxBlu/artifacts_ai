@@ -1429,7 +1429,7 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
   bankMenuItem.style.display = hasBank ? 'flex' : 'none';
 
   if (hasBank) {
-    if (!currentCharacter) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
       bankMenuItem.classList.add('disabled');
     } else {
       bankMenuItem.classList.remove('disabled');

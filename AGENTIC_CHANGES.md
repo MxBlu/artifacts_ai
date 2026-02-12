@@ -6,6 +6,12 @@
 - File: `index.html`
   - Made status messages a fixed top toast to avoid layout shifts
 
+## [2026-02-12 10:36] - Gate bank menu on cooldown
+
+### Changed
+- File: `src/main.ts`
+  - Disabled the bank context menu item while on cooldown
+
 ## [2026-02-12 10:20] - Disable gather actions below level
 
 ### Changed
