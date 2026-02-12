@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 10:12] - Add API testing guidance
+
+### Changed
+- File: `AGENTS.md`
+  - Added curl examples for using `auth_headers.txt` with the API
+
 ## [2026-02-13 09:45] - Rename status section
 
 ### Changed

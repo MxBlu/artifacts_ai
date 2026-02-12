@@ -181,6 +181,16 @@ project/
 - **Authentication:** Bearer token (use `Authorization: Bearer <token>` header)
 - **HTTP Client:** axios (preferred)
 
+### Agent API Testing (cURL)
+- Use `auth_headers.txt` only as a header source for curl, not as a file to read in code.
+- Example (GET account details):
+  - `curl -H "$(cat auth_headers.txt)" "https://api.artifactsmmo.com/my/details"`
+- Example (GET maps by layer):
+  - `curl -H "$(cat auth_headers.txt)" "https://api.artifactsmmo.com/maps/surface?page=1&size=5"`
+- Example (POST move action):
+  - `curl -X POST -H "$(cat auth_headers.txt)" -H "Content-Type: application/json" \
+    -d '{"x":0,"y":0}' "https://api.artifactsmmo.com/my/<name>/action/move"`
+
 ### Core Endpoints
 - **Character Actions:** `/my/{name}/action/move`, `/action/fight`, `/action/gathering`, `/action/crafting`
 - **Account Management:** `/my/details`, `/my/characters`, `/my/bank`
