@@ -197,7 +197,7 @@ export interface Resource {
   code: string;
   skill: 'mining' | 'woodcutting' | 'fishing' | 'alchemy';
   level: number;
-  drops: Array<{ code: string; rate: number; quantity_min?: number; quantity_max?: number }>;
+  drops: Array<{ code: string; rate: number; min_quantity?: number; max_quantity?: number }>;
 }
 
 export interface ResourceResponse {
@@ -207,6 +207,37 @@ export interface ResourceResponse {
 export interface SimpleItem {
   code: string;
   quantity: number;
+}
+
+export interface LogEntry {
+  character: string;
+  account: string;
+  type: string;
+  description: string;
+  content: any;
+  cooldown: number;
+  cooldown_expiration?: string | null;
+  created_at: string;
+}
+
+export interface LogPage {
+  data: LogEntry[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
+}
+
+export interface MyCharactersResponse {
+  data: Character[];
+}
+
+export interface ResourcesPage {
+  data: Resource[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
 }
 
 export interface CraftingData {
@@ -378,6 +409,11 @@ export class ArtifactsAPI {
     return response.data.data;
   }
 
+  async getMyCharacters(): Promise<Character[]> {
+    const response = await this.client.get<MyCharactersResponse>('/my/characters');
+    return response.data.data;
+  }
+
   async moveCharacter(characterName: string, x: number, y: number): Promise<MovementData> {
     const response = await this.client.post<MovementResponse>(
       `/my/${characterName}/action/move`,
@@ -449,12 +485,76 @@ export class ArtifactsAPI {
     return response.data.data;
   }
 
+  async getResources(params: {
+    min_level?: number;
+    max_level?: number;
+    skill?: string;
+    drop?: string;
+    page?: number;
+    size?: number;
+  } = {}): Promise<ResourcesPage> {
+    const response = await this.client.get<ResourcesPage>('/resources', { params });
+    return response.data;
+  }
+
+  async getAllResources(params: {
+    min_level?: number;
+    max_level?: number;
+    skill?: string;
+    drop?: string;
+  } = {}): Promise<Resource[]> {
+    const resources: Resource[] = [];
+    let page = 1;
+    const size = 100;
+
+    while (true) {
+      const response = await this.getResources({ ...params, page, size });
+      if (!response.data || response.data.length === 0) {
+        break;
+      }
+      resources.push(...response.data);
+      if (response.data.length < size) {
+        break;
+      }
+      page += 1;
+    }
+
+    return resources;
+  }
+
   async craftItem(characterName: string, code: string, quantity = 1): Promise<CraftingData> {
     const response = await this.client.post<CraftingResponse>(
       `/my/${characterName}/action/crafting`,
       { code, quantity }
     );
     return response.data.data;
+  }
+
+  async getCharacterLogs(characterName: string, page = 1, size = 100): Promise<LogPage> {
+    const response = await this.client.get<LogPage>(`/my/logs/${characterName}`, {
+      params: { page, size }
+    });
+    return response.data;
+  }
+
+  async getAllCharacterLogs(characterName: string, maxEntries = 5000): Promise<LogEntry[]> {
+    const logs: LogEntry[] = [];
+    let page = 1;
+    const size = 100;
+
+    while (logs.length < maxEntries) {
+      const response = await this.getCharacterLogs(characterName, page, size);
+      if (!response.data || response.data.length === 0) {
+        break;
+      }
+      logs.push(...response.data);
+      if (response.data.length < size) {
+        break;
+      }
+      page += 1;
+    }
+
+    return logs.slice(0, maxEntries);
   }
 
   async getBankDetails(): Promise<BankDetails> {

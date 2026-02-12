@@ -1,5 +1,20 @@
 # Agentic Changes Log
 
+## [2026-02-13 11:05] - Add weaponcrafting analysis tooling
+
+### Added
+- File: `src/weaponcrafting_analysis.ts`
+  - Added a log-driven weaponcrafting XP and prerequisite action analyzer
+
+### Changed
+- File: `src/api.ts`
+  - Added character list, logs, and resources pagination helpers
+  - Added log response types and resource list response types
+- File: `package.json`
+  - Added `analyze:weaponcrafting` script and `tsx` dev dependency
+- File: `GAME_KNOWLEDGE.md`
+  - Documented skill XP fields and log endpoints for XP experiments
+
 ## [2026-02-13 10:12] - Add API testing guidance
 
 ### Changed

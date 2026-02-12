@@ -37,6 +37,11 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - XP from fighting monsters
 - Wisdom stat increases XP gain (1% per 10 wisdom)
 
+**Skill XP Observations:**
+- Crafting and gathering actions return `details.xp` plus `details.items` in the action response (SkillResponseSchema).
+- Character schema includes per-skill XP fields like `weaponcrafting_xp`, `weaponcrafting_max_xp`, and `weaponcrafting_total_xp`.
+- Logs endpoints `/my/logs` and `/my/logs/{name}` include action history with `type`, `description`, `content`, `cooldown`, and `created_at`; useful for deriving XP per action and cooldowns.
+
 ### Combat System
 - **Elements:** Fire, Earth, Water, Air
 - **Stats:** HP, attack (per element), resistance (per element), critical strike, haste, initiative
