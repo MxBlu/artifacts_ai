@@ -1,5 +1,15 @@
 # Agentic Changes Log
 
+## [2026-02-13 11:12] - Add API curl wrapper
+
+### Added
+- File: `scripts/api.sh`
+  - Added a curl wrapper that uses `auth_headers.txt` for auth
+
+### Changed
+- File: `package.json`
+  - Added `api` script to call the curl wrapper
+
 ## [2026-02-13 11:05] - Add weaponcrafting analysis tooling
 
 ### Added
