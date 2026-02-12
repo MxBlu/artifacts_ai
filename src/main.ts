@@ -87,10 +87,17 @@ let gatherAutomationMode: 'woodcutting' | 'fishing' | 'mining' | null = null;
 let gatherAutomationTarget: MapTile | null = null;
 let gatherAutomationStartedAt: number | null = null;
 let gatherAutomationLabel: string | null = null;
+let craftAutomationToken = 0;
+let craftAutomationActive = false;
+let craftAutomationItemCode: string | null = null;
+let craftAutomationWorkshopTile: MapTile | null = null;
+let craftAutomationStartedAt: number | null = null;
+let craftAutomationLabel: string | null = null;
 let activeTileModalResourceRequestId = 0;
 let activeTileModalResourceCode: string | null = null;
 let bankDetails: BankDetails | null = null;
 let bankItems: SimpleItem[] = [];
+let craftModalState: { skill: string; workshopCode: string; items: Item[] } | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -226,24 +233,86 @@ function formatSkillName(skill: string): string {
 }
 
 function getMaxCraftable(item: Item, character: Character): number {
-  const requirements = item.craft?.items || [];
-  if (requirements.length === 0) {
-    return 1;
-  }
+  const inventoryMap = buildInventoryQuantityMap(character);
+  return getMaxCraftableFromMap(item, inventoryMap);
+}
 
+function buildInventoryQuantityMap(character: Character): Map<string, number> {
   const inventoryMap = new Map<string, number>();
   if (character.inventory) {
     character.inventory.forEach((entry: any) => {
       inventoryMap.set(entry.code, entry.quantity);
     });
   }
+  return inventoryMap;
+}
+
+function buildBankQuantityMap(items: SimpleItem[]): Map<string, number> {
+  const bankMap = new Map<string, number>();
+  items.forEach(entry => {
+    bankMap.set(entry.code, entry.quantity);
+  });
+  return bankMap;
+}
+
+function mergeQuantityMaps(...maps: Map<string, number>[]): Map<string, number> {
+  const merged = new Map<string, number>();
+  maps.forEach(map => {
+    map.forEach((value, key) => {
+      merged.set(key, (merged.get(key) || 0) + value);
+    });
+  });
+  return merged;
+}
+
+function getMaxCraftableFromMap(item: Item, quantities: Map<string, number>): number {
+  const requirements = item.craft?.items || [];
+  if (requirements.length === 0) {
+    return 1;
+  }
 
   let maxCraftable = Number.POSITIVE_INFINITY;
   requirements.forEach(req => {
-    const available = inventoryMap.get(req.code) || 0;
+    const available = quantities.get(req.code) || 0;
     const possible = Math.floor(available / req.quantity);
     maxCraftable = Math.min(maxCraftable, possible);
   });
+
+  if (!Number.isFinite(maxCraftable)) {
+    return 0;
+  }
+
+  return Math.max(0, maxCraftable);
+}
+
+function getMaxCraftableWithBank(item: Item, character: Character): number {
+  const inventoryMap = buildInventoryQuantityMap(character);
+  const bankMap = buildBankQuantityMap(bankItems);
+  const combined = mergeQuantityMaps(inventoryMap, bankMap);
+  return getMaxCraftableFromMap(item, combined);
+}
+
+function getMaxCraftableFromBankWithCapacity(item: Item, items: SimpleItem[], capacity: number): number {
+  const requirements = item.craft?.items || [];
+  const outputQuantity = item.craft?.quantity || 1;
+  if (requirements.length === 0 || capacity <= 0 || outputQuantity <= 0) {
+    return 0;
+  }
+
+  const bankMap = buildBankQuantityMap(items);
+  let maxCraftable = Number.POSITIVE_INFINITY;
+  requirements.forEach(req => {
+    const available = bankMap.get(req.code) || 0;
+    const possible = Math.floor(available / req.quantity);
+    maxCraftable = Math.min(maxCraftable, possible);
+  });
+
+  const totalIngredientsPerCraft = requirements.reduce((sum, req) => sum + req.quantity, 0);
+  if (totalIngredientsPerCraft > 0) {
+    maxCraftable = Math.min(maxCraftable, Math.floor(capacity / totalIngredientsPerCraft));
+  }
+
+  maxCraftable = Math.min(maxCraftable, Math.floor(capacity / outputQuantity));
 
   if (!Number.isFinite(maxCraftable)) {
     return 0;
@@ -271,7 +340,44 @@ async function ensureAllItems(): Promise<Item[]> {
   return items;
 }
 
+async function ensureBankItemsLoaded(): Promise<boolean> {
+  if (!api || !currentCharacter) {
+    return false;
+  }
+
+  if (bankDetails) {
+    return true;
+  }
+
+  try {
+    showStatus('Loading bank items...', 'info');
+    const [details, items] = await Promise.all([
+      api.getBankDetails(),
+      api.getAllBankItems()
+    ]);
+    bankDetails = details;
+    bankItems = items;
+    updateCharacterInfo(currentCharacter);
+    return true;
+  } catch (error: any) {
+    console.error('Bank load error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Failed to load bank';
+    showStatus(`Error: ${message}`, 'error');
+    return false;
+  }
+}
+
 function openCraftModal(skill: string, workshopCode: string, items: Item[], character: Character) {
+  craftModalState = { skill, workshopCode, items };
+  renderCraftModal(character);
+}
+
+function renderCraftModal(character: Character) {
+  if (!craftModalState) {
+    return;
+  }
+
+  const { skill, workshopCode, items } = craftModalState;
   const skillLevel = getSkillLevel(character, skill);
   const filtered = items
     .filter(item => item.craft && item.craft.skill === skill)
@@ -289,8 +395,12 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
         ? item.craft?.items.map(req => `${req.code} x${req.quantity}`).join(', ')
         : 'None';
       const quantity = item.craft?.quantity || 1;
-      const maxCraftable = getMaxCraftable(item, character);
+      const autoActive = craftAutomationActive && craftAutomationItemCode === item.code;
+      const maxCraftable = autoActive && bankDetails
+        ? getMaxCraftableWithBank(item, character)
+        : getMaxCraftable(item, character);
       const canCraft = !locked && maxCraftable > 0;
+      const autoDisabled = locked || (craftAutomationActive && !autoActive);
 
       const quantityControl = maxCraftable > 1
         ? `<select class="craft-qty" data-code="${item.code}">
@@ -306,6 +416,7 @@ function openCraftModal(skill: string, workshopCode: string, items: Item[], char
               ${quantityControl}
               Lvl ${craftLevel}
               <button class="craft-btn" data-code="${item.code}" ${canCraft ? '' : 'disabled'}>Craft</button>
+              <button class="craft-auto-btn ${autoActive ? 'active' : ''}" data-code="${item.code}" ${autoDisabled ? 'disabled' : ''}>Auto</button>
             </span>
           </div>
           <div class="craft-item-meta">Makes: ${quantity} · Requires: ${ingredients}</div>
@@ -663,7 +774,7 @@ function canRest(character: Character | null): boolean {
 }
 
 function updateAutomationControls() {
-  stopAutomationBtn.disabled = !fightAutomationActive && !gatherAutomationActive;
+  stopAutomationBtn.disabled = !fightAutomationActive && !gatherAutomationActive && !craftAutomationActive;
 }
 
 function setAutomationStatus(status: string | null) {
@@ -894,6 +1005,243 @@ async function runGatherAutomation(token: number) {
   updateAutomationControls();
 }
 
+async function runCraftAutomation(token: number, item: Item) {
+  if (!craftAutomationWorkshopTile) {
+    stopCraftAutomation('Auto-craft stopped: no workshop selected');
+    return;
+  }
+
+  while (craftAutomationActive && token === craftAutomationToken) {
+    if (!api || !currentCharacter) {
+      break;
+    }
+
+    if (isOnCooldown(currentCharacter)) {
+      await waitForCooldownReady(token, 'Cooldown active.');
+      if (token !== craftAutomationToken || !craftAutomationActive) {
+        break;
+      }
+    }
+
+    const workshopTile = craftAutomationWorkshopTile;
+    if (!isCharacterOnTile(currentCharacter, workshopTile)) {
+      try {
+        renderFightState(`Auto-craft: moving to (${workshopTile.x}, ${workshopTile.y})...`, 'info');
+        showStatus(`Moving to (${workshopTile.x}, ${workshopTile.y})...`, 'info');
+        const moveData = await api.moveCharacter(currentCharacter.name, workshopTile.x, workshopTile.y);
+        currentCharacter = moveData.character;
+        lastCooldownReason = moveData.cooldown.reason || 'move';
+
+        renderMap(currentMap, currentCharacter);
+        updateCharacterInfo(currentCharacter);
+        updateTimers();
+
+        if (isOnCooldown(currentCharacter)) {
+          await waitForCooldownReady(token, 'Move complete.');
+        }
+      } catch (error: any) {
+        console.error('Auto-craft move error:', error);
+        const message = error.response?.data?.error?.message || error.message || 'Move failed';
+        renderFightState(`Auto-craft stopped: ${message}`, 'error');
+        showStatus(`Error: ${message}`, 'error');
+        break;
+      }
+    }
+
+    if (token !== craftAutomationToken || !craftAutomationActive) {
+      break;
+    }
+
+    const maxInventoryCrafts = getMaxCraftable(item, currentCharacter);
+    if (maxInventoryCrafts > 0) {
+      try {
+        renderFightState(`Auto-craft: crafting ${item.code} x${maxInventoryCrafts}...`, 'info');
+        showStatus(`Crafting ${item.code} x${maxInventoryCrafts}...`, 'info');
+        const craftData = await api.craftItem(currentCharacter.name, item.code, maxInventoryCrafts);
+        currentCharacter = craftData.character;
+        lastCooldownReason = craftData.cooldown.reason || 'crafting';
+
+        updateCharacterInfo(currentCharacter);
+        updateTimers();
+
+        if (isOnCooldown(currentCharacter)) {
+          await waitForCooldownReady(token, 'Crafting complete.');
+        }
+      } catch (error: any) {
+        console.error('Auto-craft error:', error);
+        const message = error.response?.data?.error?.message || error.message || 'Craft failed';
+        renderFightState(`Auto-craft stopped: ${message}`, 'error');
+        showStatus(`Error: ${message}`, 'error');
+        break;
+      }
+    }
+
+    if (token !== craftAutomationToken || !craftAutomationActive) {
+      break;
+    }
+
+    const cycled = await runAutoCraftBankCycle(token, item, workshopTile);
+    if (!cycled) {
+      break;
+    }
+  }
+
+  craftAutomationActive = false;
+  craftAutomationItemCode = null;
+  craftAutomationStartedAt = null;
+  craftAutomationLabel = null;
+  updateAutomationControls();
+}
+
+async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapTile): Promise<boolean> {
+  if (!api || !currentCharacter) {
+    return false;
+  }
+
+  const bankTile = getBankTile();
+  if (!bankTile) {
+    renderFightState('Auto-craft stopped: no bank found on this map', 'error');
+    showStatus('No bank found on this map', 'error');
+    return false;
+  }
+
+  if (!isCharacterOnTile(currentCharacter, bankTile)) {
+    try {
+      renderFightState(`Auto-craft: moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
+      showStatus(`Moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, bankTile.x, bankTile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Move to bank complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-craft bank move error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      renderFightState(`Auto-craft stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  if (token !== craftAutomationToken || !craftAutomationActive) {
+    return false;
+  }
+
+  const inventoryItems = (currentCharacter.inventory || [])
+    .filter((entry: any) => entry && entry.code && entry.quantity > 0)
+    .map((entry: any) => ({ code: entry.code, quantity: entry.quantity }));
+
+  for (let i = 0; i < inventoryItems.length; i += 20) {
+    if (token !== craftAutomationToken || !craftAutomationActive) {
+      return false;
+    }
+
+    try {
+      showStatus('Depositing inventory items...', 'info');
+      const chunk = inventoryItems.slice(i, i + 20);
+      const result = await api.depositBankItems(currentCharacter.name, chunk);
+      currentCharacter = result.character;
+      bankItems = result.bank;
+      lastCooldownReason = result.cooldown.reason || 'bank deposit';
+
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Bank deposit complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-craft bank deposit error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Deposit failed';
+      renderFightState(`Auto-craft stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  if (token !== craftAutomationToken || !craftAutomationActive) {
+    return false;
+  }
+
+  const capacity = currentCharacter.inventory_max_items || 0;
+  const maxCrafts = getMaxCraftableFromBankWithCapacity(item, bankItems, capacity);
+  if (maxCrafts <= 0) {
+    renderFightState('Auto-craft stopped: no ingredients in bank', 'info');
+    showStatus('Auto-craft stopped: no ingredients in bank', 'info');
+    return false;
+  }
+
+  const requirements = item.craft?.items || [];
+  const withdrawal = requirements.map(req => ({
+    code: req.code,
+    quantity: req.quantity * maxCrafts
+  }));
+
+  for (let i = 0; i < withdrawal.length; i += 20) {
+    if (token !== craftAutomationToken || !craftAutomationActive) {
+      return false;
+    }
+
+    try {
+      showStatus('Withdrawing crafting ingredients...', 'info');
+      const chunk = withdrawal.slice(i, i + 20);
+      const result = await api.withdrawBankItems(currentCharacter.name, chunk);
+      currentCharacter = result.character;
+      bankItems = result.bank;
+      lastCooldownReason = result.cooldown.reason || 'bank withdraw';
+
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Bank withdraw complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-craft bank withdraw error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Withdraw failed';
+      renderFightState(`Auto-craft stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  if (token !== craftAutomationToken || !craftAutomationActive) {
+    return false;
+  }
+
+  if (!isCharacterOnTile(currentCharacter, returnTile)) {
+    try {
+      renderFightState(`Auto-craft: returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
+      showStatus(`Returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, returnTile.x, returnTile.y);
+      currentCharacter = moveData.character;
+      lastCooldownReason = moveData.cooldown.reason || 'move';
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Return to workshop complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-craft return move error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      renderFightState(`Auto-craft stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  return true;
+}
+
 async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<boolean> {
   if (!api || !currentCharacter) {
     return false;
@@ -1110,6 +1458,24 @@ function stopGatherAutomation(message: string) {
   showStatus(message, 'info');
 }
 
+function stopCraftAutomation(message: string) {
+  if (!craftAutomationActive) {
+    return;
+  }
+  craftAutomationActive = false;
+  craftAutomationItemCode = null;
+  craftAutomationStartedAt = null;
+  craftAutomationLabel = null;
+  craftAutomationToken += 1;
+  updateAutomationControls();
+  renderFightState(message, 'info');
+  showStatus(message, 'info');
+
+  if (currentCharacter && craftModal.classList.contains('visible')) {
+    renderCraftModal(currentCharacter);
+  }
+}
+
 
 function stopAllAutomation(message: string) {
   if (fightAutomationActive) {
@@ -1117,6 +1483,9 @@ function stopAllAutomation(message: string) {
   }
   if (gatherAutomationActive) {
     stopGatherAutomation(message);
+  }
+  if (craftAutomationActive) {
+    stopCraftAutomation(message);
   }
 }
 
@@ -1239,6 +1608,17 @@ function updateTimers() {
   } else if (gatherAutomationActive && gatherAutomationStartedAt) {
     const elapsedSeconds = Math.floor((Date.now() - gatherAutomationStartedAt) / 1000);
     const actionLabel = gatherAutomationLabel ? gatherAutomationLabel : 'Auto: Gathering';
+    html += '<div class="timer active">';
+    html += '<div class="timer-pie" style="background: conic-gradient(#51cf66 360deg, #0f3460 0deg)">';
+    html += '<div class="timer-pie-inner">∞</div></div>';
+    html += '<div class="timer-info">';
+    html += '<div class="timer-label">Auto</div>';
+    html += '<div class="timer-value cooldown">' + actionLabel + '</div>';
+    html += '<div class="timer-value">' + elapsedSeconds + 's</div>';
+    html += '</div></div>';
+  } else if (craftAutomationActive && craftAutomationStartedAt) {
+    const elapsedSeconds = Math.floor((Date.now() - craftAutomationStartedAt) / 1000);
+    const actionLabel = craftAutomationLabel ? craftAutomationLabel : 'Auto: Crafting';
     html += '<div class="timer active">';
     html += '<div class="timer-pie" style="background: conic-gradient(#51cf66 360deg, #0f3460 0deg)">';
     html += '<div class="timer-pie-inner">∞</div></div>';
@@ -1991,6 +2371,8 @@ async function handleCraftAction() {
     return;
   }
 
+  craftAutomationWorkshopTile = tile;
+
   const skill = getCraftSkillFromWorkshop(content.code);
   if (!skill) {
     showStatus(`Unknown workshop type: ${content.code}`, 'error');
@@ -2050,6 +2432,74 @@ async function handleCraftItem(code: string, quantity: number) {
     const message = error.response?.data?.error?.message || error.message || 'Craft failed';
     showStatus(`Error: ${message}`, 'error');
   }
+}
+
+function getCraftModalItem(code: string): Item | null {
+  if (craftModalState) {
+    const found = craftModalState.items.find(item => item.code === code);
+    if (found) {
+      return found;
+    }
+  }
+
+  if (itemCache.has(code)) {
+    return itemCache.get(code) || null;
+  }
+
+  if (allItemsCache) {
+    return allItemsCache.find(item => item.code === code) || null;
+  }
+
+  return null;
+}
+
+async function toggleCraftAutomation(code: string) {
+  if (craftAutomationActive && craftAutomationItemCode === code) {
+    stopCraftAutomation('Auto-craft stopped');
+    return;
+  }
+
+  if (!currentCharacter || !api) {
+    showStatus('Load a character first', 'error');
+    return;
+  }
+
+  if (fightAutomationActive || gatherAutomationActive || craftAutomationActive) {
+    showStatus('Automation already running', 'info');
+    return;
+  }
+
+  const item = getCraftModalItem(code);
+  if (!item || !item.craft) {
+    showStatus('Craft item data not found', 'error');
+    return;
+  }
+
+  if (!craftAutomationWorkshopTile) {
+    showStatus('No workshop selected for auto-craft', 'error');
+    return;
+  }
+
+  const loaded = await ensureBankItemsLoaded();
+  if (!loaded) {
+    return;
+  }
+
+  craftAutomationActive = true;
+  craftAutomationItemCode = code;
+  craftAutomationStartedAt = Date.now();
+  craftAutomationLabel = `Auto: Crafting ${code}`;
+  craftAutomationToken += 1;
+  updateAutomationControls();
+
+  if (craftModal.classList.contains('visible')) {
+    renderCraftModal(currentCharacter);
+  }
+
+  renderFightState(`Auto-craft started for ${code}.`, 'info');
+  showStatus(`Auto-craft started for ${code}`, 'success');
+
+  runCraftAutomation(craftAutomationToken, item);
 }
 
 async function handleBankAction() {
@@ -2910,6 +3360,14 @@ bankModal.addEventListener('click', (event) => {
 
 craftModalBody.addEventListener('click', (event) => {
   const target = event.target as HTMLElement;
+  const autoButton = target.closest('.craft-auto-btn') as HTMLButtonElement | null;
+  if (autoButton) {
+    const code = autoButton.dataset.code;
+    if (code) {
+      toggleCraftAutomation(code);
+    }
+    return;
+  }
   const button = target.closest('.craft-btn') as HTMLButtonElement | null;
   if (!button) {
     return;

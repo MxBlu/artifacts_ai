@@ -1,5 +1,14 @@
 # Agentic Changes Log
 
+## [2026-02-12 16:00] - Add bank-backed craft automation
+
+### Changed
+- File: `src/main.ts`
+  - Added auto-craft toggle and bank-aware craft limits in the craft modal
+  - Implemented crafting automation that cycles between workshop and bank
+- File: `index.html`
+  - Added styling for the craft automation toggle
+
 ## [2026-02-12 15:47] - Add bank items section
 
 ### Changed
