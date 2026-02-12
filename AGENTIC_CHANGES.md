@@ -6,6 +6,7 @@
 - File: `src/main.ts`
   - Display total bank item quantity under character info
   - Only show bank total once bank data is loaded
+  - Refresh character info after loading bank data
 
 ## [2026-02-12 10:30] - Toast status positioning
 

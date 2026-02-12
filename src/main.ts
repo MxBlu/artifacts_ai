@@ -2094,6 +2094,7 @@ async function handleBankAction() {
     ]);
     bankDetails = details;
     bankItems = items;
+    updateCharacterInfo(currentCharacter);
     renderBankModal(bankDetails, bankItems, currentCharacter);
   } catch (error: any) {
     console.error('Bank load error:', error);
