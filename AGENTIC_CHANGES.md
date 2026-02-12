@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-13 09:16] - Improve cooldown precision
+
+### Changed
+- File: `src/main.ts`
+  - Track cooldown readiness using API remaining seconds
+  - Use millisecond waits to avoid fractional cooldown errors
+
 ## [2026-02-12 16:03] - Delay auto-craft start
 
 ### Changed

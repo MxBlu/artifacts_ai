@@ -81,6 +81,7 @@ let fightAutomationStartedAt: number | null = null;
 let fightAutomationStatus: string | null = null;
 let fightAutomationLabel: string | null = null;
 let lastCooldownReason: string | null = null;
+let cooldownReadyAtMs: number | null = null;
 let gatherAutomationToken = 0;
 let gatherAutomationActive = false;
 let gatherAutomationMode: 'woodcutting' | 'fishing' | 'mining' | null = null;
@@ -104,31 +105,56 @@ let craftModalState: { skill: string; workshopCode: string; items: Item[] } | nu
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
   if (!character) return false;
-  if (!character.cooldown_expiration) return false;
+  const remainingMs = getRemainingCooldownMs(character);
+  return remainingMs > 0;
+}
+
+function setCooldownFromResponse(
+  cooldown: { remaining_seconds?: number; reason?: string } | null | undefined,
+  fallbackReason: string
+) {
+  if (cooldown?.reason) {
+    lastCooldownReason = cooldown.reason;
+  } else {
+    lastCooldownReason = fallbackReason;
+  }
+
+  if (typeof cooldown?.remaining_seconds === 'number') {
+    const remainingMs = Math.max(0, cooldown.remaining_seconds * 1000);
+    cooldownReadyAtMs = remainingMs > 0 ? Date.now() + remainingMs : null;
+  } else {
+    cooldownReadyAtMs = null;
+  }
+}
+
+function getRemainingCooldownMs(character: Character | null): number {
+  if (!character) return 0;
+  if (cooldownReadyAtMs !== null) {
+    return Math.max(0, cooldownReadyAtMs - Date.now());
+  }
+  if (!character.cooldown_expiration) return 0;
   const expirationTime = new Date(character.cooldown_expiration).getTime();
-  const currentTime = Date.now();
-  return expirationTime > currentTime;
+  return Math.max(0, expirationTime - Date.now());
 }
 
 // Helper function to get remaining cooldown in seconds
 function getRemainingCooldown(character: Character | null): number {
-  if (!character || !isOnCooldown(character)) return 0;
-  const expirationTime = new Date(character.cooldown_expiration).getTime();
-  const currentTime = Date.now();
-  return Math.ceil((expirationTime - currentTime) / 1000);
+  const remainingMs = getRemainingCooldownMs(character);
+  if (remainingMs <= 0) return 0;
+  return Math.ceil(remainingMs / 1000);
 }
 
 // Helper function to get cooldown progress (0-1)
 function getCooldownProgress(character: Character | null): number {
   if (!character || !character.cooldown_expiration) return 1;
   if (!character.cooldown) return 1;
-  
-  const expirationTime = new Date(character.cooldown_expiration).getTime();
+
   const currentTime = Date.now();
-  const totalCooldown = character.cooldown * 1000; // Convert to ms
+  const totalCooldown = character.cooldown * 1000;
+  const expirationTime = cooldownReadyAtMs ?? new Date(character.cooldown_expiration).getTime();
   const startTime = expirationTime - totalCooldown;
   const elapsed = currentTime - startTime;
-  
+
   const progress = Math.min(Math.max(elapsed / totalCooldown, 0), 1);
   return progress;
 }
@@ -790,11 +816,12 @@ function sleep(ms: number) {
 
 async function waitForCooldownReady(token: number, reason: string) {
   if (!currentCharacter) return;
-  const remaining = getRemainingCooldown(currentCharacter);
-  if (remaining <= 0) return;
-  renderFightState(`${reason} Waiting ${remaining}s...`, 'info');
-  setAutomationStatus(`${reason} waiting ${remaining}s`);
-  await sleep(remaining * 1000 + 50);
+  const remainingMs = getRemainingCooldownMs(currentCharacter);
+  if (remainingMs <= 0) return;
+  const remainingSeconds = Math.ceil(remainingMs / 1000);
+  renderFightState(`${reason} Waiting ${remainingSeconds}s...`, 'info');
+  setAutomationStatus(`${reason} waiting ${remainingSeconds}s`);
+  await sleep(remainingMs + 50);
 }
 
 async function runFightAutomation(token: number) {
@@ -824,7 +851,7 @@ async function runFightAutomation(token: number) {
         showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
         const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
         currentCharacter = moveData.character;
-          lastCooldownReason = moveData.cooldown.reason || 'move';
+        setCooldownFromResponse(moveData.cooldown, 'move');
 
         renderMap(currentMap, currentCharacter);
         updateCharacterInfo(currentCharacter);
@@ -856,7 +883,7 @@ async function runFightAutomation(token: number) {
       if (updatedCharacter) {
         currentCharacter = updatedCharacter;
       }
-        lastCooldownReason = fightData.cooldown.reason || 'fight';
+      setCooldownFromResponse(fightData.cooldown, 'fight');
 
       renderFightResult(fightData, monsterCode);
       updateCharacterInfo(currentCharacter);
@@ -888,7 +915,7 @@ async function runFightAutomation(token: number) {
         showStatus('Resting...', 'info');
         const restData = await api.restCharacter(currentCharacter.name);
         currentCharacter = restData.character;
-          lastCooldownReason = restData.cooldown.reason || 'rest';
+        setCooldownFromResponse(restData.cooldown, 'rest');
 
         updateCharacterInfo(currentCharacter);
         updateTimers();
@@ -955,7 +982,7 @@ async function runGatherAutomation(token: number) {
         showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
         const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
         currentCharacter = moveData.character;
-        lastCooldownReason = moveData.cooldown.reason || 'move';
+        setCooldownFromResponse(moveData.cooldown, 'move');
 
         renderMap(currentMap, currentCharacter);
         updateCharacterInfo(currentCharacter);
@@ -987,7 +1014,7 @@ async function runGatherAutomation(token: number) {
       showStatus(actionLabel, 'info');
       const gatherData = await api.gather(currentCharacter.name);
       currentCharacter = gatherData.character;
-      lastCooldownReason = gatherData.cooldown.reason || gatherAutomationMode;
+      setCooldownFromResponse(gatherData.cooldown, gatherAutomationMode || 'gather');
 
       updateCharacterInfo(currentCharacter);
       updateTimers();
@@ -1032,7 +1059,7 @@ async function runCraftAutomation(token: number, item: Item) {
         showStatus(`Moving to (${workshopTile.x}, ${workshopTile.y})...`, 'info');
         const moveData = await api.moveCharacter(currentCharacter.name, workshopTile.x, workshopTile.y);
         currentCharacter = moveData.character;
-        lastCooldownReason = moveData.cooldown.reason || 'move';
+        setCooldownFromResponse(moveData.cooldown, 'move');
 
         renderMap(currentMap, currentCharacter);
         updateCharacterInfo(currentCharacter);
@@ -1061,7 +1088,7 @@ async function runCraftAutomation(token: number, item: Item) {
         showStatus(`Crafting ${item.code} x${maxInventoryCrafts}...`, 'info');
         const craftData = await api.craftItem(currentCharacter.name, item.code, maxInventoryCrafts);
         currentCharacter = craftData.character;
-        lastCooldownReason = craftData.cooldown.reason || 'crafting';
+        setCooldownFromResponse(craftData.cooldown, 'crafting');
 
         updateCharacterInfo(currentCharacter);
         updateTimers();
@@ -1113,7 +1140,7 @@ async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapT
       showStatus(`Moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, bankTile.x, bankTile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -1150,7 +1177,7 @@ async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapT
       const result = await api.depositBankItems(currentCharacter.name, chunk);
       currentCharacter = result.character;
       bankItems = result.bank;
-      lastCooldownReason = result.cooldown.reason || 'bank deposit';
+      setCooldownFromResponse(result.cooldown, 'bank deposit');
 
       updateCharacterInfo(currentCharacter);
       updateTimers();
@@ -1196,7 +1223,7 @@ async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapT
       const result = await api.withdrawBankItems(currentCharacter.name, chunk);
       currentCharacter = result.character;
       bankItems = result.bank;
-      lastCooldownReason = result.cooldown.reason || 'bank withdraw';
+      setCooldownFromResponse(result.cooldown, 'bank withdraw');
 
       updateCharacterInfo(currentCharacter);
       updateTimers();
@@ -1223,7 +1250,7 @@ async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapT
       showStatus(`Returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, returnTile.x, returnTile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -1263,7 +1290,7 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
       showStatus(`Moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, bankTile.x, bankTile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -1304,7 +1331,7 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
       const chunk = inventoryItems.slice(i, i + 20);
       const result = await api.depositBankItems(currentCharacter.name, chunk);
       currentCharacter = result.character;
-      lastCooldownReason = result.cooldown.reason || 'bank deposit';
+      setCooldownFromResponse(result.cooldown, 'bank deposit');
 
       updateCharacterInfo(currentCharacter);
       updateTimers();
@@ -1332,7 +1359,7 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
       showStatus(`Returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, returnTile.x, returnTile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -1498,7 +1525,7 @@ function scheduleFightAfterCooldown(monsterCode: string) {
     pendingFightTimeout = null;
   }
 
-  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+  const delayMs = Math.max(getRemainingCooldownMs(currentCharacter), 0);
 
   renderFightState(`Moved. Waiting ${Math.ceil(delayMs / 1000)}s to fight ${monsterCode}...`, 'info');
   showStatus(`Moved. Waiting ${Math.ceil(delayMs / 1000)}s before fighting ${monsterCode}...`, 'info');
@@ -1529,7 +1556,7 @@ async function handleFightAfterMove(monsterCode: string) {
       currentCharacter = updatedCharacter;
     }
 
-    lastCooldownReason = fightData.cooldown.reason || 'fight';
+    setCooldownFromResponse(fightData.cooldown, 'fight');
 
     renderFightResult(fightData, monsterCode);
     updateCharacterInfo(currentCharacter);
@@ -1862,7 +1889,7 @@ async function handleMoveAction() {
     showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
     const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
     currentCharacter = moveData.character;
-    lastCooldownReason = moveData.cooldown.reason || 'move';
+    setCooldownFromResponse(moveData.cooldown, 'move');
     
     // Re-render map to update character position
     renderMap(currentMap, currentCharacter);
@@ -1906,7 +1933,7 @@ async function handleFightAction() {
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -1948,7 +1975,7 @@ async function handleRestAction() {
     showStatus('Resting...', 'info');
     const restData = await api.restCharacter(currentCharacter.name);
     currentCharacter = restData.character;
-    lastCooldownReason = restData.cooldown.reason || 'rest';
+    setCooldownFromResponse(restData.cooldown, 'rest');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -1977,7 +2004,7 @@ async function handleUnequipAction(slot: string) {
     showStatus(`Unequipping ${slot}...`, 'info');
     const equipData = await api.unequipItem(currentCharacter.name, slot);
     currentCharacter = equipData.character;
-    lastCooldownReason = equipData.cooldown.reason || 'unequip';
+    setCooldownFromResponse(equipData.cooldown, 'unequip');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -2018,7 +2045,7 @@ async function handleEquipAction(code: string) {
     showStatus(`Equipping ${code}...`, 'info');
     const equipData = await api.equipItem(currentCharacter.name, code, slot);
     currentCharacter = equipData.character;
-    lastCooldownReason = equipData.cooldown.reason || 'equip';
+    setCooldownFromResponse(equipData.cooldown, 'equip');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -2047,7 +2074,7 @@ async function handleUseItem(code: string, quantity: number) {
     showStatus(`Using ${code} x${quantity}...`, 'info');
     const useData = await api.useItem(currentCharacter.name, code, quantity);
     currentCharacter = useData.character;
-    lastCooldownReason = useData.cooldown.reason || 'use';
+    setCooldownFromResponse(useData.cooldown, 'use');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -2070,7 +2097,7 @@ function scheduleGatherAfterCooldown(tile: MapTile) {
 
   pendingGatherTarget = tile;
 
-  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+  const delayMs = Math.max(getRemainingCooldownMs(currentCharacter), 0);
   showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to gather...`, 'info');
 
   pendingGatherTimeout = window.setTimeout(() => {
@@ -2090,7 +2117,7 @@ function scheduleMiningAfterCooldown(tile: MapTile) {
 
   pendingMiningTarget = tile;
 
-  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+  const delayMs = Math.max(getRemainingCooldownMs(currentCharacter), 0);
   showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to mine...`, 'info');
 
   pendingMiningTimeout = window.setTimeout(() => {
@@ -2110,7 +2137,7 @@ function scheduleFishingAfterCooldown(tile: MapTile) {
 
   pendingFishingTarget = tile;
 
-  const delayMs = Math.max(getRemainingCooldown(currentCharacter) * 1000, 0);
+  const delayMs = Math.max(getRemainingCooldownMs(currentCharacter), 0);
   showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to fish...`, 'info');
 
   pendingFishingTimeout = window.setTimeout(() => {
@@ -2140,7 +2167,7 @@ async function handleFishingAfterMove(tile: MapTile) {
     showStatus('Fishing...', 'info');
     const gatherData = await api.gather(currentCharacter.name);
     currentCharacter = gatherData.character;
-    lastCooldownReason = gatherData.cooldown.reason || 'fishing';
+    setCooldownFromResponse(gatherData.cooldown, 'fishing');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -2173,7 +2200,7 @@ async function handleGatherAfterMove(tile: MapTile) {
     showStatus('Gathering wood...', 'info');
     const gatherData = await api.gather(currentCharacter.name);
     currentCharacter = gatherData.character;
-    lastCooldownReason = gatherData.cooldown.reason || 'woodcutting';
+    setCooldownFromResponse(gatherData.cooldown, 'woodcutting');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -2206,7 +2233,7 @@ async function handleMiningAfterMove(tile: MapTile) {
     showStatus('Mining...', 'info');
     const gatherData = await api.gather(currentCharacter.name);
     currentCharacter = gatherData.character;
-    lastCooldownReason = gatherData.cooldown.reason || 'mining';
+    setCooldownFromResponse(gatherData.cooldown, 'mining');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -2244,7 +2271,7 @@ async function handleGatherAction() {
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -2289,7 +2316,7 @@ async function handleFishingAction() {
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -2334,7 +2361,7 @@ async function handleMiningAction() {
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -2388,7 +2415,7 @@ async function handleCraftAction() {
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -2422,7 +2449,7 @@ async function handleCraftItem(code: string, quantity: number) {
     showStatus(`Crafting ${code} x${quantity}...`, 'info');
     const craftData = await api.craftItem(currentCharacter.name, code, quantity);
     currentCharacter = craftData.character;
-    lastCooldownReason = craftData.cooldown.reason || 'crafting';
+    setCooldownFromResponse(craftData.cooldown, 'crafting');
 
     updateCharacterInfo(currentCharacter);
     updateTimers();
@@ -2574,7 +2601,7 @@ async function handleBankAction() {
       showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
       currentCharacter = moveData.character;
-      lastCooldownReason = moveData.cooldown.reason || 'move';
+      setCooldownFromResponse(moveData.cooldown, 'move');
 
       renderMap(currentMap, currentCharacter);
       updateCharacterInfo(currentCharacter);
@@ -2624,7 +2651,7 @@ async function handleBankDepositItem(code: string, quantity: number) {
     const result = await api.depositBankItems(currentCharacter.name, [{ code, quantity }]);
     currentCharacter = result.character;
     bankItems = result.bank;
-    lastCooldownReason = result.cooldown.reason || 'bank deposit';
+    setCooldownFromResponse(result.cooldown, 'bank deposit');
     updateCharacterInfo(currentCharacter);
     updateTimers();
     renderBankModal(bankDetails, bankItems, currentCharacter);
@@ -2652,7 +2679,7 @@ async function handleBankWithdrawItem(code: string, quantity: number) {
     const result = await api.withdrawBankItems(currentCharacter.name, [{ code, quantity }]);
     currentCharacter = result.character;
     bankItems = result.bank;
-    lastCooldownReason = result.cooldown.reason || 'bank withdraw';
+    setCooldownFromResponse(result.cooldown, 'bank withdraw');
     updateCharacterInfo(currentCharacter);
     updateTimers();
     renderBankModal(bankDetails, bankItems, currentCharacter);
@@ -2680,7 +2707,7 @@ async function handleBankDepositGold(quantity: number) {
     const result = await api.depositBankGold(currentCharacter.name, quantity);
     currentCharacter = result.character;
     bankDetails = { ...bankDetails, gold: result.bank.quantity };
-    lastCooldownReason = result.cooldown.reason || 'bank deposit';
+    setCooldownFromResponse(result.cooldown, 'bank deposit');
     updateCharacterInfo(currentCharacter);
     updateTimers();
     renderBankModal(bankDetails, bankItems, currentCharacter);
@@ -2708,7 +2735,7 @@ async function handleBankWithdrawGold(quantity: number) {
     const result = await api.withdrawBankGold(currentCharacter.name, quantity);
     currentCharacter = result.character;
     bankDetails = { ...bankDetails, gold: result.bank.quantity };
-    lastCooldownReason = result.cooldown.reason || 'bank withdraw';
+    setCooldownFromResponse(result.cooldown, 'bank withdraw');
     updateCharacterInfo(currentCharacter);
     updateTimers();
     renderBankModal(bankDetails, bankItems, currentCharacter);
@@ -2735,7 +2762,7 @@ async function handleBankBuyExpansion() {
     showStatus('Buying bank expansion...', 'info');
     const result = await api.buyBankExpansion(currentCharacter.name);
     currentCharacter = result.character;
-    lastCooldownReason = result.cooldown.reason || 'bank expansion';
+    setCooldownFromResponse(result.cooldown, 'bank expansion');
     bankDetails = await api.getBankDetails();
     updateCharacterInfo(currentCharacter);
     updateTimers();
