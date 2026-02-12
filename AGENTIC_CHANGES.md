@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 09:45] - Rename status section
+
+### Changed
+- File: `index.html`
+  - Renamed the Fight Status section to Status
+
 ## [2026-02-13 09:16] - Improve cooldown precision
 
 ### Changed
