@@ -188,7 +188,7 @@ project/
 - Example (GET maps by layer):
   - `curl -H "$(cat auth_headers.txt)" "https://api.artifactsmmo.com/maps/surface?page=1&size=5"`
 - Example (POST move action):
-  - `curl -X POST -H "$(cat auth_headers.txt)" -H "Content-Type: application/json" \
+  - `curl -X POST -H @auth_headers.txt -H "Content-Type: application/json" \
     -d '{"x":0,"y":0}' "https://api.artifactsmmo.com/my/<name>/action/move"`
 
 ### Core Endpoints
