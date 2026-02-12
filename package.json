@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "analyze:weaponcrafting": "tsx src/weaponcrafting_analysis.ts",
-    "api": "bash scripts/api.sh"
+    "api": "bash scripts/api.sh",
+    "research:skills": "tsx scripts/skill_research.ts"
   },
   "keywords": [],
   "author": "",

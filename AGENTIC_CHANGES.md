@@ -1,5 +1,15 @@
 # Agentic Changes Log
 
+## [2026-02-13 11:32] - Add automated skill research script
+
+### Added
+- File: `scripts/skill_research.ts`
+  - Added automation to gather/craft/fight and log per-action XP to `SKILL_XP_LOG.md`
+
+### Changed
+- File: `package.json`
+  - Added `research:skills` script
+
 ## [2026-02-13 11:12] - Add API curl wrapper
 
 ### Added
