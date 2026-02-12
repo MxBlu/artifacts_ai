@@ -93,6 +93,8 @@ let craftAutomationItemCode: string | null = null;
 let craftAutomationWorkshopTile: MapTile | null = null;
 let craftAutomationStartedAt: number | null = null;
 let craftAutomationLabel: string | null = null;
+let craftAutoEnabled = false;
+let craftAutoItemCode: string | null = null;
 let activeTileModalResourceRequestId = 0;
 let activeTileModalResourceCode: string | null = null;
 let bankDetails: BankDetails | null = null;
@@ -395,12 +397,12 @@ function renderCraftModal(character: Character) {
         ? item.craft?.items.map(req => `${req.code} x${req.quantity}`).join(', ')
         : 'None';
       const quantity = item.craft?.quantity || 1;
-      const autoActive = craftAutomationActive && craftAutomationItemCode === item.code;
+      const autoActive = craftAutoEnabled && craftAutoItemCode === item.code;
       const maxCraftable = autoActive && bankDetails
         ? getMaxCraftableWithBank(item, character)
         : getMaxCraftable(item, character);
       const canCraft = !locked && maxCraftable > 0;
-      const autoDisabled = locked || (craftAutomationActive && !autoActive);
+      const autoDisabled = locked || (craftAutoEnabled && !autoActive) || (craftAutomationActive && !autoActive);
 
       const quantityControl = maxCraftable > 1
         ? `<select class="craft-qty" data-code="${item.code}">
@@ -2454,13 +2456,68 @@ function getCraftModalItem(code: string): Item | null {
 }
 
 async function toggleCraftAutomation(code: string) {
-  if (craftAutomationActive && craftAutomationItemCode === code) {
-    stopCraftAutomation('Auto-craft stopped');
+  if (!currentCharacter || !api) {
+    showStatus('Load a character first', 'error');
     return;
   }
 
+  if (craftAutomationActive) {
+    if (craftAutomationItemCode === code) {
+      craftAutoEnabled = false;
+      craftAutoItemCode = null;
+      stopCraftAutomation('Auto-craft stopped');
+    } else {
+      showStatus('Automation already running', 'info');
+    }
+    return;
+  }
+
+  if (craftAutoEnabled && craftAutoItemCode === code) {
+    craftAutoEnabled = false;
+    craftAutoItemCode = null;
+    if (craftModal.classList.contains('visible')) {
+      renderCraftModal(currentCharacter);
+    }
+    return;
+  }
+
+  if (fightAutomationActive || gatherAutomationActive) {
+    showStatus('Automation already running', 'info');
+    return;
+  }
+
+  const item = getCraftModalItem(code);
+  if (!item || !item.craft) {
+    showStatus('Craft item data not found', 'error');
+    return;
+  }
+
+  if (!craftAutomationWorkshopTile) {
+    showStatus('No workshop selected for auto-craft', 'error');
+    return;
+  }
+
+  const loaded = await ensureBankItemsLoaded();
+  if (!loaded) {
+    return;
+  }
+
+  craftAutoEnabled = true;
+  craftAutoItemCode = code;
+
+  if (craftModal.classList.contains('visible')) {
+    renderCraftModal(currentCharacter);
+  }
+}
+
+async function startCraftAutomation(code: string) {
   if (!currentCharacter || !api) {
     showStatus('Load a character first', 'error');
+    return;
+  }
+
+  if (!craftAutoEnabled || craftAutoItemCode !== code) {
+    showStatus('Enable Auto before starting', 'info');
     return;
   }
 
@@ -2492,10 +2549,7 @@ async function toggleCraftAutomation(code: string) {
   craftAutomationToken += 1;
   updateAutomationControls();
 
-  if (craftModal.classList.contains('visible')) {
-    renderCraftModal(currentCharacter);
-  }
-
+  closeCraftModal();
   renderFightState(`Auto-craft started for ${code}.`, 'info');
   showStatus(`Auto-craft started for ${code}`, 'success');
 
@@ -3374,6 +3428,10 @@ craftModalBody.addEventListener('click', (event) => {
   }
   const code = button.dataset.code;
   if (code) {
+    if (craftAutoEnabled && craftAutoItemCode === code) {
+      startCraftAutomation(code);
+      return;
+    }
     const container = button.closest('.craft-item');
     const quantitySelect = container?.querySelector('.craft-qty') as HTMLSelectElement | null;
     const rawQuantity = quantitySelect?.value ? Number.parseInt(quantitySelect.value, 10) : 1;

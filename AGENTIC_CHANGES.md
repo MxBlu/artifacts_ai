@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-12 16:03] - Delay auto-craft start
+
+### Changed
+- File: `src/main.ts`
+  - Auto toggle now only prepares bank-aware quantities
+  - Craft button starts the auto-craft loop when auto is enabled
+
 ## [2026-02-12 16:00] - Add bank-backed craft automation
 
 ### Changed
