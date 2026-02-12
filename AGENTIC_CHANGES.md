@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-12 10:45] - Show bank item total
+
+### Changed
+- File: `src/main.ts`
+  - Display total bank item quantity under character info
+
 ## [2026-02-12 10:30] - Toast status positioning
 
 ### Changed

@@ -2467,6 +2467,13 @@ function updateCharacterInfo(character: Character) {
   
   html += `<div class="info-item"><span class="info-label">Gold:</span> <span class="info-value">${character.gold.toLocaleString()}</span></div>`;
   html += `<div class="info-item"><span class="info-label">HP:</span> <span class="info-value">${character.hp} / ${character.max_hp}</span></div>`;
+
+  if (bankDetails) {
+    const bankTotal = bankItems.reduce((total, entry) => total + entry.quantity, 0);
+    html += `<div class="info-item"><span class="info-label">Bank Items:</span> <span class="info-value">${bankTotal.toLocaleString()}</span></div>`;
+  } else {
+    html += '<div class="info-item"><span class="info-label">Bank Items:</span> <span class="info-value">Unknown</span></div>';
+  }
   
   // Cooldown badge if active
   if (isOnCooldown(character)) {
