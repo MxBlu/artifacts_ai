@@ -439,7 +439,9 @@ function renderCraftModal(character: Character) {
       const inventoryMap = buildInventoryQuantityMap(character);
       const bankMap = buildBankQuantityMap(bankItems);
       const combinedMap = mergeQuantityMaps(inventoryMap, bankMap);
-      const missingRequirements = getMissingCraftRequirements(item, combinedMap);
+      const missingRequirements = craftAutoEnabled && bankDetails
+        ? getMissingCraftRequirements(item, bankMap)
+        : getMissingCraftRequirements(item, combinedMap);
       const ingredients = item.craft?.items?.length
         ? item.craft?.items.map(req => {
             const missing = missingRequirements.find(entry => entry.code === req.code)?.missing || 0;

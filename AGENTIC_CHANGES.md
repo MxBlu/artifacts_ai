@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 14:41] - Show bank-missing gather markers
+
+### Changed
+- File: `src/main.ts`
+  - Mark `(g)` in craft requirements based on bank quantities when auto is enabled
+
 ## [2026-02-13 14:36] - Allow switching auto craft target
 
 ### Changed
