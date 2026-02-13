@@ -423,6 +423,30 @@
       color: #ffe8d6;
     }
 
+    .map-cell .transition-icon {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      width: 38%;
+      height: 22%;
+      min-width: 18px;
+      min-height: 14px;
+      max-width: 60px;
+      max-height: 24px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: bold;
+      z-index: 2;
+      pointer-events: none;
+      text-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+      background: rgba(20, 70, 86, 0.9);
+      border: 1px solid #00d9ff;
+      color: #b7f3ff;
+    }
+
     .map-cell img {
       image-rendering: pixelated;
       image-rendering: crisp-edges;
@@ -1450,6 +1474,7 @@
           <label><input type="checkbox" id="toggleAlchemyLabels" checked>Fields</label>
           <label><input type="checkbox" id="toggleNpcLabels" checked>NPCs</label>
           <label><input type="checkbox" id="toggleTaskLabels" checked>Tasks</label>
+          <label><input type="checkbox" id="toggleTransitionLabels" checked>Transitions</label>
         </div>
       </div>
 
@@ -1500,6 +1525,9 @@
     <div id="contextMenu" class="context-menu">
       <div id="moveMenuItem" class="context-menu-item">
         <span class="context-menu-label">Move Here</span>
+      </div>
+      <div id="transitionMenuItem" class="context-menu-item">
+        <span class="context-menu-label">Use Transition</span>
       </div>
       <div id="fightMenuItem" class="context-menu-item">
         <span class="context-menu-label">Fight Monster</span>

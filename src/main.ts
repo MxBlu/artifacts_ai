@@ -19,6 +19,7 @@ const toggleMiningLabels = document.getElementById('toggleMiningLabels') as HTML
 const toggleAlchemyLabels = document.getElementById('toggleAlchemyLabels') as HTMLInputElement;
 const toggleNpcLabels = document.getElementById('toggleNpcLabels') as HTMLInputElement;
 const toggleTaskLabels = document.getElementById('toggleTaskLabels') as HTMLInputElement;
+const toggleTransitionLabels = document.getElementById('toggleTransitionLabels') as HTMLInputElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
 const fightInfo = document.getElementById('fightInfo') as HTMLDivElement;
@@ -42,6 +43,7 @@ const miningLoopSlot = document.getElementById('miningLoopSlot') as HTMLSpanElem
 const fishLoopBtn = document.getElementById('fishLoopBtn') as HTMLButtonElement;
 const fishLoopSlot = document.getElementById('fishLoopSlot') as HTMLSpanElement;
 const craftMenuItem = document.getElementById('craftMenuItem') as HTMLDivElement;
+const transitionMenuItem = document.getElementById('transitionMenuItem') as HTMLDivElement;
 const npcMenuItem = document.getElementById('npcMenuItem') as HTMLDivElement;
 const taskMenuItem = document.getElementById('taskMenuItem') as HTMLDivElement;
 const bankMenuItem = document.getElementById('bankMenuItem') as HTMLDivElement;
@@ -75,6 +77,8 @@ let pendingFishingTimeout: number | null = null;
 let pendingFishingTarget: MapTile | null = null;
 let pendingMiningTimeout: number | null = null;
 let pendingMiningTarget: MapTile | null = null;
+let pendingTransitionTimeout: number | null = null;
+let pendingTransitionTarget: MapTile | null = null;
 let activeMonsterRequestId = 0;
 const monsterCache = new Map<string, Monster>();
 const monsterRequests = new Set<string>();
@@ -2723,6 +2727,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
     moveMenuItem.classList.remove('disabled');
   }
 
+  const hasTransition = !!tile.interactions.transition;
+  transitionMenuItem.style.display = hasTransition ? 'flex' : 'none';
+
+  if (hasTransition) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+      transitionMenuItem.classList.add('disabled');
+    } else {
+      transitionMenuItem.classList.remove('disabled');
+    }
+  }
+
   const hasMonster = isMonsterTile(tile);
   fightMenuItem.style.display = hasMonster ? 'flex' : 'none';
 
@@ -3092,6 +3107,71 @@ function scheduleFishingAfterCooldown(tile: MapTile) {
   }, delayMs);
 }
 
+function scheduleTransitionAfterCooldown(tile: MapTile) {
+  if (!currentCharacter || !api) return;
+  if (pendingTransitionTimeout) {
+    clearTimeout(pendingTransitionTimeout);
+    pendingTransitionTimeout = null;
+  }
+
+  pendingTransitionTarget = tile;
+
+  const delayMs = Math.max(getRemainingCooldownMs(currentCharacter), 0);
+  showStatus(`Waiting ${Math.ceil(delayMs / 1000)}s to use transition...`, 'info');
+
+  pendingTransitionTimeout = window.setTimeout(() => {
+    pendingTransitionTimeout = null;
+    if (pendingTransitionTarget) {
+      handleTransitionAfterMove(pendingTransitionTarget);
+    }
+  }, delayMs);
+}
+
+async function handleTransitionAfterMove(tile: MapTile) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleTransitionAfterCooldown(tile);
+    return;
+  }
+
+  if (!tile.interactions.transition) {
+    showStatus('No transition on this tile', 'error');
+    return;
+  }
+
+  try {
+    showStatus('Using transition...', 'info');
+    const transitionData = await api.transitionCharacter(currentCharacter.name);
+    currentCharacter = transitionData.character;
+    setCooldownFromResponse(transitionData.cooldown, 'transition');
+
+    try {
+      currentMap = await api.getMapsByLayer(currentCharacter.layer);
+      renderMap(currentMap, currentCharacter);
+    } catch (mapError) {
+      console.error('Transition map load error:', mapError);
+      showStatus('Transitioned, but failed to load new map layer', 'error');
+    }
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+
+    const cooldown = transitionData.cooldown.total_seconds;
+    const destination = transitionData.destination;
+    showStatus(
+      `Transitioned to (${destination.x}, ${destination.y}) on ${destination.layer}. Cooldown: ${cooldown}s`,
+      'success'
+    );
+  } catch (error: any) {
+    console.error('Transition error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Transition failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 async function handleFishingAfterMove(tile: MapTile) {
   if (!currentCharacter || !api) {
     return;
@@ -3324,6 +3404,51 @@ async function handleMiningAction() {
   }
 
   handleMiningAfterMove(tile);
+}
+
+async function handleTransitionAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    scheduleTransitionAfterCooldown(contextMenuTarget.tile);
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+
+  if (!tile.interactions.transition) {
+    showStatus('No transition on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      setCooldownFromResponse(moveData.cooldown, 'move');
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        scheduleTransitionAfterCooldown(tile);
+        return;
+      }
+    } catch (error: any) {
+      console.error('Move before transition error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  handleTransitionAfterMove(tile);
 }
 
 async function handleCraftAction() {
@@ -4251,6 +4376,13 @@ function renderMap(maps: MapTile[], character: Character | null) {
           taskIcon.textContent = 'Task';
           cell.appendChild(taskIcon);
         }
+
+        if (toggleTransitionLabels.checked && tile.interactions.transition) {
+          const transitionIcon = document.createElement('div');
+          transitionIcon.className = 'transition-icon';
+          transitionIcon.textContent = 'Trans';
+          cell.appendChild(transitionIcon);
+        }
         
         // Check if character is at this location
         if (character && character.x === x && character.y === y) {
@@ -4632,6 +4764,10 @@ toggleTaskLabels.addEventListener('change', () => {
   renderMap(currentMap, currentCharacter);
 });
 
+toggleTransitionLabels.addEventListener('change', () => {
+  renderMap(currentMap, currentCharacter);
+});
+
 // Allow Enter key to trigger load
 characterNameInput.addEventListener('keypress', (e) => {
   if (e.key === 'Enter') {
@@ -4648,6 +4784,12 @@ apiTokenInput.addEventListener('keypress', (e) => {
 moveMenuItem.addEventListener('click', () => {
   if (!moveMenuItem.classList.contains('disabled')) {
     handleMoveAction();
+  }
+});
+
+transitionMenuItem.addEventListener('click', () => {
+  if (!transitionMenuItem.classList.contains('disabled')) {
+    handleTransitionAction();
   }
 });
 

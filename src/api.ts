@@ -73,6 +73,29 @@ export interface MovementResponse {
   data: MovementData;
 }
 
+export interface CharacterTransitionData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  destination: {
+    map_id: number;
+    x: number;
+    y: number;
+    layer: string;
+    skin?: string;
+  };
+  transition: TransitionSchema;
+  character: Character;
+}
+
+export interface CharacterTransitionResponse {
+  data: CharacterTransitionData;
+}
+
 export interface FightData {
   cooldown: {
     total_seconds: number;
@@ -571,6 +594,13 @@ export class ArtifactsAPI {
     const response = await this.client.post<MovementResponse>(
       `/my/${characterName}/action/move`,
       { x, y }
+    );
+    return response.data.data;
+  }
+
+  async transitionCharacter(characterName: string): Promise<CharacterTransitionData> {
+    const response = await this.client.post<CharacterTransitionResponse>(
+      `/my/${characterName}/action/transition`
     );
     return response.data.data;
   }

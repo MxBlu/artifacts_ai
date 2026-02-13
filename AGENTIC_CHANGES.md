@@ -1,5 +1,16 @@
 # Agentic Changes Log
 
+## [2026-02-13 22:27] - Add transition tile support
+
+### Changed
+- File: `index.html`
+  - Added transition label toggle, icon styling, and context menu entry
+- File: `src/api.ts`
+  - Added transition response types and API helper
+- File: `src/main.ts`
+  - Added transition label toggle, map icon rendering, and context menu action
+  - Added transition move/trigger flow with cooldown handling and map reload
+
 ## [2026-02-13 17:18] - Add task master map labels
 
 ### Changed
