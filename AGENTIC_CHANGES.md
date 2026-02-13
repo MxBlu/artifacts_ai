@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-13 15:26] - Add nested crafting automation
+
+### Changed
+- File: `src/main.ts`
+  - Auto-craft now resolves nested crafting steps and gathers base materials as needed
+  - Craft requirements show `(c)` for nested crafting and `(g)` when gathering is required
+
 ## [2026-02-13 15:08] - Fix auto craft item lookups
 
 ### Changed
