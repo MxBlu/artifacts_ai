@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 12:10] - Stream skill log output
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Write `SKILL_XP_LOG.md` incrementally during the run
+
 ## [2026-02-13 12:02] - Add cooldown gating and progress tracking
 
 ### Changed

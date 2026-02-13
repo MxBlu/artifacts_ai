@@ -3,4 +3,5 @@ dist/
 .env
 *.log
 
+skill_research_progress.json
 auth_headers.txt

@@ -419,7 +419,14 @@ function formatItems(items?: Array<{ code: string; quantity: number }>): string 
   return items.map(item => `${item.code} x${item.quantity}`).join(', ');
 }
 
-function appendLog(entries: ActionLog[], headerInfo: string): void {
+function ensureLogFile(): void {
+  if (!fs.existsSync(LOG_FILE)) {
+    fs.writeFileSync(LOG_FILE, '# Skill XP Research Log\n', 'utf8');
+  }
+}
+
+function initLogRun(headerInfo: string): void {
+  ensureLogFile();
   const lines: string[] = [];
   lines.push(`\n## ${new Date().toISOString()} - Skill XP Research`);
   lines.push('');
@@ -427,15 +434,12 @@ function appendLog(entries: ActionLog[], headerInfo: string): void {
   lines.push('');
   lines.push('| Time | Action | Skill | Target | XP | Cooldown | Items | Location |');
   lines.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
-  entries.forEach(entry => {
-    lines.push(`| ${entry.time} | ${entry.action} | ${entry.skill} | ${entry.target} | ${entry.xp ?? '-'} | ${entry.cooldown ?? '-'} | ${entry.items} | ${entry.location} |`);
-  });
-
-  if (!fs.existsSync(LOG_FILE)) {
-    fs.writeFileSync(LOG_FILE, '# Skill XP Research Log\n', 'utf8');
-  }
-
   fs.appendFileSync(LOG_FILE, lines.join('\n') + '\n', 'utf8');
+}
+
+function appendLogEntry(entry: ActionLog): void {
+  const line = `| ${entry.time} | ${entry.action} | ${entry.skill} | ${entry.target} | ${entry.xp ?? '-'} | ${entry.cooldown ?? '-'} | ${entry.items} | ${entry.location} |`;
+  fs.appendFileSync(LOG_FILE, line + '\n', 'utf8');
 }
 
 function getWorkshopSkill(code: string): string | null {
@@ -527,6 +531,7 @@ async function gatherResourceSamples(
         items: formatItems(details.items),
         location: `${node.layer} (${node.x},${node.y})`
       });
+      appendLogEntry(logs[logs.length - 1]);
       character = response.data.character;
       await waitForCooldown(response.data.cooldown);
     }
@@ -591,6 +596,7 @@ async function gatherForItem(
       items: formatItems(details.items),
       location: `${node.layer} (${node.x},${node.y})`
     });
+    appendLogEntry(logs[logs.length - 1]);
     character = response.data.character;
     const collected = details.items?.find(item => item.code === itemCode)?.quantity || 0;
     remaining -= collected;
@@ -646,6 +652,7 @@ async function fightForItem(
       items: formatItems(items),
       location: `${node.layer} (${node.x},${node.y})`
     });
+    appendLogEntry(logs[logs.length - 1]);
     character = data?.characters?.[0] || data?.character || character;
     const collected = items.find((drop: any) => drop.code === itemCode)?.quantity || 0;
     remaining -= collected;
@@ -714,6 +721,7 @@ async function craftSamples(
         items: formatItems(details.items),
         location: `${workshopTile.layer} (${workshopTile.x},${workshopTile.y})`
       });
+      appendLogEntry(logs[logs.length - 1]);
       character = response.data.character;
       await waitForCooldown(response.data.cooldown);
     }
@@ -747,11 +755,11 @@ async function main(): Promise<void> {
   logStatus(`Loaded ${maps.length} map tiles, ${resources.length} resources, ${items.length} items, ${monsters.length} monsters.`);
   const logs: ActionLog[] = [];
 
+  const headerInfo = `Character: ${character.name} | Layer: ${character.layer} | Gather attempts: ${attemptsPerNode} | Craft targets per skill: ${craftTargets}`;
+  initLogRun(headerInfo);
+
   character = await gatherResourceSamples(client, characterName, character, maps, resources, attemptsPerNode, logs, progress);
   character = await craftSamples(client, characterName, character, maps, items, resources, monsters, craftTargets, logs);
-
-  const headerInfo = `Character: ${character.name} | Layer: ${character.layer} | Gather attempts: ${attemptsPerNode} | Craft targets per skill: ${craftTargets}`;
-  appendLog(logs, headerInfo);
 
   logStatus(`Logged ${logs.length} actions to SKILL_XP_LOG.md`);
 }
