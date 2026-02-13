@@ -78,6 +78,8 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - Rewards: gold + items + task coins
 - 6 task coins = 1 random reward from task rewards pool
 - Can cancel tasks for 1 task coin
+- Tasks Master actions: new task, complete, cancel, exchange coins, and trade items
+- Task lists: `/tasks/list` and `/tasks/rewards` list objectives and exchange rewards
 
 ### Cooldowns
 - **All actions have cooldowns** (returned in API response)

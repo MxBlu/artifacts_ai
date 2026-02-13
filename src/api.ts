@@ -192,6 +192,53 @@ export interface ItemsResponse {
   data: Item[];
 }
 
+export interface Rewards {
+  items: SimpleItem[];
+  gold: number;
+}
+
+export type TaskType = 'monsters' | 'items';
+
+export interface Task {
+  code: string;
+  type: TaskType;
+  total: number;
+  rewards: Rewards;
+}
+
+export interface TaskFull {
+  code: string;
+  level: number;
+  type: TaskType;
+  min_quantity: number;
+  max_quantity: number;
+  skill?: string | null;
+  rewards: Rewards;
+}
+
+export interface TaskPage {
+  data: TaskFull[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
+}
+
+export interface TaskReward {
+  code: string;
+  rate: number;
+  min_quantity: number;
+  max_quantity: number;
+}
+
+export interface TaskRewardsPage {
+  data: TaskReward[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
+}
+
 export interface NPCItem {
   code: string;
   npc: string;
@@ -380,6 +427,72 @@ export interface UseItemResponse {
   data: UseItemData;
 }
 
+export interface TaskData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  task: Task;
+  character: Character;
+}
+
+export interface TaskResponse {
+  data: TaskData;
+}
+
+export interface TaskCancelledData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  character: Character;
+}
+
+export interface TaskCancelledResponse {
+  data: TaskCancelledData;
+}
+
+export interface TaskTradeData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  trade: {
+    code: string;
+    quantity: number;
+  };
+  character: Character;
+}
+
+export interface TaskTradeResponse {
+  data: TaskTradeData;
+}
+
+export interface TaskRewardData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  rewards: Rewards;
+  character: Character;
+}
+
+export interface TaskRewardResponse {
+  data: TaskRewardData;
+}
+
 export interface NpcItemTransaction {
   code: string;
   quantity: number;
@@ -494,6 +607,70 @@ export class ArtifactsAPI {
     return response.data.data;
   }
 
+  async getTasks(params: {
+    min_level?: number;
+    max_level?: number;
+    skill?: string;
+    type?: TaskType;
+    page?: number;
+    size?: number;
+  } = {}): Promise<TaskPage> {
+    const response = await this.client.get<TaskPage>('/tasks/list', { params });
+    return response.data;
+  }
+
+  async getAllTasks(params: {
+    min_level?: number;
+    max_level?: number;
+    skill?: string;
+    type?: TaskType;
+  } = {}): Promise<TaskFull[]> {
+    const tasks: TaskFull[] = [];
+    let page = 1;
+    const size = 100;
+
+    while (true) {
+      const response = await this.getTasks({ ...params, page, size });
+      if (!response.data || response.data.length === 0) {
+        break;
+      }
+      tasks.push(...response.data);
+      if (response.data.length < size) {
+        break;
+      }
+      page += 1;
+    }
+
+    return tasks;
+  }
+
+  async getTaskRewards(page = 1, size = 100): Promise<TaskRewardsPage> {
+    const response = await this.client.get<TaskRewardsPage>('/tasks/rewards', {
+      params: { page, size }
+    });
+    return response.data;
+  }
+
+  async getAllTaskRewards(): Promise<TaskReward[]> {
+    const rewards: TaskReward[] = [];
+    let page = 1;
+    const size = 100;
+
+    while (true) {
+      const response = await this.getTaskRewards(page, size);
+      if (!response.data || response.data.length === 0) {
+        break;
+      }
+      rewards.push(...response.data);
+      if (response.data.length < size) {
+        break;
+      }
+      page += 1;
+    }
+
+    return rewards;
+  }
+
   async getNpcItems(code: string): Promise<NPCItem[]> {
     const response = await this.client.get<NPCItemsPage>(`/npcs/items/${code}`);
     return response.data.data;
@@ -570,6 +747,42 @@ export class ArtifactsAPI {
   async craftItem(characterName: string, code: string, quantity = 1): Promise<CraftingData> {
     const response = await this.client.post<CraftingResponse>(
       `/my/${characterName}/action/crafting`,
+      { code, quantity }
+    );
+    return response.data.data;
+  }
+
+  async acceptNewTask(characterName: string): Promise<TaskData> {
+    const response = await this.client.post<TaskResponse>(
+      `/my/${characterName}/action/task/new`
+    );
+    return response.data.data;
+  }
+
+  async completeTask(characterName: string): Promise<TaskRewardData> {
+    const response = await this.client.post<TaskRewardResponse>(
+      `/my/${characterName}/action/task/complete`
+    );
+    return response.data.data;
+  }
+
+  async exchangeTaskCoins(characterName: string): Promise<TaskRewardData> {
+    const response = await this.client.post<TaskRewardResponse>(
+      `/my/${characterName}/action/task/exchange`
+    );
+    return response.data.data;
+  }
+
+  async cancelTask(characterName: string): Promise<TaskCancelledData> {
+    const response = await this.client.post<TaskCancelledResponse>(
+      `/my/${characterName}/action/task/cancel`
+    );
+    return response.data.data;
+  }
+
+  async tradeTaskItems(characterName: string, code: string, quantity: number): Promise<TaskTradeData> {
+    const response = await this.client.post<TaskTradeResponse>(
+      `/my/${characterName}/action/task/trade`,
       { code, quantity }
     );
     return response.data.data;

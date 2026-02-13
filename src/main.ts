@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails, Resource, NPCItem } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails, Resource, NPCItem, TaskReward } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -42,6 +42,7 @@ const fishLoopBtn = document.getElementById('fishLoopBtn') as HTMLButtonElement;
 const fishLoopSlot = document.getElementById('fishLoopSlot') as HTMLSpanElement;
 const craftMenuItem = document.getElementById('craftMenuItem') as HTMLDivElement;
 const npcMenuItem = document.getElementById('npcMenuItem') as HTMLDivElement;
+const taskMenuItem = document.getElementById('taskMenuItem') as HTMLDivElement;
 const bankMenuItem = document.getElementById('bankMenuItem') as HTMLDivElement;
 const craftModal = document.getElementById('craftModal') as HTMLDivElement;
 const craftModalTitle = document.getElementById('craftModalTitle') as HTMLSpanElement;
@@ -55,6 +56,10 @@ const npcModal = document.getElementById('npcModal') as HTMLDivElement;
 const npcModalTitle = document.getElementById('npcModalTitle') as HTMLSpanElement;
 const npcModalBody = document.getElementById('npcModalBody') as HTMLDivElement;
 const npcModalClose = document.getElementById('npcModalClose') as HTMLButtonElement;
+const taskModal = document.getElementById('taskModal') as HTMLDivElement;
+const taskModalTitle = document.getElementById('taskModalTitle') as HTMLSpanElement;
+const taskModalBody = document.getElementById('taskModalBody') as HTMLDivElement;
+const taskModalClose = document.getElementById('taskModalClose') as HTMLButtonElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -80,6 +85,8 @@ const resourceDropCache = new Map<string, Resource[]>();
 const resourceDropLoading = new Map<string, Promise<Resource[]>>();
 let allItemsCache: Item[] | null = null;
 let allItemsLoading: Promise<Item[]> | null = null;
+let taskRewardsCache: TaskReward[] | null = null;
+let taskRewardsLoading: Promise<TaskReward[]> | null = null;
 let fightAutomationToken = 0;
 let fightAutomationActive = false;
 let fightAutomationTarget: MapTile | null = null;
@@ -111,6 +118,7 @@ let bankDetails: BankDetails | null = null;
 let bankItems: SimpleItem[] = [];
 let craftModalState: { skill: string; workshopCode: string; items: Item[] } | null = null;
 let npcModalState: { npcCode: string; items: NPCItem[] } | null = null;
+let taskModalState: { tile: MapTile } | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -489,6 +497,25 @@ async function ensureAllItems(): Promise<Item[]> {
   return items;
 }
 
+async function ensureTaskRewardsLoaded(): Promise<TaskReward[]> {
+  if (taskRewardsCache) {
+    return taskRewardsCache;
+  }
+
+  if (!taskRewardsLoading && api) {
+    taskRewardsLoading = api.getAllTaskRewards();
+  }
+
+  if (!taskRewardsLoading) {
+    return [];
+  }
+
+  const rewards = await taskRewardsLoading;
+  taskRewardsCache = rewards;
+  taskRewardsLoading = null;
+  return rewards;
+}
+
 async function ensureBankItemsLoaded(): Promise<boolean> {
   if (!api || !currentCharacter) {
     return false;
@@ -705,6 +732,89 @@ function renderNpcModal(character: Character) {
   `;
 
   npcModal.classList.add('visible');
+}
+
+function openTaskModal(tile: MapTile, character: Character) {
+  taskModalState = { tile };
+  renderTaskModal(character);
+}
+
+function closeTaskModal() {
+  taskModal.classList.remove('visible');
+}
+
+function renderTaskModal(character: Character) {
+  const rewards = taskRewardsCache || [];
+  const hasTask = !!character.task;
+  const taskProgress = character.task_progress || 0;
+  const taskTotal = character.task_total || 0;
+  const taskPercent = hasTask && taskTotal > 0
+    ? Math.min(100, (taskProgress / taskTotal) * 100)
+    : 0;
+  const isCoolingDown = isOnCooldown(character);
+  const canComplete = hasTask && taskTotal > 0 && taskProgress >= taskTotal && !isCoolingDown;
+  const canCancel = hasTask && !isCoolingDown;
+  const canStart = !hasTask && !isCoolingDown;
+  const canExchange = !isCoolingDown;
+
+  taskModalTitle.textContent = 'Tasks Master';
+
+  const currentTaskHtml = hasTask
+    ? `
+      <div class="task-grid">
+        <div><span class="info-label">Objective:</span> <span class="info-value">${escapeHtml(character.task)}</span></div>
+        <div><span class="info-label">Type:</span> <span class="info-value">${escapeHtml(character.task_type || 'Unknown')}</span></div>
+        <div><span class="info-label">Progress:</span> <span class="info-value">${taskProgress} / ${taskTotal}</span></div>
+      </div>
+      <div class="progress-bar" style="margin-top: 6px;"><div class="progress-fill" style="width: ${taskPercent}%;"></div></div>
+    `
+    : '<div class="fight-empty">No active task</div>';
+
+  const rewardsHtml = rewards.length
+    ? rewards.map(reward => {
+        const itemDetails = itemCache.get(reward.code);
+        const name = itemDetails ? `${itemDetails.name} (${reward.code})` : reward.code;
+        const qtyLabel = reward.min_quantity === reward.max_quantity
+          ? `${reward.min_quantity}`
+          : `${reward.min_quantity}-${reward.max_quantity}`;
+        return `
+          <div class="task-reward">
+            <span>${escapeHtml(name)}</span>
+            <span>${qtyLabel} @ 1/${reward.rate}</span>
+          </div>
+        `;
+      }).join('')
+    : '<div class="fight-empty">No rewards loaded</div>';
+
+  taskModalBody.innerHTML = `
+    <div class="task-section">
+      <h4>Current Task</h4>
+      ${currentTaskHtml}
+    </div>
+    <div class="task-section">
+      <h4>Actions</h4>
+      <div class="task-actions">
+        <button class="task-btn" data-action="new" ${canStart ? '' : 'disabled'}>New Task</button>
+        <button class="task-btn secondary" data-action="complete" ${canComplete ? '' : 'disabled'}>Complete Task</button>
+        <button class="task-btn warn" data-action="cancel" ${canCancel ? '' : 'disabled'}>Cancel Task</button>
+        <button class="task-btn" data-action="exchange" ${canExchange ? '' : 'disabled'}>Exchange 6 Coins</button>
+      </div>
+    </div>
+    <div class="task-section">
+      <h4>Trade Items</h4>
+      <div class="task-actions">
+        <input id="taskTradeCode" class="task-input" type="text" placeholder="Item code" />
+        <input id="taskTradeQty" class="task-input" type="number" min="1" value="1" />
+        <button class="task-btn secondary" data-action="trade" ${isCoolingDown ? 'disabled' : ''}>Trade</button>
+      </div>
+    </div>
+    <div class="task-section">
+      <h4>Exchange Rewards</h4>
+      ${rewardsHtml}
+    </div>
+  `;
+
+  taskModal.classList.add('visible');
 }
 
 function renderBankModal(details: BankDetails, items: SimpleItem[], character: Character) {
@@ -952,6 +1062,15 @@ function isBankTile(tile: MapTile): boolean {
   if (type === 'bank') return true;
   if (content.code && content.code.toLowerCase().includes('bank')) return true;
   return false;
+}
+
+function isTasksMasterTile(tile: MapTile): boolean {
+  const content = tile.interactions.content;
+  if (!content) return false;
+  const type = content.type?.toLowerCase();
+  if (type === 'tasks_master') return true;
+  const code = content.code?.toLowerCase() || '';
+  return code.includes('tasks_master') || code.includes('task_master');
 }
 
 function isNpcNode(tile: MapTile): boolean {
@@ -2669,6 +2788,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
     }
   }
 
+  const isTasksMaster = isTasksMasterTile(tile);
+  taskMenuItem.style.display = isTasksMaster ? 'flex' : 'none';
+
+  if (isTasksMaster) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+      taskMenuItem.classList.add('disabled');
+    } else {
+      taskMenuItem.classList.remove('disabled');
+    }
+  }
+
   const content = tile.interactions.content;
   if (content && content.type?.toLowerCase() === 'resource') {
     ensureResourceDetails(content.code).then(() => {
@@ -3362,6 +3492,221 @@ async function handleNpcSellItem(code: string, quantity: number) {
   } catch (error: any) {
     console.error('NPC sell error:', error);
     const message = error.response?.data?.error?.message || error.message || 'Sell failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleTaskAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+  if (!isTasksMasterTile(tile)) {
+    showStatus('No Tasks Master on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      setCooldownFromResponse(moveData.cooldown, 'move');
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+    } catch (error: any) {
+      console.error('Move before tasks error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  taskModalBody.innerHTML = '<div class="fight-empty">Loading tasks...</div>';
+  taskModal.classList.add('visible');
+  taskModalState = { tile };
+
+  try {
+    showStatus('Loading task rewards...', 'info');
+    await ensureTaskRewardsLoaded();
+    renderTaskModal(currentCharacter);
+  } catch (error: any) {
+    console.error('Task rewards load error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Failed to load task rewards';
+    showStatus(`Error: ${message}`, 'error');
+    taskModalBody.innerHTML = `<div class="fight-empty">${escapeHtml(message)}</div>`;
+  }
+}
+
+function formatRewardSummary(rewards: { items: SimpleItem[]; gold: number }): string {
+  const parts: string[] = [];
+  if (rewards.gold) {
+    parts.push(`${rewards.gold} gold`);
+  }
+  if (rewards.items && rewards.items.length > 0) {
+    const itemLabel = rewards.items.map(item => `${item.code} x${item.quantity}`).join(', ');
+    parts.push(itemLabel);
+  }
+  return parts.length ? parts.join(' · ') : 'No rewards';
+}
+
+async function handleTaskNew() {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus('Requesting new task...', 'info');
+    const result = await api.acceptNewTask(currentCharacter.name);
+    currentCharacter = result.character;
+    setCooldownFromResponse(result.cooldown, 'task new');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderTaskModal(currentCharacter);
+
+    showStatus(`New task: ${result.task.code} (${result.task.total})`, 'success');
+  } catch (error: any) {
+    console.error('Task new error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Task request failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleTaskComplete() {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus('Completing task...', 'info');
+    const result = await api.completeTask(currentCharacter.name);
+    currentCharacter = result.character;
+    setCooldownFromResponse(result.cooldown, 'task complete');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderTaskModal(currentCharacter);
+
+    showStatus(`Task completed. Rewards: ${formatRewardSummary(result.rewards)}`, 'success');
+  } catch (error: any) {
+    console.error('Task complete error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Task complete failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleTaskCancel() {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus('Cancelling task...', 'info');
+    const result = await api.cancelTask(currentCharacter.name);
+    currentCharacter = result.character;
+    setCooldownFromResponse(result.cooldown, 'task cancel');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderTaskModal(currentCharacter);
+
+    showStatus('Task cancelled.', 'success');
+  } catch (error: any) {
+    console.error('Task cancel error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Task cancel failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleTaskExchange() {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus('Exchanging task coins...', 'info');
+    const result = await api.exchangeTaskCoins(currentCharacter.name);
+    currentCharacter = result.character;
+    setCooldownFromResponse(result.cooldown, 'task exchange');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderTaskModal(currentCharacter);
+
+    showStatus(`Exchanged coins. Rewards: ${formatRewardSummary(result.rewards)}`, 'success');
+  } catch (error: any) {
+    console.error('Task exchange error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Task exchange failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleTaskTrade(code: string, quantity: number) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (!code || quantity <= 0) {
+    showStatus('Enter item code and quantity', 'error');
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Trading ${code} x${quantity}...`, 'info');
+    const result = await api.tradeTaskItems(currentCharacter.name, code, quantity);
+    currentCharacter = result.character;
+    setCooldownFromResponse(result.cooldown, 'task trade');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderTaskModal(currentCharacter);
+
+    showStatus(`Traded ${result.trade.code} x${result.trade.quantity}.`, 'success');
+  } catch (error: any) {
+    console.error('Task trade error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Task trade failed';
     showStatus(`Error: ${message}`, 'error');
   }
 }
@@ -4393,6 +4738,11 @@ npcMenuItem.addEventListener('click', () => {
     handleNpcAction();
   }
 });
+taskMenuItem.addEventListener('click', () => {
+  if (!taskMenuItem.classList.contains('disabled')) {
+    handleTaskAction();
+  }
+});
 bankMenuItem.addEventListener('click', () => {
   if (!bankMenuItem.classList.contains('disabled')) {
     handleBankAction();
@@ -4425,6 +4775,12 @@ npcModalClose.addEventListener('click', closeNpcModal);
 npcModal.addEventListener('click', (event) => {
   if (event.target === npcModal) {
     closeNpcModal();
+  }
+});
+taskModalClose.addEventListener('click', closeTaskModal);
+taskModal.addEventListener('click', (event) => {
+  if (event.target === taskModal) {
+    closeTaskModal();
   }
 });
 
@@ -4556,6 +4912,48 @@ npcModalBody.addEventListener('click', (event) => {
 
   if (action === 'sell') {
     handleNpcSellItem(code, quantity);
+  }
+});
+
+taskModalBody.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement;
+  const button = target.closest('.task-btn') as HTMLButtonElement | null;
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.action;
+  if (!action) {
+    return;
+  }
+
+  if (action === 'new') {
+    handleTaskNew();
+    return;
+  }
+
+  if (action === 'complete') {
+    handleTaskComplete();
+    return;
+  }
+
+  if (action === 'cancel') {
+    handleTaskCancel();
+    return;
+  }
+
+  if (action === 'exchange') {
+    handleTaskExchange();
+    return;
+  }
+
+  if (action === 'trade') {
+    const codeInput = taskModalBody.querySelector('#taskTradeCode') as HTMLInputElement | null;
+    const qtyInput = taskModalBody.querySelector('#taskTradeQty') as HTMLInputElement | null;
+    const code = codeInput?.value?.trim() || '';
+    const rawQuantity = qtyInput?.value ? Number.parseInt(qtyInput.value, 10) : 0;
+    const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 0;
+    handleTaskTrade(code, quantity);
   }
 });
 

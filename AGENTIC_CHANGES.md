@@ -1,5 +1,19 @@
 # Agentic Changes Log
 
+## [2026-02-13 16:58] - Add tasks master support
+
+### Changed
+- File: `src/api.ts`
+  - Added task schemas, reward listings, and task master action helpers
+- File: `src/main.ts`
+  - Added tasks master modal with task actions and reward list
+  - Added context menu action for tasks master tiles
+- File: `index.html`
+  - Added tasks master modal markup and styling
+  - Added tasks menu item to the context menu
+- File: `GAME_KNOWLEDGE.md`
+  - Noted tasks master actions and task list endpoints
+
 ## [2026-02-13 16:32] - Add NPC trading support
 
 ### Changed
