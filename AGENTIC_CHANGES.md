@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 11:52] - Handle already-at-destination errors
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Treat 490 errors as no-op moves and refresh character state
+
 ## [2026-02-13 11:46] - Add cooldown retry and progress logging
 
 ### Changed

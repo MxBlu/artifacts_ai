@@ -185,6 +185,11 @@ function isCooldownError(error: any): boolean {
   return code === 499;
 }
 
+function isAlreadyThereError(error: any): boolean {
+  const code = error?.response?.data?.error?.code;
+  return code === 490;
+}
+
 async function withCooldownRetry<T>(
   label: string,
   characterName: string,
@@ -291,11 +296,20 @@ async function getAllMonsters(client: AxiosInstance): Promise<Monster[]> {
 
 async function moveTo(client: AxiosInstance, name: string, x: number, y: number): Promise<Character> {
   logStatus(`Moving to (${x},${y})...`);
-  const response = await withCooldownRetry('move', name, client, () =>
-    client.post<MovementResponse>(`/my/${name}/action/move`, { x, y })
-  );
-  await waitForCooldown(response.data.data.cooldown);
-  return response.data.data.character;
+  try {
+    const response = await withCooldownRetry('move', name, client, () =>
+      client.post<MovementResponse>(`/my/${name}/action/move`, { x, y })
+    );
+    await waitForCooldown(response.data.data.cooldown);
+    return response.data.data.character;
+  } catch (error: any) {
+    if (isAlreadyThereError(error)) {
+      logStatus('Already at destination.');
+      const character = await getCharacter(client, name);
+      return character;
+    }
+    throw error;
+  }
 }
 
 async function gather(client: AxiosInstance, name: string): Promise<SkillResponse> {
