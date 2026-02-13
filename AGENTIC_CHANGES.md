@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 12:22] - Limit research to single actions
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Sample each action once and skip crafts without materials
+
 ## [2026-02-13 12:10] - Stream skill log output
 
 ### Changed

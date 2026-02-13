@@ -419,6 +419,21 @@ function formatItems(items?: Array<{ code: string; quantity: number }>): string 
   return items.map(item => `${item.code} x${item.quantity}`).join(', ');
 }
 
+function buildInventoryMap(character: Character): Map<string, number> {
+  const map = new Map<string, number>();
+  (character.inventory || []).forEach(entry => {
+    map.set(entry.code, (map.get(entry.code) || 0) + entry.quantity);
+  });
+  return map;
+}
+
+function hasCraftMaterials(item: Item, character: Character): boolean {
+  const requirements = item.craft?.items || [];
+  if (!requirements.length) return true;
+  const inventory = buildInventoryMap(character);
+  return requirements.every(req => (inventory.get(req.code) || 0) >= req.quantity);
+}
+
 function ensureLogFile(): void {
   if (!fs.existsSync(LOG_FILE)) {
     fs.writeFileSync(LOG_FILE, '# Skill XP Research Log\n', 'utf8');
@@ -572,7 +587,7 @@ async function gatherForItem(
   let remaining = quantity;
   character = await moveTo(client, characterName, node.x, node.y, character);
 
-  while (remaining > 0) {
+  if (remaining > 0) {
     if (isInventoryFull(character)) {
       const bankTile = maps.find(tile => tile.interactions?.content?.type === 'bank');
       if (!bankTile) {
@@ -624,40 +639,34 @@ async function fightForItem(
 
   logStatus(`Fighting ${monster.code} for ${itemCode} at ${node.layer} (${node.x},${node.y})...`);
   character = await moveTo(client, characterName, node.x, node.y, character);
-  let remaining = quantity;
-
-  while (remaining > 0) {
-    if (isInventoryFull(character)) {
-      const bankTile = maps.find(tile => tile.interactions?.content?.type === 'bank');
-      if (!bankTile) {
-        console.log('Inventory full and no bank on this layer.');
-        return character;
-      }
-      character = await moveTo(client, characterName, bankTile.x, bankTile.y, character);
-      character = await depositAllInventory(client, characterName, character);
-      character = await moveTo(client, characterName, node.x, node.y, character);
+  if (isInventoryFull(character)) {
+    const bankTile = maps.find(tile => tile.interactions?.content?.type === 'bank');
+    if (!bankTile) {
+      console.log('Inventory full and no bank on this layer.');
+      return character;
     }
-
-    const response = await fight(client, characterName, character);
-    const data = response.data;
-    const xp = data?.fight?.characters?.[0]?.xp ?? data?.fight?.xp ?? null;
-    const items = data?.fight?.drops || [];
-    logs.push({
-      time: new Date().toISOString(),
-      action: 'fight',
-      skill: 'combat',
-      target: monster.code,
-      xp,
-      cooldown: data?.cooldown?.total_seconds ?? data?.cooldown?.remaining_seconds ?? null,
-      items: formatItems(items),
-      location: `${node.layer} (${node.x},${node.y})`
-    });
-    appendLogEntry(logs[logs.length - 1]);
-    character = data?.characters?.[0] || data?.character || character;
-    const collected = items.find((drop: any) => drop.code === itemCode)?.quantity || 0;
-    remaining -= collected;
-    await waitForCooldown(data?.cooldown);
+    character = await moveTo(client, characterName, bankTile.x, bankTile.y, character);
+    character = await depositAllInventory(client, characterName, character);
+    character = await moveTo(client, characterName, node.x, node.y, character);
   }
+
+  const response = await fight(client, characterName, character);
+  const data = response.data;
+  const xp = data?.fight?.characters?.[0]?.xp ?? data?.fight?.xp ?? null;
+  const items = data?.fight?.drops || [];
+  logs.push({
+    time: new Date().toISOString(),
+    action: 'fight',
+    skill: 'combat',
+    target: monster.code,
+    xp,
+    cooldown: data?.cooldown?.total_seconds ?? data?.cooldown?.remaining_seconds ?? null,
+    items: formatItems(items),
+    location: `${node.layer} (${node.x},${node.y})`
+  });
+  appendLogEntry(logs[logs.length - 1]);
+  character = data?.characters?.[0] || data?.character || character;
+  await waitForCooldown(data?.cooldown);
 
   return character;
 }
@@ -693,18 +702,37 @@ async function craftSamples(
 
     for (const item of targets) {
       const requirements = item.craft?.items || [];
-      for (const requirement of requirements) {
-        const quantity = requirement.quantity;
-        if (resourceIndex.has(requirement.code)) {
-          character = await gatherForItem(client, characterName, character, maps, resourceIndex, requirement.code, quantity, logs);
-        } else {
-          const monster = findMonsterForDrop(monsters, requirement.code, minMonsterLevel, maxMonsterLevel);
-          if (monster) {
-            character = await fightForItem(client, characterName, character, maps, monster, requirement.code, quantity, logs);
+      let missingMaterials = false;
+
+      if (!hasCraftMaterials(item, character)) {
+        for (const requirement of requirements) {
+          const quantity = requirement.quantity;
+          const inventory = buildInventoryMap(character);
+          if ((inventory.get(requirement.code) || 0) >= quantity) {
+            continue;
+          }
+
+          if (resourceIndex.has(requirement.code)) {
+            character = await gatherForItem(client, characterName, character, maps, resourceIndex, requirement.code, quantity, logs);
           } else {
-            console.log(`No gatherable or fightable source for ${requirement.code} (needed for ${item.code}).`);
+            const monster = findMonsterForDrop(monsters, requirement.code, minMonsterLevel, maxMonsterLevel);
+            if (monster) {
+              character = await fightForItem(client, characterName, character, maps, monster, requirement.code, quantity, logs);
+            } else {
+              console.log(`No gatherable or fightable source for ${requirement.code} (needed for ${item.code}).`);
+              missingMaterials = true;
+            }
           }
         }
+
+        if (!hasCraftMaterials(item, character)) {
+          missingMaterials = true;
+        }
+      }
+
+      if (missingMaterials) {
+        logStatus(`Skipping craft ${item.code} due to missing materials.`);
+        continue;
       }
 
       logStatus(`Moving to workshop for ${skill} at ${workshopTile.layer} (${workshopTile.x},${workshopTile.y})...`);
@@ -732,8 +760,8 @@ async function craftSamples(
 
 async function main(): Promise<void> {
   const characterName = getEnv('CHARACTER_NAME', 'mxblue');
-  const attemptsPerNode = Number(process.env.GATHER_ATTEMPTS || 2);
-  const craftTargets = Number(process.env.CRAFT_TARGETS || 2);
+  const attemptsPerNode = 1;
+  const craftTargets = 1;
 
   const client = buildClient();
   const characters = await getMyCharacters(client);
