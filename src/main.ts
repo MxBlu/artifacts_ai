@@ -71,6 +71,8 @@ const itemCache = new Map<string, Item>();
 const itemRequests = new Set<string>();
 const resourceCache = new Map<string, Resource>();
 const resourceRequests = new Set<string>();
+const resourceDropCache = new Map<string, Resource[]>();
+const resourceDropLoading = new Map<string, Promise<Resource[]>>();
 let allItemsCache: Item[] | null = null;
 let allItemsLoading: Promise<Item[]> | null = null;
 let fightAutomationToken = 0;
@@ -84,7 +86,7 @@ let lastCooldownReason: string | null = null;
 let cooldownReadyAtMs: number | null = null;
 let gatherAutomationToken = 0;
 let gatherAutomationActive = false;
-let gatherAutomationMode: 'woodcutting' | 'fishing' | 'mining' | null = null;
+let gatherAutomationMode: 'woodcutting' | 'fishing' | 'mining' | 'alchemy' | null = null;
 let gatherAutomationTarget: MapTile | null = null;
 let gatherAutomationStartedAt: number | null = null;
 let gatherAutomationLabel: string | null = null;
@@ -275,6 +277,12 @@ function buildInventoryQuantityMap(character: Character): Map<string, number> {
   return inventoryMap;
 }
 
+function getInventoryQuantity(character: Character | null, code: string): number {
+  if (!character || !character.inventory) return 0;
+  const entry = character.inventory.find((item: any) => item?.code === code);
+  return entry?.quantity || 0;
+}
+
 function buildBankQuantityMap(items: SimpleItem[]): Map<string, number> {
   const bankMap = new Map<string, number>();
   items.forEach(entry => {
@@ -318,6 +326,15 @@ function getMaxCraftableWithBank(item: Item, character: Character): number {
   const bankMap = buildBankQuantityMap(bankItems);
   const combined = mergeQuantityMaps(inventoryMap, bankMap);
   return getMaxCraftableFromMap(item, combined);
+}
+
+function getMissingCraftRequirements(item: Item, quantities: Map<string, number>) {
+  const requirements = item.craft?.items || [];
+  return requirements.map(req => {
+    const available = quantities.get(req.code) || 0;
+    const missing = Math.max(0, req.quantity - available);
+    return { code: req.code, required: req.quantity, missing };
+  });
 }
 
 function getMaxCraftableFromBankWithCapacity(item: Item, items: SimpleItem[], capacity: number): number {
@@ -419,8 +436,16 @@ function renderCraftModal(character: Character) {
     craftModalBody.innerHTML = filtered.map(item => {
       const craftLevel = item.craft?.level || 0;
       const locked = craftLevel > skillLevel;
+      const inventoryMap = buildInventoryQuantityMap(character);
+      const bankMap = buildBankQuantityMap(bankItems);
+      const combinedMap = mergeQuantityMaps(inventoryMap, bankMap);
+      const missingRequirements = getMissingCraftRequirements(item, combinedMap);
       const ingredients = item.craft?.items?.length
-        ? item.craft?.items.map(req => `${req.code} x${req.quantity}`).join(', ')
+        ? item.craft?.items.map(req => {
+            const missing = missingRequirements.find(entry => entry.code === req.code)?.missing || 0;
+            const gatherLabel = craftAutoEnabled && bankDetails && missing > 0 ? ` x${req.quantity} (g)` : ` x${req.quantity}`;
+            return `${req.code}${gatherLabel}`;
+          }).join(', ')
         : 'None';
       const quantity = item.craft?.quantity || 1;
       const autoActive = craftAutoEnabled && craftAutoItemCode === item.code;
@@ -757,6 +782,86 @@ async function ensureResourceDetails(code: string) {
   }
 }
 
+function getGatherModeFromResource(resource: Resource): 'woodcutting' | 'mining' | 'fishing' | 'alchemy' | null {
+  switch (resource.skill) {
+    case 'woodcutting':
+      return 'woodcutting';
+    case 'mining':
+      return 'mining';
+    case 'fishing':
+      return 'fishing';
+    case 'alchemy':
+      return 'alchemy';
+    default:
+      return null;
+  }
+}
+
+async function getResourcesForDrop(dropCode: string): Promise<Resource[]> {
+  if (resourceDropCache.has(dropCode)) {
+    return resourceDropCache.get(dropCode) || [];
+  }
+
+  if (resourceDropLoading.has(dropCode)) {
+    return resourceDropLoading.get(dropCode) || [];
+  }
+
+  if (!api) {
+    return [];
+  }
+
+  const loadPromise = api.getAllResources({ drop: dropCode }).then(resources => {
+    resourceDropCache.set(dropCode, resources);
+    resourceDropLoading.delete(dropCode);
+    return resources;
+  }).catch(error => {
+    console.error('Resource drop lookup error:', error);
+    resourceDropLoading.delete(dropCode);
+    return [] as Resource[];
+  });
+
+  resourceDropLoading.set(dropCode, loadPromise);
+  return loadPromise;
+}
+
+async function findGatherTargetForDrop(dropCode: string, character: Character | null) {
+  const resources = await getResourcesForDrop(dropCode);
+  if (!resources.length || !character) {
+    return null;
+  }
+
+  const eligible = resources.filter(resource => getGatheringLevel(character, resource.skill) >= resource.level);
+  if (!eligible.length) {
+    return null;
+  }
+
+  const tiles = currentMap.filter(tile => {
+    const content = tile.interactions.content;
+    return content && content.type?.toLowerCase() === 'resource' && eligible.some(resource => resource.code === content.code);
+  });
+
+  if (!tiles.length) {
+    return null;
+  }
+
+  let bestTile = tiles[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+  if (!character) {
+    return { tile: bestTile, resource: eligible.find(res => res.code === bestTile.interactions.content?.code) || eligible[0] };
+  }
+
+  tiles.forEach(tile => {
+    const distance = Math.abs(character.x - tile.x) + Math.abs(character.y - tile.y);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestTile = tile;
+    }
+  });
+
+  const resource = eligible.find(res => res.code === bestTile.interactions.content?.code) || eligible[0];
+  return { tile: bestTile, resource };
+}
+
 function updateGatherMenuState(tile: MapTile) {
   const meetsRequirement = meetsResourceRequirement(tile, currentCharacter);
 
@@ -960,7 +1065,7 @@ async function runGatherAutomation(token: number) {
     const tile = gatherAutomationTarget;
 
     if (isInventoryFull(currentCharacter)) {
-      const deposited = await runAutoBankDeposit(token, tile);
+      const deposited = await runAutoBankDeposit(token, tile, 'gather');
       if (!deposited) {
         break;
       }
@@ -973,7 +1078,9 @@ async function runGatherAutomation(token: number) {
       ? isTreeResource(tile)
       : gatherAutomationMode === 'mining'
       ? isMiningNode(tile)
-      : isFishingSpot(tile);
+      : gatherAutomationMode === 'fishing'
+      ? isFishingSpot(tile)
+      : isAlchemyField(tile);
 
     if (!isValidTarget) {
       renderFightState('Auto-gather stopped: invalid target', 'error');
@@ -1013,7 +1120,9 @@ async function runGatherAutomation(token: number) {
         ? 'Gathering wood...'
         : gatherAutomationMode === 'mining'
         ? 'Mining...'
-        : 'Fishing...';
+        : gatherAutomationMode === 'fishing'
+        ? 'Fishing...'
+        : 'Gathering herbs...';
       renderFightState(`Auto-gather: ${actionLabel}`, 'info');
       showStatus(actionLabel, 'info');
       const gatherData = await api.gather(currentCharacter.name);
@@ -1115,7 +1224,10 @@ async function runCraftAutomation(token: number, item: Item) {
 
     const cycled = await runAutoCraftBankCycle(token, item, workshopTile);
     if (!cycled) {
-      break;
+      const gathered = await runAutoCraftGatherCycle(token, item, workshopTile);
+      if (!gathered) {
+        break;
+      }
     }
   }
 
@@ -1124,6 +1236,146 @@ async function runCraftAutomation(token: number, item: Item) {
   craftAutomationStartedAt = null;
   craftAutomationLabel = null;
   updateAutomationControls();
+}
+
+async function runAutoCraftGatherCycle(token: number, item: Item, returnTile: MapTile): Promise<boolean> {
+  if (!api || !currentCharacter) {
+    return false;
+  }
+
+  const capacity = currentCharacter.inventory_max_items || 0;
+  if (capacity <= 0) {
+    return false;
+  }
+
+  const inventoryMap = buildInventoryQuantityMap(currentCharacter);
+  const bankMap = buildBankQuantityMap(bankItems);
+  const combined = mergeQuantityMaps(inventoryMap, bankMap);
+  const missing = getMissingCraftRequirements(item, combined).filter(req => req.missing > 0);
+
+  if (!missing.length) {
+    return true;
+  }
+
+  const missingTarget = missing[0];
+  const target = await findGatherTargetForDrop(missingTarget.code, currentCharacter);
+  if (!target) {
+    renderFightState(`Auto-craft stopped: no gather target for ${missingTarget.code}`, 'info');
+    showStatus(`Auto-craft stopped: no gather target for ${missingTarget.code}`, 'info');
+    return false;
+  }
+
+  const gatherMode = getGatherModeFromResource(target.resource);
+  if (!gatherMode) {
+    renderFightState(`Auto-craft stopped: unsupported gather skill for ${missingTarget.code}`, 'info');
+    showStatus(`Auto-craft stopped: unsupported gather skill for ${missingTarget.code}`, 'info');
+    return false;
+  }
+
+  if (!isCharacterOnTile(currentCharacter, target.tile)) {
+    try {
+      renderFightState(`Auto-craft: moving to (${target.tile.x}, ${target.tile.y})...`, 'info');
+      showStatus(`Moving to (${target.tile.x}, ${target.tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, target.tile.x, target.tile.y);
+      currentCharacter = moveData.character;
+      setCooldownFromResponse(moveData.cooldown, 'move');
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Move complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-craft gather move error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      renderFightState(`Auto-craft stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  const requiredQuantity = missingTarget.missing;
+  if (requiredQuantity <= 0) {
+    return true;
+  }
+
+  while (craftAutomationActive && token === craftAutomationToken) {
+    if (!currentCharacter) {
+      return false;
+    }
+
+    if (isOnCooldown(currentCharacter)) {
+      await waitForCooldownReady(token, 'Cooldown active.');
+      if (token !== craftAutomationToken || !craftAutomationActive) {
+        return false;
+      }
+    }
+
+    if (isInventoryFull(currentCharacter)) {
+      const deposited = await runAutoBankDeposit(token, target.tile, 'craft');
+      if (!deposited) {
+        return false;
+      }
+      if (token !== craftAutomationToken || !craftAutomationActive) {
+        return false;
+      }
+    }
+
+    const gatheredSoFar = getInventoryQuantity(currentCharacter, missingTarget.code);
+    if (gatheredSoFar >= requiredQuantity) {
+      break;
+    }
+
+    try {
+      const remaining = requiredQuantity - gatheredSoFar;
+      renderFightState(`Auto-craft: gathering ${missingTarget.code} (${remaining} remaining)...`, 'info');
+      showStatus(`Gathering ${missingTarget.code}...`, 'info');
+      const gatherData = await api.gather(currentCharacter.name);
+      currentCharacter = gatherData.character;
+      setCooldownFromResponse(gatherData.cooldown, gatherMode);
+
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+    } catch (error: any) {
+      console.error('Auto-craft gather error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Gathering failed';
+      renderFightState(`Auto-craft stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  if (token !== craftAutomationToken || !craftAutomationActive) {
+    return false;
+  }
+
+  if (!isCharacterOnTile(currentCharacter, returnTile)) {
+    try {
+      renderFightState(`Auto-craft: returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
+      showStatus(`Returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, returnTile.x, returnTile.y);
+      currentCharacter = moveData.character;
+      setCooldownFromResponse(moveData.cooldown, 'move');
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+
+      if (isOnCooldown(currentCharacter)) {
+        await waitForCooldownReady(token, 'Return to workshop complete.');
+      }
+    } catch (error: any) {
+      console.error('Auto-craft return from gather error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      renderFightState(`Auto-craft stopped: ${message}`, 'error');
+      showStatus(`Error: ${message}`, 'error');
+      return false;
+    }
+  }
+
+  return true;
 }
 
 async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapTile): Promise<boolean> {
@@ -1205,8 +1457,6 @@ async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapT
   const capacity = currentCharacter.inventory_max_items || 0;
   const maxCrafts = getMaxCraftableFromBankWithCapacity(item, bankItems, capacity);
   if (maxCrafts <= 0) {
-    renderFightState('Auto-craft stopped: no ingredients in bank', 'info');
-    showStatus('Auto-craft stopped: no ingredients in bank', 'info');
     return false;
   }
 
@@ -1275,10 +1525,18 @@ async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapT
   return true;
 }
 
-async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<boolean> {
+async function runAutoBankDeposit(
+  token: number,
+  returnTile: MapTile,
+  context: 'gather' | 'craft' = 'gather'
+): Promise<boolean> {
   if (!api || !currentCharacter) {
     return false;
   }
+
+  const isActive = context === 'craft' ? craftAutomationActive : gatherAutomationActive;
+  const activeToken = context === 'craft' ? craftAutomationToken : gatherAutomationToken;
+  const label = context === 'craft' ? 'Auto-craft' : 'Auto-gather';
 
   const bankTile = getBankTile();
   if (!bankTile) {
@@ -1289,8 +1547,10 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
 
   if (!isCharacterOnTile(currentCharacter, bankTile)) {
     try {
-      renderFightState(`Auto-gather: moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
-      setAutomationStatus('Moving to bank');
+      renderFightState(`${label}: moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
+      if (context === 'gather') {
+        setAutomationStatus('Moving to bank');
+      }
       showStatus(`Moving to bank (${bankTile.x}, ${bankTile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, bankTile.x, bankTile.y);
       currentCharacter = moveData.character;
@@ -1304,15 +1564,15 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
         await waitForCooldownReady(token, 'Move to bank complete.');
       }
     } catch (error: any) {
-      console.error('Auto-gather bank move error:', error);
+      console.error(`${label} bank move error:`, error);
       const message = error.response?.data?.error?.message || error.message || 'Move failed';
-      renderFightState(`Auto-gather stopped: ${message}`, 'error');
+      renderFightState(`${label} stopped: ${message}`, 'error');
       showStatus(`Error: ${message}`, 'error');
       return false;
     }
   }
 
-  if (token !== gatherAutomationToken || !gatherAutomationActive) {
+  if (token !== activeToken || !isActive) {
     return false;
   }
 
@@ -1325,16 +1585,19 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
   }
 
   for (let i = 0; i < inventoryItems.length; i += 20) {
-    if (token !== gatherAutomationToken || !gatherAutomationActive) {
+    if (token !== activeToken || !isActive) {
       return false;
     }
 
     try {
-      setAutomationStatus('Depositing items');
+      if (context === 'gather') {
+        setAutomationStatus('Depositing items');
+      }
       showStatus('Depositing inventory items...', 'info');
       const chunk = inventoryItems.slice(i, i + 20);
       const result = await api.depositBankItems(currentCharacter.name, chunk);
       currentCharacter = result.character;
+      bankItems = result.bank;
       setCooldownFromResponse(result.cooldown, 'bank deposit');
 
       updateCharacterInfo(currentCharacter);
@@ -1344,22 +1607,24 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
         await waitForCooldownReady(token, 'Bank deposit complete.');
       }
     } catch (error: any) {
-      console.error('Auto-gather bank deposit error:', error);
+      console.error(`${label} bank deposit error:`, error);
       const message = error.response?.data?.error?.message || error.message || 'Deposit failed';
-      renderFightState(`Auto-gather stopped: ${message}`, 'error');
+      renderFightState(`${label} stopped: ${message}`, 'error');
       showStatus(`Error: ${message}`, 'error');
       return false;
     }
   }
 
-  if (token !== gatherAutomationToken || !gatherAutomationActive) {
+  if (token !== activeToken || !isActive) {
     return false;
   }
 
   if (!isCharacterOnTile(currentCharacter, returnTile)) {
     try {
-      renderFightState(`Auto-gather: returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
-      setAutomationStatus('Returning to resource');
+      renderFightState(`${label}: returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
+      if (context === 'gather') {
+        setAutomationStatus('Returning to resource');
+      }
       showStatus(`Returning to (${returnTile.x}, ${returnTile.y})...`, 'info');
       const moveData = await api.moveCharacter(currentCharacter.name, returnTile.x, returnTile.y);
       currentCharacter = moveData.character;
@@ -1373,9 +1638,9 @@ async function runAutoBankDeposit(token: number, returnTile: MapTile): Promise<b
         await waitForCooldownReady(token, 'Return to resource complete.');
       }
     } catch (error: any) {
-      console.error('Auto-gather return move error:', error);
+      console.error(`${label} return move error:`, error);
       const message = error.response?.data?.error?.message || error.message || 'Move failed';
-      renderFightState(`Auto-gather stopped: ${message}`, 'error');
+      renderFightState(`${label} stopped: ${message}`, 'error');
       showStatus(`Error: ${message}`, 'error');
       return false;
     }
@@ -1421,7 +1686,7 @@ function startFightAutomation(tile: MapTile) {
   runFightAutomation(fightAutomationToken);
 }
 
-function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing' | 'mining') {
+function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing' | 'mining' | 'alchemy') {
   if (!api || !currentCharacter) {
     showStatus('Load a character first', 'error');
     return;
@@ -1436,7 +1701,9 @@ function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing' | 
     ? isTreeResource(tile)
     : mode === 'mining'
     ? isMiningNode(tile)
-    : isFishingSpot(tile);
+    : mode === 'fishing'
+    ? isFishingSpot(tile)
+    : isAlchemyField(tile);
   if (!isValidTarget) {
     showStatus('No matching resource on this tile', 'error');
     return;
@@ -1453,7 +1720,9 @@ function startGatherAutomation(tile: MapTile, mode: 'woodcutting' | 'fishing' | 
     ? `Auto: Woodcutting ${resourceCode}`
     : mode === 'mining'
     ? `Auto: Mining ${resourceCode}`
-    : `Auto: Fishing ${resourceCode}`;
+    : mode === 'fishing'
+    ? `Auto: Fishing ${resourceCode}`
+    : `Auto: Gathering ${resourceCode}`;
 
   updateAutomationControls();
   renderFightState(`${gatherAutomationLabel} started.`, 'info');

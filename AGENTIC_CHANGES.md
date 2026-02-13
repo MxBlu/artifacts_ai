@@ -1,5 +1,13 @@
 # Agentic Changes Log
 
+## [2026-02-13 14:32] - Gather missing crafting materials
+
+### Changed
+- File: `src/main.ts`
+  - Auto-craft now gathers missing ingredient drops when the bank is short
+  - Craft modal marks gather-needed ingredients with `(g)` in the requirements list
+  - Expanded gather automation helpers to support alchemy resources and shared bank deposits
+
 ## [2026-02-13 13:20] - Record skill XP samples
 
 ### Changed
