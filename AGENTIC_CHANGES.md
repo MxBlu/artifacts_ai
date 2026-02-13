@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 12:33] - Automate crafting ingredient collection
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Gather and fight repeatedly to satisfy crafting ingredient requirements
+
 ## [2026-02-13 12:22] - Limit research to single actions
 
 ### Changed

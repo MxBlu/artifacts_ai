@@ -587,7 +587,7 @@ async function gatherForItem(
   let remaining = quantity;
   character = await moveTo(client, characterName, node.x, node.y, character);
 
-  if (remaining > 0) {
+  while (remaining > 0) {
     if (isInventoryFull(character)) {
       const bankTile = maps.find(tile => tile.interactions?.content?.type === 'bank');
       if (!bankTile) {
@@ -616,6 +616,9 @@ async function gatherForItem(
     const collected = details.items?.find(item => item.code === itemCode)?.quantity || 0;
     remaining -= collected;
     await waitForCooldown(response.data.cooldown);
+    if (remaining > 0 && collected === 0) {
+      logStatus(`No ${itemCode} drop detected, continuing gather attempts.`);
+    }
   }
 
   return character;
@@ -639,34 +642,43 @@ async function fightForItem(
 
   logStatus(`Fighting ${monster.code} for ${itemCode} at ${node.layer} (${node.x},${node.y})...`);
   character = await moveTo(client, characterName, node.x, node.y, character);
-  if (isInventoryFull(character)) {
-    const bankTile = maps.find(tile => tile.interactions?.content?.type === 'bank');
-    if (!bankTile) {
-      console.log('Inventory full and no bank on this layer.');
-      return character;
-    }
-    character = await moveTo(client, characterName, bankTile.x, bankTile.y, character);
-    character = await depositAllInventory(client, characterName, character);
-    character = await moveTo(client, characterName, node.x, node.y, character);
-  }
+  let remaining = quantity;
 
-  const response = await fight(client, characterName, character);
-  const data = response.data;
-  const xp = data?.fight?.characters?.[0]?.xp ?? data?.fight?.xp ?? null;
-  const items = data?.fight?.drops || [];
-  logs.push({
-    time: new Date().toISOString(),
-    action: 'fight',
-    skill: 'combat',
-    target: monster.code,
-    xp,
-    cooldown: data?.cooldown?.total_seconds ?? data?.cooldown?.remaining_seconds ?? null,
-    items: formatItems(items),
-    location: `${node.layer} (${node.x},${node.y})`
-  });
-  appendLogEntry(logs[logs.length - 1]);
-  character = data?.characters?.[0] || data?.character || character;
-  await waitForCooldown(data?.cooldown);
+  while (remaining > 0) {
+    if (isInventoryFull(character)) {
+      const bankTile = maps.find(tile => tile.interactions?.content?.type === 'bank');
+      if (!bankTile) {
+        console.log('Inventory full and no bank on this layer.');
+        return character;
+      }
+      character = await moveTo(client, characterName, bankTile.x, bankTile.y, character);
+      character = await depositAllInventory(client, characterName, character);
+      character = await moveTo(client, characterName, node.x, node.y, character);
+    }
+
+    const response = await fight(client, characterName, character);
+    const data = response.data;
+    const xp = data?.fight?.characters?.[0]?.xp ?? data?.fight?.xp ?? null;
+    const items = data?.fight?.drops || [];
+    logs.push({
+      time: new Date().toISOString(),
+      action: 'fight',
+      skill: 'combat',
+      target: monster.code,
+      xp,
+      cooldown: data?.cooldown?.total_seconds ?? data?.cooldown?.remaining_seconds ?? null,
+      items: formatItems(items),
+      location: `${node.layer} (${node.x},${node.y})`
+    });
+    appendLogEntry(logs[logs.length - 1]);
+    character = data?.characters?.[0] || data?.character || character;
+    const collected = items.find((drop: any) => drop.code === itemCode)?.quantity || 0;
+    remaining -= collected;
+    await waitForCooldown(data?.cooldown);
+    if (remaining > 0 && collected === 0) {
+      logStatus(`No ${itemCode} drop detected, continuing fight attempts.`);
+    }
+  }
 
   return character;
 }
