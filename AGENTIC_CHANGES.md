@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-13 22:31] - Gate transition conditions
+
+### Changed
+- File: `src/main.ts`
+  - Added transition condition checks to disable consumable-gated transitions
+  - Blocked transition action when requirements are not met
+
 ## [2026-02-13 22:27] - Add transition tile support
 
 ### Changed

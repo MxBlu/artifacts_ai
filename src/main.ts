@@ -1227,6 +1227,109 @@ function isCharacterOnTile(character: Character | null, tile: MapTile): boolean 
   return character.x === tile.x && character.y === tile.y && character.layer === tile.layer;
 }
 
+function getCharacterNumericValue(character: Character, code: string): number | null {
+  const directValue = (character as any)[code];
+  if (typeof directValue === 'number') {
+    return directValue;
+  }
+
+  const levelKey = `${code}_level`;
+  const levelValue = (character as any)[levelKey];
+  if (typeof levelValue === 'number') {
+    return levelValue;
+  }
+
+  return null;
+}
+
+function getTransitionConditionStatus(
+  tile: MapTile,
+  character: Character | null
+): { allowed: boolean; reason?: string } {
+  const transition = tile.interactions.transition;
+  if (!transition) {
+    return { allowed: false, reason: 'No transition on this tile' };
+  }
+
+  if (!character) {
+    return { allowed: false, reason: 'No character loaded' };
+  }
+
+  const conditions = transition.conditions || [];
+  let consumesItem = false;
+  let consumableLabel: string | null = null;
+
+  for (const condition of conditions) {
+    if (!condition) continue;
+
+    const operator = condition.operator as string | undefined;
+    const code = condition.code as string | undefined;
+    const value = Number(condition.value ?? 0);
+
+    if (!operator || !code) {
+      return { allowed: false, reason: 'Transition conditions unavailable' };
+    }
+
+    if (operator === 'has_item') {
+      consumesItem = true;
+      consumableLabel ??= `${code} x${value}`;
+      const available = getInventoryQuantity(character, code);
+      if (available < value) {
+        return { allowed: false, reason: `Requires ${code} x${value}` };
+      }
+      continue;
+    }
+
+    if (operator === 'cost') {
+      if (code === 'gold') {
+        if ((character.gold || 0) < value) {
+          return { allowed: false, reason: `Requires ${value} gold` };
+        }
+      } else {
+        consumesItem = true;
+        consumableLabel ??= `${code} x${value}`;
+        const available = getInventoryQuantity(character, code);
+        if (available < value) {
+          return { allowed: false, reason: `Requires ${code} x${value}` };
+        }
+      }
+      continue;
+    }
+
+    if (operator === 'achievement_unlocked') {
+      return { allowed: false, reason: `Requires achievement ${code}` };
+    }
+
+    if (operator === 'eq' || operator === 'ne' || operator === 'gt' || operator === 'lt') {
+      const currentValue = getCharacterNumericValue(character, code);
+      if (currentValue === null) {
+        return { allowed: false, reason: `Requires ${code} ${operator} ${value}` };
+      }
+
+      const comparisonOk = operator === 'eq'
+        ? currentValue === value
+        : operator === 'ne'
+        ? currentValue !== value
+        : operator === 'gt'
+        ? currentValue > value
+        : currentValue < value;
+
+      if (!comparisonOk) {
+        return { allowed: false, reason: `Requires ${code} ${operator} ${value}` };
+      }
+      continue;
+    }
+
+    return { allowed: false, reason: `Requires ${code}` };
+  }
+
+  if (consumesItem) {
+    return { allowed: false, reason: consumableLabel ? `Consumes ${consumableLabel}` : 'Consumes items' };
+  }
+
+  return { allowed: true };
+}
+
 function getInventoryTotal(character: Character): number {
   if (!character.inventory) return 0;
   return character.inventory.reduce((total: number, entry: any) => total + (entry.quantity || 0), 0);
@@ -2731,7 +2834,11 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
   transitionMenuItem.style.display = hasTransition ? 'flex' : 'none';
 
   if (hasTransition) {
-    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+    const transitionStatus = getTransitionConditionStatus(tile, currentCharacter);
+    const isBlocked = !transitionStatus.allowed;
+    transitionMenuItem.title = transitionStatus.reason || '';
+
+    if (!currentCharacter || isOnCooldown(currentCharacter) || isBlocked) {
       transitionMenuItem.classList.add('disabled');
     } else {
       transitionMenuItem.classList.remove('disabled');
@@ -3413,6 +3520,12 @@ async function handleTransitionAction() {
 
   if (isOnCooldown(currentCharacter)) {
     scheduleTransitionAfterCooldown(contextMenuTarget.tile);
+    return;
+  }
+
+  const transitionStatus = getTransitionConditionStatus(contextMenuTarget.tile, currentCharacter);
+  if (!transitionStatus.allowed) {
+    showStatus(transitionStatus.reason || 'Transition conditions not met', 'error');
     return;
   }
 
