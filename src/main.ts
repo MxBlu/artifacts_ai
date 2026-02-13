@@ -18,6 +18,7 @@ const toggleFishingLabels = document.getElementById('toggleFishingLabels') as HT
 const toggleMiningLabels = document.getElementById('toggleMiningLabels') as HTMLInputElement;
 const toggleAlchemyLabels = document.getElementById('toggleAlchemyLabels') as HTMLInputElement;
 const toggleNpcLabels = document.getElementById('toggleNpcLabels') as HTMLInputElement;
+const toggleTaskLabels = document.getElementById('toggleTaskLabels') as HTMLInputElement;
 const characterInfo = document.getElementById('characterInfo') as HTMLDivElement;
 const cellInfo = document.getElementById('cellInfo') as HTMLDivElement;
 const fightInfo = document.getElementById('fightInfo') as HTMLDivElement;
@@ -4243,6 +4244,13 @@ function renderMap(maps: MapTile[], character: Character | null) {
           npcIcon.textContent = 'NPC';
           cell.appendChild(npcIcon);
         }
+
+        if (toggleTaskLabels.checked && isTasksMasterTile(tile)) {
+          const taskIcon = document.createElement('div');
+          taskIcon.className = 'resource-icon task';
+          taskIcon.textContent = 'Task';
+          cell.appendChild(taskIcon);
+        }
         
         // Check if character is at this location
         if (character && character.x === x && character.y === y) {
@@ -4617,6 +4625,10 @@ toggleAlchemyLabels.addEventListener('change', () => {
 });
 
 toggleNpcLabels.addEventListener('change', () => {
+  renderMap(currentMap, currentCharacter);
+});
+
+toggleTaskLabels.addEventListener('change', () => {
   renderMap(currentMap, currentCharacter);
 });
 

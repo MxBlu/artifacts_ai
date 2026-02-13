@@ -1,5 +1,13 @@
 # Agentic Changes Log
 
+## [2026-02-13 17:18] - Add task master map labels
+
+### Changed
+- File: `index.html`
+  - Added Tasks checkbox to map labels and task icon styling
+- File: `src/main.ts`
+  - Added task label toggle and task master icon rendering
+
 ## [2026-02-13 17:12] - Move view tasks button
 
 ### Changed
