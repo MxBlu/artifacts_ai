@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-13 16:12] - Add woodcutting workshop support
+
+### Changed
+- File: `src/main.ts`
+  - Map woodcutting workshop codes to the woodcutting skill
+  - Use woodcutting level for workshop gating in the craft modal
+
 ## [2026-02-13 15:26] - Add nested crafting automation
 
 ### Changed
