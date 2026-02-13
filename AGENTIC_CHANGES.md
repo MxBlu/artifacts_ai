@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 22:33] - Show transition conditions on hover
+
+### Changed
+- File: `src/main.ts`
+  - Rendered transition condition requirements in the tile hover modal
+
 ## [2026-02-13 22:31] - Gate transition conditions
 
 ### Changed

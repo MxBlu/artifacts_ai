@@ -2783,6 +2783,36 @@ function buildTileModalInteractions(tile: MapTile, resource?: Resource): string 
   if (tile.interactions.transition) {
     const trans = tile.interactions.transition;
     interactions.push(`<div class="interaction-item"><span class="interaction-type">transition</span>: to (${trans.x}, ${trans.y}) layer ${trans.layer}</div>`);
+
+    const conditions = trans.conditions || [];
+    conditions.forEach(condition => {
+      if (!condition) return;
+      const operator = condition.operator as string | undefined;
+      const code = condition.code as string | undefined;
+      const value = Number(condition.value ?? 0);
+      if (!operator || !code) return;
+
+      let description = '';
+      if (operator === 'has_item') {
+        description = `Requires ${code} x${value}`;
+      } else if (operator === 'cost') {
+        if (code === 'gold') {
+          description = `Cost: ${value} gold`;
+        } else {
+          description = `Cost: ${code} x${value}`;
+        }
+      } else if (operator === 'achievement_unlocked') {
+        description = `Requires achievement ${code}`;
+      } else if (operator === 'eq' || operator === 'ne' || operator === 'gt' || operator === 'lt') {
+        description = `Requires ${code} ${operator} ${value}`;
+      } else {
+        description = `Requires ${code}`;
+      }
+
+      interactions.push(
+        `<div class="interaction-item"><span class="interaction-type">condition</span>: ${escapeHtml(description)}</div>`
+      );
+    });
   }
 
   if (interactions.length === 0) {
