@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-13 12:02] - Add cooldown gating and progress tracking
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Wait for character cooldown before each action to avoid 499s
+  - Persist sampled resources in `skill_research_progress.json` for resumable runs
+
 ## [2026-02-13 11:52] - Handle already-at-destination errors
 
 ### Changed

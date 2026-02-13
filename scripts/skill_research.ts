@@ -110,6 +110,11 @@ type ActionLog = {
 
 const BASE_URL = 'https://api.artifactsmmo.com';
 const LOG_FILE = path.resolve(process.cwd(), 'SKILL_XP_LOG.md');
+const PROGRESS_FILE = path.resolve(process.cwd(), 'skill_research_progress.json');
+
+type ProgressState = {
+  sampledResources: string[];
+};
 
 function getEnv(name: string, fallback?: string): string {
   const value = process.env[name];
@@ -178,6 +183,25 @@ async function waitForCharacterCooldown(character: Character | null): Promise<vo
   if (remainingMs > 0) {
     await sleep(remainingMs + 150);
   }
+}
+
+function loadProgress(): ProgressState {
+  if (!fs.existsSync(PROGRESS_FILE)) {
+    return { sampledResources: [] };
+  }
+  try {
+    const raw = fs.readFileSync(PROGRESS_FILE, 'utf8');
+    const parsed = JSON.parse(raw) as ProgressState;
+    return {
+      sampledResources: Array.isArray(parsed.sampledResources) ? parsed.sampledResources : []
+    };
+  } catch {
+    return { sampledResources: [] };
+  }
+}
+
+function saveProgress(state: ProgressState): void {
+  fs.writeFileSync(PROGRESS_FILE, JSON.stringify(state, null, 2) + '\n', 'utf8');
 }
 
 function isCooldownError(error: any): boolean {
@@ -294,7 +318,18 @@ async function getAllMonsters(client: AxiosInstance): Promise<Monster[]> {
   return results;
 }
 
-async function moveTo(client: AxiosInstance, name: string, x: number, y: number): Promise<Character> {
+async function ensureReady(client: AxiosInstance, characterName: string, character: Character | null): Promise<Character> {
+  if (character) {
+    await waitForCharacterCooldown(character);
+    return character;
+  }
+  const refreshed = await getCharacter(client, characterName);
+  await waitForCharacterCooldown(refreshed);
+  return refreshed;
+}
+
+async function moveTo(client: AxiosInstance, name: string, x: number, y: number, character: Character | null): Promise<Character> {
+  await ensureReady(client, name, character);
   logStatus(`Moving to (${x},${y})...`);
   try {
     const response = await withCooldownRetry('move', name, client, () =>
@@ -305,14 +340,15 @@ async function moveTo(client: AxiosInstance, name: string, x: number, y: number)
   } catch (error: any) {
     if (isAlreadyThereError(error)) {
       logStatus('Already at destination.');
-      const character = await getCharacter(client, name);
-      return character;
+      const refreshed = await getCharacter(client, name);
+      return refreshed;
     }
     throw error;
   }
 }
 
-async function gather(client: AxiosInstance, name: string): Promise<SkillResponse> {
+async function gather(client: AxiosInstance, name: string, character: Character | null): Promise<SkillResponse> {
+  await ensureReady(client, name, character);
   logStatus('Gathering...');
   const response = await withCooldownRetry('gather', name, client, () =>
     client.post<SkillResponse>(`/my/${name}/action/gathering`)
@@ -320,7 +356,8 @@ async function gather(client: AxiosInstance, name: string): Promise<SkillRespons
   return response.data;
 }
 
-async function craft(client: AxiosInstance, name: string, code: string, quantity = 1): Promise<SkillResponse> {
+async function craft(client: AxiosInstance, name: string, code: string, character: Character | null, quantity = 1): Promise<SkillResponse> {
+  await ensureReady(client, name, character);
   logStatus(`Crafting ${code} x${quantity}...`);
   const response = await withCooldownRetry('craft', name, client, () =>
     client.post<SkillResponse>(`/my/${name}/action/crafting`, { code, quantity })
@@ -328,7 +365,8 @@ async function craft(client: AxiosInstance, name: string, code: string, quantity
   return response.data;
 }
 
-async function fight(client: AxiosInstance, name: string, participants: string[] = []): Promise<any> {
+async function fight(client: AxiosInstance, name: string, character: Character | null, participants: string[] = []): Promise<any> {
+  await ensureReady(client, name, character);
   logStatus('Fighting...');
   const response = await withCooldownRetry('fight', name, client, () =>
     client.post(`/my/${name}/action/fight`, { participants })
@@ -339,6 +377,7 @@ async function fight(client: AxiosInstance, name: string, participants: string[]
 async function depositAllInventory(client: AxiosInstance, name: string, character: Character): Promise<Character> {
   const items = (character.inventory || []).map(entry => ({ code: entry.code, quantity: entry.quantity }));
   if (!items.length) return character;
+  await ensureReady(client, name, character);
   logStatus('Depositing inventory to bank...');
   const response = await withCooldownRetry('bank-deposit', name, client, () =>
     client.post(`/my/${name}/action/bank/deposit/item`, items)
@@ -445,19 +484,24 @@ async function gatherResourceSamples(
   maps: MapTile[],
   resources: Resource[],
   attemptsPerNode: number,
-  logs: ActionLog[]
+  logs: ActionLog[],
+  progress: ProgressState
 ): Promise<Character> {
   const nodes = maps.filter(tile => tile.interactions?.content?.type === 'resource');
   const resourceByCode = new Map(resources.map(resource => [resource.code, resource] as const));
+  const sampled = new Set(progress.sampledResources);
 
   for (const node of nodes) {
     const resource = resourceByCode.get(node.interactions.content!.code);
     if (!resource) continue;
+    if (sampled.has(resource.code)) {
+      continue;
+    }
     const skillLevel = getSkillLevel(character, resource.skill);
     if (resource.level > skillLevel) continue;
 
     logStatus(`Sampling ${resource.code} (${resource.skill}) at ${node.layer} (${node.x},${node.y})...`);
-    character = await moveTo(client, characterName, node.x, node.y);
+    character = await moveTo(client, characterName, node.x, node.y, character);
 
     for (let i = 0; i < attemptsPerNode; i += 1) {
       if (isInventoryFull(character)) {
@@ -471,7 +515,7 @@ async function gatherResourceSamples(
         character = await moveTo(client, characterName, node.x, node.y);
       }
 
-      const response = await gather(client, characterName);
+      const response = await gather(client, characterName, character);
       const details = response.data.details || {};
       logs.push({
         time: new Date().toISOString(),
@@ -486,6 +530,10 @@ async function gatherResourceSamples(
       character = response.data.character;
       await waitForCooldown(response.data.cooldown);
     }
+
+    sampled.add(resource.code);
+    progress.sampledResources = Array.from(sampled.values()).sort();
+    saveProgress(progress);
   }
 
   return character;
@@ -517,7 +565,7 @@ async function gatherForItem(
 
   logStatus(`Gathering ${itemCode} from ${targetResource.code} at ${node.layer} (${node.x},${node.y})...`);
   let remaining = quantity;
-  character = await moveTo(client, characterName, node.x, node.y);
+  character = await moveTo(client, characterName, node.x, node.y, character);
 
   while (remaining > 0) {
     if (isInventoryFull(character)) {
@@ -526,12 +574,12 @@ async function gatherForItem(
         console.log('Inventory full and no bank on this layer.');
         return character;
       }
-      character = await moveTo(client, characterName, bankTile.x, bankTile.y);
+      character = await moveTo(client, characterName, bankTile.x, bankTile.y, character);
       character = await depositAllInventory(client, characterName, character);
-      character = await moveTo(client, characterName, node.x, node.y);
+      character = await moveTo(client, characterName, node.x, node.y, character);
     }
 
-    const response = await gather(client, characterName);
+    const response = await gather(client, characterName, character);
     const details = response.data.details || {};
     logs.push({
       time: new Date().toISOString(),
@@ -569,7 +617,7 @@ async function fightForItem(
   }
 
   logStatus(`Fighting ${monster.code} for ${itemCode} at ${node.layer} (${node.x},${node.y})...`);
-  character = await moveTo(client, characterName, node.x, node.y);
+  character = await moveTo(client, characterName, node.x, node.y, character);
   let remaining = quantity;
 
   while (remaining > 0) {
@@ -579,12 +627,12 @@ async function fightForItem(
         console.log('Inventory full and no bank on this layer.');
         return character;
       }
-      character = await moveTo(client, characterName, bankTile.x, bankTile.y);
+      character = await moveTo(client, characterName, bankTile.x, bankTile.y, character);
       character = await depositAllInventory(client, characterName, character);
-      character = await moveTo(client, characterName, node.x, node.y);
+      character = await moveTo(client, characterName, node.x, node.y, character);
     }
 
-    const response = await fight(client, characterName);
+    const response = await fight(client, characterName, character);
     const data = response.data;
     const xp = data?.fight?.characters?.[0]?.xp ?? data?.fight?.xp ?? null;
     const items = data?.fight?.drops || [];
@@ -653,8 +701,8 @@ async function craftSamples(
       }
 
       logStatus(`Moving to workshop for ${skill} at ${workshopTile.layer} (${workshopTile.x},${workshopTile.y})...`);
-      character = await moveTo(client, characterName, workshopTile.x, workshopTile.y);
-      const response = await craft(client, characterName, item.code, 1);
+      character = await moveTo(client, characterName, workshopTile.x, workshopTile.y, character);
+      const response = await craft(client, characterName, item.code, character, 1);
       const details = response.data.details || {};
       logs.push({
         time: new Date().toISOString(),
@@ -694,10 +742,12 @@ async function main(): Promise<void> {
   const items = await getAllItems(client);
   const monsters = await getAllMonsters(client);
 
+  const progress = loadProgress();
+  logStatus(`Loaded progress: ${progress.sampledResources.length} resources already sampled.`);
   logStatus(`Loaded ${maps.length} map tiles, ${resources.length} resources, ${items.length} items, ${monsters.length} monsters.`);
   const logs: ActionLog[] = [];
 
-  character = await gatherResourceSamples(client, characterName, character, maps, resources, attemptsPerNode, logs);
+  character = await gatherResourceSamples(client, characterName, character, maps, resources, attemptsPerNode, logs, progress);
   character = await craftSamples(client, characterName, character, maps, items, resources, monsters, craftTargets, logs);
 
   const headerInfo = `Character: ${character.name} | Layer: ${character.layer} | Gather attempts: ${attemptsPerNode} | Craft targets per skill: ${craftTargets}`;
