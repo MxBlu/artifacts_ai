@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 13:20] - Record skill XP samples
+
+### Changed
+- File: `GAME_KNOWLEDGE.md`
+  - Added observed XP per action samples from SKILL_XP_LOG.md
+
 ## [2026-02-13 13:05] - Add bank deposit all control
 
 ### Changed

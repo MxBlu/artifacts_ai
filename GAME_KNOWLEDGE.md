@@ -113,6 +113,21 @@ _TBD - track prices and demand_
 ### Optimal Skill Progression
 _TBD - plan after exploring content_
 
+### Skill XP Samples (2026-02-13)
+Observed XP per action from `SKILL_XP_LOG.md` (character: mxblue, layer: overworld).
+
+| Skill | Action | XP | Cooldown (s) | Output | Location |
+| --- | --- | --- | --- | --- | --- |
+| Woodcutting | Gather ash_tree | 9 | 30 | ash_wood x1 | overworld (-1,0) |
+| Mining | Gather copper_rocks | 6 | 27 | copper_ore x1 | overworld (2,0) |
+| Alchemy | Gather sunflower_field | 13 | 30 | sunflower x1 | overworld (2,2) |
+| Fishing | Gather gudgeon_spot | 13 | 30 | gudgeon x1 | overworld (4,2) |
+| Cooking | Craft cooked_gudgeon | 32 | 5 | cooked_gudgeon x1 | overworld (1,1) |
+| Mining | Craft copper_bar | 5 | 5 | copper_bar x1 | overworld (1,5) |
+| Weaponcrafting | Craft copper_dagger | 63 | 5 | copper_dagger x1 | overworld (2,1) |
+| Gearcrafting | Craft copper_boots | 63 | 5 | copper_boots x1 | overworld (3,1) |
+| Jewelrycrafting | Craft copper_ring | 76 | 5 | copper_ring x1 | overworld (1,3) |
+
 ## Notes
 
 - Prospecting stat increases drop chances (1% per 10 PP)
