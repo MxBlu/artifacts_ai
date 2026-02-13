@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 14:36] - Allow switching auto craft target
+
+### Changed
+- File: `src/main.ts`
+  - Kept Auto button enabled for other items so you can switch targets without disabling first
+
 ## [2026-02-13 14:32] - Gather missing crafting materials
 
 ### Changed

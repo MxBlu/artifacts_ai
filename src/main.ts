@@ -453,7 +453,7 @@ function renderCraftModal(character: Character) {
         ? getMaxCraftableWithBank(item, character)
         : getMaxCraftable(item, character);
       const canCraft = !locked && maxCraftable > 0;
-      const autoDisabled = locked || (craftAutoEnabled && !autoActive) || (craftAutomationActive && !autoActive);
+      const autoDisabled = locked || (craftAutomationActive && !autoActive);
 
       const quantityControl = maxCraftable > 1
         ? `<select class="craft-qty" data-code="${item.code}">
