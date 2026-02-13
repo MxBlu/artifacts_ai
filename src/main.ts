@@ -10,7 +10,6 @@ const apiTokenInput = document.getElementById('apiToken') as HTMLInputElement;
 const characterNameInput = document.getElementById('characterName') as HTMLInputElement;
 const loadBtn = document.getElementById('loadBtn') as HTMLButtonElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
-const viewTasksBtn = document.getElementById('viewTasksBtn') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
 const toggleMonsterLabels = document.getElementById('toggleMonsterLabels') as HTMLInputElement;
@@ -4393,6 +4392,10 @@ function updateCharacterInfo(character: Character) {
     html += `<div class="progress-bar"><div class="progress-fill" style="width: ${taskPercent}%"></div></div>`;
     html += '</div>';
   }
+
+  html += '<div class="info-item">';
+  html += '<button id="viewTasksInlineBtn" class="task-btn">View Tasks</button>';
+  html += '</div>';
   
   // Combat Stats (collapsible)
   html += '<div class="info-section">';
@@ -4520,6 +4523,15 @@ function updateCharacterInfo(character: Character) {
   
   html += '</div>';
   characterInfo.innerHTML = html;
+
+  const viewTasksInlineBtn = document.getElementById('viewTasksInlineBtn') as HTMLButtonElement | null;
+  if (viewTasksInlineBtn) {
+    viewTasksInlineBtn.disabled = !api;
+    viewTasksInlineBtn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      handleViewTasks();
+    });
+  }
 }
 
 async function loadMapAndCharacter() {
@@ -4583,7 +4595,6 @@ function saveConfigToStorage() {
 // Event listeners
 loadBtn.addEventListener('click', loadMapAndCharacter);
 saveBtn.addEventListener('click', saveConfigToStorage);
-viewTasksBtn.addEventListener('click', handleViewTasks);
 
 toggleMonsterLabels.addEventListener('change', () => {
   renderMap(currentMap, currentCharacter);

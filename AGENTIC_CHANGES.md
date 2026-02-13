@@ -1,5 +1,14 @@
 # Agentic Changes Log
 
+## [2026-02-13 17:12] - Move view tasks button
+
+### Changed
+- File: `index.html`
+  - Removed View Tasks button from config panel
+- File: `src/main.ts`
+  - Rendered View Tasks button inside Character Info
+  - Wired inline button after character info refresh
+
 ## [2026-02-13 17:05] - Add tasks list button
 
 ### Changed
