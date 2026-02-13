@@ -2846,6 +2846,12 @@ async function toggleCraftAutomation(code: string) {
     return;
   }
 
+  const item = getCraftModalItem(code);
+  if (!item || !item.craft) {
+    showStatus('Craft item data not found', 'error');
+    return;
+  }
+
   if (!craftAutomationWorkshopTile) {
     showStatus('No workshop selected for auto-craft', 'error');
     return;
@@ -2898,12 +2904,6 @@ async function startCraftAutomation(code: string) {
 
   const loaded = await ensureBankItemsLoaded();
   if (!loaded) {
-    return;
-  }
-
-  const item = getCraftModalItem(code);
-  if (!item || !item.craft) {
-    showStatus('Craft item data not found', 'error');
     return;
   }
 

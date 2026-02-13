@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 15:08] - Fix auto craft item lookups
+
+### Changed
+- File: `src/main.ts`
+  - Restored item lookups in auto-craft helpers and removed stray gather automation reference
+
 ## [2026-02-13 14:55] - Add auto craft target quantities
 
 ### Changed
