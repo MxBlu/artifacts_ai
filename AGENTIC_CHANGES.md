@@ -1,5 +1,13 @@
 # Agentic Changes Log
 
+## [2026-02-13 17:05] - Add tasks list button
+
+### Changed
+- File: `index.html`
+  - Added View Tasks button in configuration panel
+- File: `src/main.ts`
+  - Added available tasks list modal rendering and handler
+
 ## [2026-02-13 16:58] - Add tasks master support
 
 ### Changed

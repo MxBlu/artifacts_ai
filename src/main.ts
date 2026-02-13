@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails, Resource, NPCItem, TaskReward } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails, Resource, NPCItem, TaskReward, TaskFull } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -10,6 +10,7 @@ const apiTokenInput = document.getElementById('apiToken') as HTMLInputElement;
 const characterNameInput = document.getElementById('characterName') as HTMLInputElement;
 const loadBtn = document.getElementById('loadBtn') as HTMLButtonElement;
 const saveBtn = document.getElementById('saveBtn') as HTMLButtonElement;
+const viewTasksBtn = document.getElementById('viewTasksBtn') as HTMLButtonElement;
 const statusDiv = document.getElementById('status') as HTMLDivElement;
 const mapGrid = document.getElementById('mapGrid') as HTMLDivElement;
 const toggleMonsterLabels = document.getElementById('toggleMonsterLabels') as HTMLInputElement;
@@ -3561,6 +3562,56 @@ function formatRewardSummary(rewards: { items: SimpleItem[]; gold: number }): st
   return parts.length ? parts.join(' · ') : 'No rewards';
 }
 
+function renderAvailableTasks(tasks: TaskFull[]) {
+  const rows = tasks.length
+    ? tasks.map(task => {
+        const skillLabel = task.skill ? ` · ${task.skill}` : '';
+        const quantityLabel = `${task.min_quantity}-${task.max_quantity}`;
+        const rewardsLabel = formatRewardSummary(task.rewards);
+        return `
+          <div class="task-reward">
+            <div>
+              <div><strong>${escapeHtml(task.code)}</strong></div>
+              <div class="npc-item-sub">Lvl ${task.level} · ${escapeHtml(task.type)} · ${quantityLabel}${escapeHtml(skillLabel)}</div>
+            </div>
+            <div class="npc-item-sub">${escapeHtml(rewardsLabel)}</div>
+          </div>
+        `;
+      }).join('')
+    : '<div class="fight-empty">No tasks found</div>';
+
+  taskModalTitle.textContent = 'Available Tasks';
+  taskModalBody.innerHTML = `
+    <div class="task-section">
+      <h4>Task List</h4>
+      ${rows}
+    </div>
+  `;
+  taskModal.classList.add('visible');
+}
+
+async function handleViewTasks() {
+  if (!api) {
+    showStatus('Load map and character first', 'error');
+    return;
+  }
+
+  taskModalTitle.textContent = 'Available Tasks';
+  taskModalBody.innerHTML = '<div class="fight-empty">Loading tasks...</div>';
+  taskModal.classList.add('visible');
+
+  try {
+    showStatus('Loading tasks list...', 'info');
+    const tasks = await api.getAllTasks();
+    renderAvailableTasks(tasks);
+  } catch (error: any) {
+    console.error('Task list error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Failed to load tasks';
+    showStatus(`Error: ${message}`, 'error');
+    taskModalBody.innerHTML = `<div class="fight-empty">${escapeHtml(message)}</div>`;
+  }
+}
+
 async function handleTaskNew() {
   if (!currentCharacter || !api) {
     return;
@@ -4532,6 +4583,7 @@ function saveConfigToStorage() {
 // Event listeners
 loadBtn.addEventListener('click', loadMapAndCharacter);
 saveBtn.addEventListener('click', saveConfigToStorage);
+viewTasksBtn.addEventListener('click', handleViewTasks);
 
 toggleMonsterLabels.addEventListener('change', () => {
   renderMap(currentMap, currentCharacter);
