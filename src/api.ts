@@ -192,6 +192,22 @@ export interface ItemsResponse {
   data: Item[];
 }
 
+export interface NPCItem {
+  code: string;
+  npc: string;
+  currency: string;
+  buy_price?: number | null;
+  sell_price?: number | null;
+}
+
+export interface NPCItemsPage {
+  data: NPCItem[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
+}
+
 export interface Resource {
   name: string;
   code: string;
@@ -364,6 +380,30 @@ export interface UseItemResponse {
   data: UseItemData;
 }
 
+export interface NpcItemTransaction {
+  code: string;
+  quantity: number;
+  currency: string;
+  price: number;
+  total_price: number;
+}
+
+export interface NpcMerchantTransactionData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  transaction: NpcItemTransaction;
+  character: Character;
+}
+
+export interface NpcMerchantTransactionResponse {
+  data: NpcMerchantTransactionData;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -454,6 +494,11 @@ export class ArtifactsAPI {
     return response.data.data;
   }
 
+  async getNpcItems(code: string): Promise<NPCItem[]> {
+    const response = await this.client.get<NPCItemsPage>(`/npcs/items/${code}`);
+    return response.data.data;
+  }
+
   async getAllItems(): Promise<Item[]> {
     const items: Item[] = [];
     let page = 1;
@@ -525,6 +570,22 @@ export class ArtifactsAPI {
   async craftItem(characterName: string, code: string, quantity = 1): Promise<CraftingData> {
     const response = await this.client.post<CraftingResponse>(
       `/my/${characterName}/action/crafting`,
+      { code, quantity }
+    );
+    return response.data.data;
+  }
+
+  async buyNpcItem(characterName: string, code: string, quantity = 1): Promise<NpcMerchantTransactionData> {
+    const response = await this.client.post<NpcMerchantTransactionResponse>(
+      `/my/${characterName}/action/npc/buy`,
+      { code, quantity }
+    );
+    return response.data.data;
+  }
+
+  async sellNpcItem(characterName: string, code: string, quantity = 1): Promise<NpcMerchantTransactionData> {
+    const response = await this.client.post<NpcMerchantTransactionResponse>(
+      `/my/${characterName}/action/npc/sell`,
       { code, quantity }
     );
     return response.data.data;

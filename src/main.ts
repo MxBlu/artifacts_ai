@@ -1,4 +1,4 @@
-import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails, Resource } from './api';
+import { ArtifactsAPI, MapTile, Character, FightData, Monster, Item, SimpleItem, BankDetails, Resource, NPCItem } from './api';
 import { saveConfig, loadConfig } from './config';
 
 let currentMap: MapTile[] = [];
@@ -41,6 +41,7 @@ const miningLoopSlot = document.getElementById('miningLoopSlot') as HTMLSpanElem
 const fishLoopBtn = document.getElementById('fishLoopBtn') as HTMLButtonElement;
 const fishLoopSlot = document.getElementById('fishLoopSlot') as HTMLSpanElement;
 const craftMenuItem = document.getElementById('craftMenuItem') as HTMLDivElement;
+const npcMenuItem = document.getElementById('npcMenuItem') as HTMLDivElement;
 const bankMenuItem = document.getElementById('bankMenuItem') as HTMLDivElement;
 const craftModal = document.getElementById('craftModal') as HTMLDivElement;
 const craftModalTitle = document.getElementById('craftModalTitle') as HTMLSpanElement;
@@ -50,6 +51,10 @@ const bankModal = document.getElementById('bankModal') as HTMLDivElement;
 const bankModalTitle = document.getElementById('bankModalTitle') as HTMLSpanElement;
 const bankModalBody = document.getElementById('bankModalBody') as HTMLDivElement;
 const bankModalClose = document.getElementById('bankModalClose') as HTMLButtonElement;
+const npcModal = document.getElementById('npcModal') as HTMLDivElement;
+const npcModalTitle = document.getElementById('npcModalTitle') as HTMLSpanElement;
+const npcModalBody = document.getElementById('npcModalBody') as HTMLDivElement;
+const npcModalClose = document.getElementById('npcModalClose') as HTMLButtonElement;
 const timersContainer = document.getElementById('timersContainer') as HTMLDivElement;
 const restBtn = document.getElementById('restBtn') as HTMLButtonElement;
 const stopAutomationBtn = document.getElementById('stopAutomationBtn') as HTMLButtonElement;
@@ -105,6 +110,7 @@ let activeTileModalResourceCode: string | null = null;
 let bankDetails: BankDetails | null = null;
 let bankItems: SimpleItem[] = [];
 let craftModalState: { skill: string; workshopCode: string; items: Item[] } | null = null;
+let npcModalState: { npcCode: string; items: NPCItem[] } | null = null;
 
 // Helper function to check if character is on cooldown
 function isOnCooldown(character: Character | null): boolean {
@@ -609,6 +615,96 @@ function closeBankModal() {
 
 function closeCraftModal() {
   craftModal.classList.remove('visible');
+}
+
+function openNpcModal(npcCode: string, items: NPCItem[], character: Character) {
+  npcModalState = { npcCode, items };
+  renderNpcModal(character);
+}
+
+function closeNpcModal() {
+  npcModal.classList.remove('visible');
+}
+
+function renderNpcModal(character: Character) {
+  if (!npcModalState) {
+    return;
+  }
+
+  const { npcCode, items } = npcModalState;
+  const isCoolingDown = isOnCooldown(character);
+  const buyItems = items.filter(item => item.buy_price !== null && item.buy_price !== undefined);
+  const sellItems = items.filter(item => item.sell_price !== null && item.sell_price !== undefined);
+
+  npcModalTitle.textContent = `NPC: ${npcCode}`;
+
+  const buyHtml = buyItems.length
+    ? buyItems.map(item => {
+        const itemDetails = itemCache.get(item.code);
+        const name = itemDetails ? `${itemDetails.name} (${item.code})` : item.code;
+        const currencyLabel = item.currency === 'gold' ? 'gold' : item.currency;
+        const price = item.buy_price ?? 0;
+        const disabled = isCoolingDown ? 'disabled' : '';
+        const qtyControl = `<select class="npc-qty" data-code="${item.code}" data-action="buy">
+          ${Array.from({ length: 100 }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}
+        </select>`;
+        return `
+          <div class="npc-item">
+            <div class="npc-item-meta">
+              <span class="npc-item-name">${escapeHtml(name)}</span>
+              <span class="npc-item-sub">Price: ${price} ${escapeHtml(currencyLabel)}</span>
+            </div>
+            <div class="npc-item-actions">
+              ${qtyControl}
+              <button class="npc-btn" data-action="buy" data-code="${item.code}" ${disabled}>Buy</button>
+            </div>
+          </div>
+        `;
+      }).join('')
+    : '<div class="fight-empty">No items for sale</div>';
+
+  const sellHtml = sellItems.length
+    ? sellItems.map(item => {
+        const itemDetails = itemCache.get(item.code);
+        const name = itemDetails ? `${itemDetails.name} (${item.code})` : item.code;
+        const currencyLabel = item.currency === 'gold' ? 'gold' : item.currency;
+        const price = item.sell_price ?? 0;
+        const inventoryQty = getInventoryQuantity(character, item.code);
+        const maxSell = Math.min(100, inventoryQty);
+        const disabled = isCoolingDown || maxSell <= 0 ? 'disabled' : '';
+        const qtyControl = maxSell > 1
+          ? `<select class="npc-qty" data-code="${item.code}" data-action="sell">
+              ${Array.from({ length: maxSell }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}
+            </select>`
+          : `<span class="craft-qty-single">${maxSell}x</span>`;
+        const haveLabel = `Have: ${inventoryQty}`;
+        return `
+          <div class="npc-item">
+            <div class="npc-item-meta">
+              <span class="npc-item-name">${escapeHtml(name)}</span>
+              <span class="npc-item-sub">${haveLabel} · Price: ${price} ${escapeHtml(currencyLabel)}</span>
+            </div>
+            <div class="npc-item-actions">
+              ${qtyControl}
+              <button class="npc-btn secondary" data-action="sell" data-code="${item.code}" ${disabled}>Sell</button>
+            </div>
+          </div>
+        `;
+      }).join('')
+    : '<div class="fight-empty">No items wanted</div>';
+
+  npcModalBody.innerHTML = `
+    <div class="npc-section">
+      <h4>NPC Sells</h4>
+      ${buyHtml}
+    </div>
+    <div class="npc-section">
+      <h4>NPC Buys</h4>
+      ${sellHtml}
+    </div>
+  `;
+
+  npcModal.classList.add('visible');
 }
 
 function renderBankModal(details: BankDetails, items: SimpleItem[], character: Character) {
@@ -2562,6 +2658,17 @@ function showContextMenu(tile: MapTile, event: MouseEvent) {
     }
   }
 
+  const isNpc = isNpcNode(tile);
+  npcMenuItem.style.display = isNpc ? 'flex' : 'none';
+
+  if (isNpc) {
+    if (!currentCharacter || isOnCooldown(currentCharacter)) {
+      npcMenuItem.classList.add('disabled');
+    } else {
+      npcMenuItem.classList.remove('disabled');
+    }
+  }
+
   const content = tile.interactions.content;
   if (content && content.type?.toLowerCase() === 'resource') {
     ensureResourceDetails(content.code).then(() => {
@@ -3137,6 +3244,126 @@ async function handleCraftAction() {
   showStatus('Loading workshop items...', 'info');
   const items = await ensureAllItems();
   openCraftModal(skill, content.code, items, currentCharacter);
+}
+
+async function handleNpcAction() {
+  if (!contextMenuTarget || !currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  const { tile } = contextMenuTarget;
+  const content = tile.interactions.content;
+  if (!content || content.type?.toLowerCase() !== 'npc') {
+    showStatus('No NPC on this tile', 'error');
+    return;
+  }
+
+  hideContextMenu();
+
+  if (!isCharacterOnTile(currentCharacter, tile)) {
+    try {
+      showStatus(`Moving to (${tile.x}, ${tile.y})...`, 'info');
+      const moveData = await api.moveCharacter(currentCharacter.name, tile.x, tile.y);
+      currentCharacter = moveData.character;
+      setCooldownFromResponse(moveData.cooldown, 'move');
+
+      renderMap(currentMap, currentCharacter);
+      updateCharacterInfo(currentCharacter);
+      updateTimers();
+    } catch (error: any) {
+      console.error('Move before NPC error:', error);
+      const message = error.response?.data?.error?.message || error.message || 'Move failed';
+      showStatus(`Error: ${message}`, 'error');
+      return;
+    }
+  }
+
+  npcModalBody.innerHTML = '<div class="fight-empty">Loading NPC items...</div>';
+  npcModal.classList.add('visible');
+
+  try {
+    showStatus('Loading NPC items...', 'info');
+    const items = await api.getNpcItems(content.code);
+    openNpcModal(content.code, items, currentCharacter);
+  } catch (error: any) {
+    console.error('NPC items load error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Failed to load NPC items';
+    showStatus(`Error: ${message}`, 'error');
+    npcModalBody.innerHTML = `<div class="fight-empty">${escapeHtml(message)}</div>`;
+  }
+}
+
+async function handleNpcBuyItem(code: string, quantity: number) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Buying ${code} x${quantity}...`, 'info');
+    const result = await api.buyNpcItem(currentCharacter.name, code, quantity);
+    currentCharacter = result.character;
+    setCooldownFromResponse(result.cooldown, 'npc buy');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    if (npcModalState) {
+      renderNpcModal(currentCharacter);
+    }
+
+    showStatus(`Bought ${code} x${quantity}.`, 'success');
+  } catch (error: any) {
+    console.error('NPC buy error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Buy failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
+async function handleNpcSellItem(code: string, quantity: number) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  if (getInventoryQuantity(currentCharacter, code) < quantity) {
+    showStatus('Not enough items to sell', 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Selling ${code} x${quantity}...`, 'info');
+    const result = await api.sellNpcItem(currentCharacter.name, code, quantity);
+    currentCharacter = result.character;
+    setCooldownFromResponse(result.cooldown, 'npc sell');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    if (npcModalState) {
+      renderNpcModal(currentCharacter);
+    }
+
+    showStatus(`Sold ${code} x${quantity}.`, 'success');
+  } catch (error: any) {
+    console.error('NPC sell error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Sell failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
 }
 
 async function handleCraftItem(code: string, quantity: number) {
@@ -4161,6 +4388,11 @@ craftMenuItem.addEventListener('click', () => {
     handleCraftAction();
   }
 });
+npcMenuItem.addEventListener('click', () => {
+  if (!npcMenuItem.classList.contains('disabled')) {
+    handleNpcAction();
+  }
+});
 bankMenuItem.addEventListener('click', () => {
   if (!bankMenuItem.classList.contains('disabled')) {
     handleBankAction();
@@ -4187,6 +4419,12 @@ bankModalClose.addEventListener('click', closeBankModal);
 bankModal.addEventListener('click', (event) => {
   if (event.target === bankModal) {
     closeBankModal();
+  }
+});
+npcModalClose.addEventListener('click', closeNpcModal);
+npcModal.addEventListener('click', (event) => {
+  if (event.target === npcModal) {
+    closeNpcModal();
   }
 });
 
@@ -4290,6 +4528,34 @@ bankModalBody.addEventListener('click', (event) => {
 
   if (action === 'buy-expansion') {
     handleBankBuyExpansion();
+  }
+});
+
+npcModalBody.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement;
+  const button = target.closest('.npc-btn') as HTMLButtonElement | null;
+  if (!button) {
+    return;
+  }
+
+  const action = button.dataset.action;
+  const code = button.dataset.code;
+  if (!action || !code) {
+    return;
+  }
+
+  const container = button.closest('.npc-item');
+  const qtySelect = container?.querySelector('.npc-qty') as HTMLSelectElement | null;
+  const rawQuantity = qtySelect?.value ? Number.parseInt(qtySelect.value, 10) : 1;
+  const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+
+  if (action === 'buy') {
+    handleNpcBuyItem(code, quantity);
+    return;
+  }
+
+  if (action === 'sell') {
+    handleNpcSellItem(code, quantity);
   }
 });
 

@@ -1,5 +1,17 @@
 # Agentic Changes Log
 
+## [2026-02-13 16:32] - Add NPC trading support
+
+### Changed
+- File: `src/api.ts`
+  - Added NPC item types plus buy/sell API helpers
+- File: `src/main.ts`
+  - Added NPC trade modal with buy/sell actions
+  - Added context menu action for NPC tiles
+- File: `index.html`
+  - Added NPC trade modal markup and styling
+  - Added NPC trade context menu item
+
 ## [2026-02-13 16:12] - Add woodcutting workshop support
 
 ### Changed

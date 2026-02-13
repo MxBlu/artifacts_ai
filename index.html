@@ -1164,6 +1164,133 @@
       background: rgba(10, 10, 26, 0.6);
       border-radius: 6px;
     }
+
+    .npc-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3300;
+    }
+
+    .npc-modal.visible {
+      display: flex;
+    }
+
+    .npc-modal-content {
+      background: #16213e;
+      border: 2px solid #00d9ff;
+      border-radius: 10px;
+      width: min(920px, 92vw);
+      max-height: 82vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .npc-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid #0f3460;
+      color: #00d9ff;
+      font-weight: bold;
+    }
+
+    .npc-modal-body {
+      padding: 12px 16px 18px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .npc-section {
+      background: #0f3460;
+      border-radius: 8px;
+      padding: 12px;
+      color: #eee;
+      font-size: 13px;
+    }
+
+    .npc-section h4 {
+      color: #00d9ff;
+      margin-bottom: 8px;
+      font-size: 13px;
+    }
+
+    .npc-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 12px;
+      padding: 6px 8px;
+      background: rgba(10, 10, 26, 0.6);
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .npc-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .npc-item-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+
+    .npc-item-name {
+      font-weight: bold;
+      color: #eee;
+    }
+
+    .npc-item-sub {
+      color: #aaa;
+      font-size: 11px;
+    }
+
+    .npc-item-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .npc-qty {
+      width: 48px;
+      background: #0a0a1a;
+      border: 1px solid #00d9ff;
+      border-radius: 4px;
+      color: #fff;
+      padding: 2px 4px;
+      font-size: 11px;
+    }
+
+    .npc-btn {
+      background: #00d9ff;
+      color: #0a0a1a;
+      border: none;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+
+    .npc-btn.secondary {
+      background: #51cf66;
+    }
+
+    .npc-btn:disabled {
+      background: #2c3e50;
+      color: #666;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -1290,6 +1417,9 @@
       <div id="craftMenuItem" class="context-menu-item">
         <span class="context-menu-label">Craft</span>
       </div>
+      <div id="npcMenuItem" class="context-menu-item">
+        <span class="context-menu-label">NPC Trade</span>
+      </div>
       <div id="bankMenuItem" class="context-menu-item">
         <span class="context-menu-label">Bank</span>
       </div>
@@ -1313,6 +1443,16 @@
         <button id="bankModalClose" class="craft-close" aria-label="Close bank">×</button>
       </div>
       <div id="bankModalBody" class="bank-modal-body"></div>
+    </div>
+  </div>
+
+  <div id="npcModal" class="npc-modal">
+    <div class="npc-modal-content">
+      <div class="npc-modal-header">
+        <span id="npcModalTitle">NPC</span>
+        <button id="npcModalClose" class="craft-close" aria-label="Close NPC">×</button>
+      </div>
+      <div id="npcModalBody" class="npc-modal-body"></div>
     </div>
   </div>
 
