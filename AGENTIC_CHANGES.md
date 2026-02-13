@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-13 11:46] - Add cooldown retry and progress logging
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Added cooldown-aware retries for 499 errors
+  - Added progress logging for API actions and data loads
+
 ## [2026-02-13 11:32] - Add automated skill research script
 
 ### Added

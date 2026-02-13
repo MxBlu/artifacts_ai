@@ -153,11 +153,57 @@ function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function logStatus(message: string): void {
+  const timestamp = new Date().toISOString();
+  console.log(`[${timestamp}] ${message}`);
+}
+
+function getCooldownMsFromCharacter(character: Character | null): number {
+  if (!character?.cooldown_expiration) return 0;
+  const expiration = new Date(character.cooldown_expiration).getTime();
+  const remaining = expiration - Date.now();
+  return remaining > 0 ? remaining : 0;
+}
+
 async function waitForCooldown(cooldown?: Cooldown | null): Promise<void> {
   if (!cooldown) return;
   const remaining = cooldown.remaining_seconds ?? cooldown.total_seconds ?? 0;
   if (remaining > 0) {
     await sleep((remaining + 0.1) * 1000);
+  }
+}
+
+async function waitForCharacterCooldown(character: Character | null): Promise<void> {
+  const remainingMs = getCooldownMsFromCharacter(character);
+  if (remainingMs > 0) {
+    await sleep(remainingMs + 150);
+  }
+}
+
+function isCooldownError(error: any): boolean {
+  const code = error?.response?.data?.error?.code;
+  return code === 499;
+}
+
+async function withCooldownRetry<T>(
+  label: string,
+  characterName: string,
+  client: AxiosInstance,
+  action: () => Promise<T>
+): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await action();
+    } catch (error: any) {
+      attempt += 1;
+      if (!isCooldownError(error) || attempt > 5) {
+        throw error;
+      }
+      logStatus(`${label} hit cooldown (499). Waiting before retry ${attempt}.`);
+      const character = await getCharacter(client, characterName);
+      await waitForCharacterCooldown(character);
+    }
   }
 }
 
@@ -184,6 +230,7 @@ async function getMapsByLayer(client: AxiosInstance, layer: string): Promise<Map
   let page = 1;
   const size = 100;
   while (true) {
+    logStatus(`Fetching map page ${page} for layer ${layer}...`);
     const response = await client.get(`/maps/${layer}`, { params: { page, size } });
     const data: MapTile[] = response.data.data || [];
     if (!data.length) break;
@@ -199,6 +246,7 @@ async function getAllResources(client: AxiosInstance): Promise<Resource[]> {
   let page = 1;
   const size = 100;
   while (true) {
+    logStatus(`Fetching resources page ${page}...`);
     const response = await client.get('/resources', { params: { page, size } });
     const data: Resource[] = response.data.data || [];
     if (!data.length) break;
@@ -214,6 +262,7 @@ async function getAllItems(client: AxiosInstance): Promise<Item[]> {
   let page = 1;
   const size = 100;
   while (true) {
+    logStatus(`Fetching items page ${page}...`);
     const response = await client.get('/items', { params: { page, size } });
     const data: Item[] = response.data.data || [];
     if (!data.length) break;
@@ -229,6 +278,7 @@ async function getAllMonsters(client: AxiosInstance): Promise<Monster[]> {
   let page = 1;
   const size = 100;
   while (true) {
+    logStatus(`Fetching monsters page ${page}...`);
     const response = await client.get('/monsters', { params: { page, size } });
     const data: Monster[] = response.data.data || [];
     if (!data.length) break;
@@ -240,30 +290,45 @@ async function getAllMonsters(client: AxiosInstance): Promise<Monster[]> {
 }
 
 async function moveTo(client: AxiosInstance, name: string, x: number, y: number): Promise<Character> {
-  const response = await client.post<MovementResponse>(`/my/${name}/action/move`, { x, y });
+  logStatus(`Moving to (${x},${y})...`);
+  const response = await withCooldownRetry('move', name, client, () =>
+    client.post<MovementResponse>(`/my/${name}/action/move`, { x, y })
+  );
   await waitForCooldown(response.data.data.cooldown);
   return response.data.data.character;
 }
 
 async function gather(client: AxiosInstance, name: string): Promise<SkillResponse> {
-  const response = await client.post<SkillResponse>(`/my/${name}/action/gathering`);
+  logStatus('Gathering...');
+  const response = await withCooldownRetry('gather', name, client, () =>
+    client.post<SkillResponse>(`/my/${name}/action/gathering`)
+  );
   return response.data;
 }
 
 async function craft(client: AxiosInstance, name: string, code: string, quantity = 1): Promise<SkillResponse> {
-  const response = await client.post<SkillResponse>(`/my/${name}/action/crafting`, { code, quantity });
+  logStatus(`Crafting ${code} x${quantity}...`);
+  const response = await withCooldownRetry('craft', name, client, () =>
+    client.post<SkillResponse>(`/my/${name}/action/crafting`, { code, quantity })
+  );
   return response.data;
 }
 
 async function fight(client: AxiosInstance, name: string, participants: string[] = []): Promise<any> {
-  const response = await client.post(`/my/${name}/action/fight`, { participants });
+  logStatus('Fighting...');
+  const response = await withCooldownRetry('fight', name, client, () =>
+    client.post(`/my/${name}/action/fight`, { participants })
+  );
   return response.data;
 }
 
 async function depositAllInventory(client: AxiosInstance, name: string, character: Character): Promise<Character> {
   const items = (character.inventory || []).map(entry => ({ code: entry.code, quantity: entry.quantity }));
   if (!items.length) return character;
-  const response = await client.post(`/my/${name}/action/bank/deposit/item`, items);
+  logStatus('Depositing inventory to bank...');
+  const response = await withCooldownRetry('bank-deposit', name, client, () =>
+    client.post(`/my/${name}/action/bank/deposit/item`, items)
+  );
   await waitForCooldown(response.data.data.cooldown);
   return response.data.data.character;
 }
@@ -377,6 +442,7 @@ async function gatherResourceSamples(
     const skillLevel = getSkillLevel(character, resource.skill);
     if (resource.level > skillLevel) continue;
 
+    logStatus(`Sampling ${resource.code} (${resource.skill}) at ${node.layer} (${node.x},${node.y})...`);
     character = await moveTo(client, characterName, node.x, node.y);
 
     for (let i = 0; i < attemptsPerNode; i += 1) {
@@ -435,6 +501,7 @@ async function gatherForItem(
     return character;
   }
 
+  logStatus(`Gathering ${itemCode} from ${targetResource.code} at ${node.layer} (${node.x},${node.y})...`);
   let remaining = quantity;
   character = await moveTo(client, characterName, node.x, node.y);
 
@@ -487,6 +554,7 @@ async function fightForItem(
     return character;
   }
 
+  logStatus(`Fighting ${monster.code} for ${itemCode} at ${node.layer} (${node.x},${node.y})...`);
   character = await moveTo(client, characterName, node.x, node.y);
   let remaining = quantity;
 
@@ -570,6 +638,7 @@ async function craftSamples(
         }
       }
 
+      logStatus(`Moving to workshop for ${skill} at ${workshopTile.layer} (${workshopTile.x},${workshopTile.y})...`);
       character = await moveTo(client, characterName, workshopTile.x, workshopTile.y);
       const response = await craft(client, characterName, item.code, 1);
       const details = response.data.details || {};
@@ -603,12 +672,15 @@ async function main(): Promise<void> {
     throw new Error(`Character ${characterName} not found in /my/characters.`);
   }
 
+  logStatus(`Starting skill research for ${characterName}...`);
   let character = await getCharacter(client, characterName);
+  await waitForCharacterCooldown(character);
   const maps = await getMapsByLayer(client, character.layer);
   const resources = await getAllResources(client);
   const items = await getAllItems(client);
   const monsters = await getAllMonsters(client);
 
+  logStatus(`Loaded ${maps.length} map tiles, ${resources.length} resources, ${items.length} items, ${monsters.length} monsters.`);
   const logs: ActionLog[] = [];
 
   character = await gatherResourceSamples(client, characterName, character, maps, resources, attemptsPerNode, logs);
@@ -617,7 +689,7 @@ async function main(): Promise<void> {
   const headerInfo = `Character: ${character.name} | Layer: ${character.layer} | Gather attempts: ${attemptsPerNode} | Craft targets per skill: ${craftTargets}`;
   appendLog(logs, headerInfo);
 
-  console.log(`Logged ${logs.length} actions to SKILL_XP_LOG.md`);
+  logStatus(`Logged ${logs.length} actions to SKILL_XP_LOG.md`);
 }
 
 main().catch(error => {
