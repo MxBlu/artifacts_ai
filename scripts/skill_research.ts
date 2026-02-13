@@ -464,7 +464,20 @@ function getWorkshopSkill(code: string): string | null {
   if (normalized.includes('jewel')) return 'jewelrycrafting';
   if (normalized.includes('cook')) return 'cooking';
   if (normalized.includes('alch')) return 'alchemy';
+  if (normalized.includes('mining')) return 'mining';
   return null;
+}
+
+function buildWorkshopIndex(maps: MapTile[]): Map<string, MapTile> {
+  const index = new Map<string, MapTile>();
+  maps.forEach(tile => {
+    if (tile.interactions?.content?.type !== 'workshop') return;
+    const skill = getWorkshopSkill(tile.interactions.content.code);
+    if (skill && !index.has(skill)) {
+      index.set(skill, tile);
+    }
+  });
+  return index;
 }
 
 function chooseCraftTargets(items: Item[], skill: string, level: number, maxTargets: number): Item[] {
@@ -494,6 +507,106 @@ function findMonsterForDrop(monsters: Monster[], itemCode: string, minLevel: num
   if (!candidates.length) return null;
   candidates.sort((a, b) => a.level - b.level);
   return candidates[0];
+}
+
+async function ensureItemQuantity(
+  client: AxiosInstance,
+  characterName: string,
+  character: Character,
+  maps: MapTile[],
+  resourceIndex: Map<string, Resource[]>,
+  itemsByCode: Map<string, Item>,
+  monsters: Monster[],
+  workshopIndex: Map<string, MapTile>,
+  itemCode: string,
+  quantity: number,
+  logs: ActionLog[],
+  minMonsterLevel: number,
+  maxMonsterLevel: number,
+  stack: Set<string>
+): Promise<Character> {
+  if (quantity <= 0) return character;
+  if (stack.has(itemCode)) {
+    logStatus(`Detected craft loop for ${itemCode}, skipping.`);
+    return character;
+  }
+
+  const inventory = buildInventoryMap(character);
+  const available = inventory.get(itemCode) || 0;
+  if (available >= quantity) return character;
+
+  const needed = quantity - available;
+  const item = itemsByCode.get(itemCode);
+  const craftSkill = item?.craft?.skill;
+  const craftItems = item?.craft?.items || [];
+  const craftOutput = item?.craft?.quantity || 1;
+
+  if (item && craftSkill && craftItems.length > 0) {
+    stack.add(itemCode);
+    const craftsNeeded = Math.ceil(needed / craftOutput);
+    for (const req of craftItems) {
+      const totalRequired = req.quantity * craftsNeeded;
+      character = await ensureItemQuantity(
+        client,
+        characterName,
+        character,
+        maps,
+        resourceIndex,
+        itemsByCode,
+        monsters,
+        workshopIndex,
+        req.code,
+        totalRequired,
+        logs,
+        minMonsterLevel,
+        maxMonsterLevel,
+        stack
+      );
+    }
+
+    const workshopTile = workshopIndex.get(craftSkill);
+    if (!workshopTile) {
+      logStatus(`No workshop found for ${craftSkill} to craft ${itemCode}.`);
+      stack.delete(itemCode);
+      return character;
+    }
+
+    logStatus(`Crafting intermediate ${itemCode} x${craftsNeeded} at ${workshopTile.layer} (${workshopTile.x},${workshopTile.y})...`);
+    character = await moveTo(client, characterName, workshopTile.x, workshopTile.y, character);
+
+    for (let i = 0; i < craftsNeeded; i += 1) {
+      const response = await craft(client, characterName, itemCode, character, 1);
+      const details = response.data.details || {};
+      logs.push({
+        time: new Date().toISOString(),
+        action: 'craft',
+        skill: craftSkill,
+        target: itemCode,
+        xp: details.xp ?? null,
+        cooldown: response.data.cooldown?.total_seconds ?? response.data.cooldown?.remaining_seconds ?? null,
+        items: formatItems(details.items),
+        location: `${workshopTile.layer} (${workshopTile.x},${workshopTile.y})`
+      });
+      appendLogEntry(logs[logs.length - 1]);
+      character = response.data.character;
+      await waitForCooldown(response.data.cooldown);
+    }
+
+    stack.delete(itemCode);
+    return character;
+  }
+
+  if (resourceIndex.has(itemCode)) {
+    return gatherForItem(client, characterName, character, maps, resourceIndex, itemCode, needed, logs);
+  }
+
+  const monster = findMonsterForDrop(monsters, itemCode, minMonsterLevel, maxMonsterLevel);
+  if (monster) {
+    return fightForItem(client, characterName, character, maps, monster, itemCode, needed, logs);
+  }
+
+  logStatus(`No gatherable, fightable, or craftable source for ${itemCode}.`);
+  return character;
 }
 
 async function gatherResourceSamples(
@@ -691,6 +804,8 @@ async function craftSamples(
   items: Item[],
   resources: Resource[],
   monsters: Monster[],
+  workshopIndex: Map<string, MapTile>,
+  itemsByCode: Map<string, Item>,
   maxTargets: number,
   logs: ActionLog[]
 ): Promise<Character> {
@@ -724,16 +839,26 @@ async function craftSamples(
             continue;
           }
 
-          if (resourceIndex.has(requirement.code)) {
-            character = await gatherForItem(client, characterName, character, maps, resourceIndex, requirement.code, quantity, logs);
-          } else {
-            const monster = findMonsterForDrop(monsters, requirement.code, minMonsterLevel, maxMonsterLevel);
-            if (monster) {
-              character = await fightForItem(client, characterName, character, maps, monster, requirement.code, quantity, logs);
-            } else {
-              console.log(`No gatherable or fightable source for ${requirement.code} (needed for ${item.code}).`);
-              missingMaterials = true;
-            }
+          character = await ensureItemQuantity(
+            client,
+            characterName,
+            character,
+            maps,
+            resourceIndex,
+            itemsByCode,
+            monsters,
+            workshopIndex,
+            requirement.code,
+            quantity,
+            logs,
+            minMonsterLevel,
+            maxMonsterLevel,
+            new Set()
+          );
+
+          const refreshedInventory = buildInventoryMap(character);
+          if ((refreshedInventory.get(requirement.code) || 0) < quantity) {
+            missingMaterials = true;
           }
         }
 
@@ -789,6 +914,8 @@ async function main(): Promise<void> {
   const resources = await getAllResources(client);
   const items = await getAllItems(client);
   const monsters = await getAllMonsters(client);
+  const workshopIndex = buildWorkshopIndex(maps);
+  const itemsByCode = new Map(items.map(item => [item.code, item] as const));
 
   const progress = loadProgress();
   logStatus(`Loaded progress: ${progress.sampledResources.length} resources already sampled.`);
@@ -799,7 +926,19 @@ async function main(): Promise<void> {
   initLogRun(headerInfo);
 
   character = await gatherResourceSamples(client, characterName, character, maps, resources, attemptsPerNode, logs, progress);
-  character = await craftSamples(client, characterName, character, maps, items, resources, monsters, craftTargets, logs);
+  character = await craftSamples(
+    client,
+    characterName,
+    character,
+    maps,
+    items,
+    resources,
+    monsters,
+    workshopIndex,
+    itemsByCode,
+    craftTargets,
+    logs
+  );
 
   logStatus(`Logged ${logs.length} actions to SKILL_XP_LOG.md`);
 }

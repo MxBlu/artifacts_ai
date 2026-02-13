@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 12:44] - Add nested craft materials
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Resolve craft requirements recursively (e.g., bars from ore)
+
 ## [2026-02-13 12:33] - Automate crafting ingredient collection
 
 ### Changed
