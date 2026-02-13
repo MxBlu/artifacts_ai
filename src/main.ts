@@ -472,6 +472,7 @@ function renderBankModal(details: BankDetails, items: SimpleItem[], character: C
   bankModalTitle.textContent = 'Bank';
 
   const inventoryItems = (character.inventory || []).filter((entry: any) => entry && entry.code && entry.quantity > 0);
+  const depositAllDisabled = inventoryItems.length === 0 || isOnCooldown(character) ? 'disabled' : '';
   const inventoryHtml = inventoryItems.length
     ? inventoryItems.map((entry: any) => {
         const qtyControl = entry.quantity > 1
@@ -531,7 +532,10 @@ function renderBankModal(details: BankDetails, items: SimpleItem[], character: C
     </div>
     <div class="bank-grid">
       <div class="bank-section">
-        <h4>Inventory</h4>
+          <div class="bank-section-header">
+            <h4>Inventory</h4>
+            <button class="bank-btn" data-action="deposit-all" ${depositAllDisabled}>Deposit All</button>
+          </div>
         <div class="bank-item-list">${inventoryHtml}</div>
       </div>
       <div class="bank-section">
@@ -2663,6 +2667,43 @@ async function handleBankDepositItem(code: string, quantity: number) {
   }
 }
 
+async function handleBankDepositAll() {
+  if (!currentCharacter || !api || !bankDetails) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  const items = (currentCharacter.inventory || [])
+    .filter((entry: any) => entry && entry.code && entry.quantity > 0)
+    .map((entry: any) => ({ code: entry.code, quantity: entry.quantity }));
+
+  if (items.length === 0) {
+    showStatus('Inventory is empty', 'info');
+    return;
+  }
+
+  try {
+    showStatus('Depositing all inventory items...', 'info');
+    const result = await api.depositBankItems(currentCharacter.name, items);
+    currentCharacter = result.character;
+    bankItems = result.bank;
+    setCooldownFromResponse(result.cooldown, 'bank deposit');
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    renderBankModal(bankDetails, bankItems, currentCharacter);
+    showStatus('Deposited all inventory items.', 'success');
+  } catch (error: any) {
+    console.error('Bank deposit all error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Deposit failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 async function handleBankWithdrawItem(code: string, quantity: number) {
   if (!currentCharacter || !api || !bankDetails) {
     return;
@@ -3493,6 +3534,11 @@ bankModalBody.addEventListener('click', (event) => {
     } else {
       handleBankWithdrawItem(code, quantity);
     }
+    return;
+  }
+
+  if (action === 'deposit-all') {
+    handleBankDepositAll();
     return;
   }
 

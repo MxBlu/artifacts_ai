@@ -1,5 +1,13 @@
 # Agentic Changes Log
 
+## [2026-02-13 13:05] - Add bank deposit all control
+
+### Changed
+- File: `index.html`
+  - Added bank inventory header styling for a deposit-all button
+- File: `src/main.ts`
+  - Added Deposit All button and handler in bank modal
+
 ## [2026-02-13 12:56] - Track crafted sample progress
 
 ### Changed
