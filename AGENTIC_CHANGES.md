@@ -1,5 +1,13 @@
 # Agentic Changes Log
 
+## [2026-02-13 14:55] - Add auto craft target quantities
+
+### Changed
+- File: `src/main.ts`
+  - Auto craft now accepts a target quantity up to 99 and marks above-bank options with `(g)`
+  - Automation stops once the target output is reached
+  - Gathering runs in single-craft batches when the bank runs out
+
 ## [2026-02-13 14:41] - Show bank-missing gather markers
 
 ### Changed

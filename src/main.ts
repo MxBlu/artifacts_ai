@@ -96,8 +96,10 @@ let craftAutomationItemCode: string | null = null;
 let craftAutomationWorkshopTile: MapTile | null = null;
 let craftAutomationStartedAt: number | null = null;
 let craftAutomationLabel: string | null = null;
+let craftAutomationTargetRemaining: number | null = null;
 let craftAutoEnabled = false;
 let craftAutoItemCode: string | null = null;
+const craftAutoTargetQuantities = new Map<string, number>();
 let activeTileModalResourceRequestId = 0;
 let activeTileModalResourceCode: string | null = null;
 let bankDetails: BankDetails | null = null;
@@ -337,6 +339,16 @@ function getMissingCraftRequirements(item: Item, quantities: Map<string, number>
   });
 }
 
+function getMissingCraftRequirementsForActions(item: Item, quantities: Map<string, number>, actions: number) {
+  const requirements = item.craft?.items || [];
+  return requirements.map(req => {
+    const needed = req.quantity * actions;
+    const available = quantities.get(req.code) || 0;
+    const missing = Math.max(0, needed - available);
+    return { code: req.code, required: needed, missing };
+  });
+}
+
 function getMaxCraftableFromBankWithCapacity(item: Item, items: SimpleItem[], capacity: number): number {
   const requirements = item.craft?.items || [];
   const outputQuantity = item.craft?.quantity || 1;
@@ -451,13 +463,27 @@ function renderCraftModal(character: Character) {
         : 'None';
       const quantity = item.craft?.quantity || 1;
       const autoActive = craftAutoEnabled && craftAutoItemCode === item.code;
+      const maxCraftableFromInventory = getMaxCraftable(item, character);
+      const maxCraftableFromBank = bankDetails ? getMaxCraftableWithBank(item, character) : maxCraftableFromInventory;
       const maxCraftable = autoActive && bankDetails
-        ? getMaxCraftableWithBank(item, character)
-        : getMaxCraftable(item, character);
+        ? maxCraftableFromBank
+        : maxCraftableFromInventory;
       const canCraft = !locked && maxCraftable > 0;
       const autoDisabled = locked || (craftAutomationActive && !autoActive);
 
-      const quantityControl = maxCraftable > 1
+      const autoTargetMax = 99;
+      const autoTargetSelected = craftAutoTargetQuantities.get(item.code) || Math.max(1, maxCraftableFromBank || 1);
+      const shouldShowAutoTargets = autoActive && bankDetails;
+      const quantityControl = shouldShowAutoTargets
+        ? `<select class="craft-qty" data-code="${item.code}" data-auto="true">
+            ${Array.from({ length: autoTargetMax }, (_, i) => {
+              const value = i + 1;
+              const label = value > maxCraftableFromBank ? `${value}x (g)` : `${value}x`;
+              const selected = value === autoTargetSelected ? 'selected' : '';
+              return `<option value="${value}" ${selected}>${label}</option>`;
+            }).join('')}
+          </select>`
+        : maxCraftable > 1
         ? `<select class="craft-qty" data-code="${item.code}">
             ${Array.from({ length: maxCraftable }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}
           </select>`
@@ -1155,6 +1181,11 @@ async function runCraftAutomation(token: number, item: Item) {
     return;
   }
 
+  if (craftAutomationTargetRemaining !== null && craftAutomationTargetRemaining <= 0) {
+    stopCraftAutomation('Auto-craft stopped: target reached');
+    return;
+  }
+
   while (craftAutomationActive && token === craftAutomationToken) {
     if (!api || !currentCharacter) {
       break;
@@ -1196,7 +1227,11 @@ async function runCraftAutomation(token: number, item: Item) {
       break;
     }
 
-    const maxInventoryCrafts = getMaxCraftable(item, currentCharacter);
+    const outputQuantity = item.craft?.quantity || 1;
+    const remainingActions = craftAutomationTargetRemaining !== null
+      ? Math.ceil(craftAutomationTargetRemaining / outputQuantity)
+      : Number.POSITIVE_INFINITY;
+    const maxInventoryCrafts = Math.min(getMaxCraftable(item, currentCharacter), remainingActions);
     if (maxInventoryCrafts > 0) {
       try {
         renderFightState(`Auto-craft: crafting ${item.code} x${maxInventoryCrafts}...`, 'info');
@@ -1207,6 +1242,14 @@ async function runCraftAutomation(token: number, item: Item) {
 
         updateCharacterInfo(currentCharacter);
         updateTimers();
+
+        if (craftAutomationTargetRemaining !== null) {
+          craftAutomationTargetRemaining -= maxInventoryCrafts * outputQuantity;
+          if (craftAutomationTargetRemaining <= 0) {
+            stopCraftAutomation('Auto-craft stopped: target reached');
+            break;
+          }
+        }
 
         if (isOnCooldown(currentCharacter)) {
           await waitForCooldownReady(token, 'Crafting complete.');
@@ -1237,6 +1280,7 @@ async function runCraftAutomation(token: number, item: Item) {
   craftAutomationItemCode = null;
   craftAutomationStartedAt = null;
   craftAutomationLabel = null;
+  craftAutomationTargetRemaining = null;
   updateAutomationControls();
 }
 
@@ -1250,10 +1294,19 @@ async function runAutoCraftGatherCycle(token: number, item: Item, returnTile: Ma
     return false;
   }
 
+  const outputQuantity = item.craft?.quantity || 1;
+  const remainingActions = craftAutomationTargetRemaining !== null
+    ? Math.ceil(craftAutomationTargetRemaining / outputQuantity)
+    : 1;
+  if (remainingActions <= 0) {
+    return true;
+  }
+
+  const targetActions = Math.min(1, remainingActions);
   const inventoryMap = buildInventoryQuantityMap(currentCharacter);
   const bankMap = buildBankQuantityMap(bankItems);
   const combined = mergeQuantityMaps(inventoryMap, bankMap);
-  const missing = getMissingCraftRequirements(item, combined).filter(req => req.missing > 0);
+  const missing = getMissingCraftRequirementsForActions(item, combined, targetActions).filter(req => req.missing > 0);
 
   if (!missing.length) {
     return true;
@@ -1457,7 +1510,11 @@ async function runAutoCraftBankCycle(token: number, item: Item, returnTile: MapT
   }
 
   const capacity = currentCharacter.inventory_max_items || 0;
-  const maxCrafts = getMaxCraftableFromBankWithCapacity(item, bankItems, capacity);
+  const outputQuantity = item.craft?.quantity || 1;
+  const remainingActions = craftAutomationTargetRemaining !== null
+    ? Math.ceil(craftAutomationTargetRemaining / outputQuantity)
+    : Number.POSITIVE_INFINITY;
+  const maxCrafts = Math.min(getMaxCraftableFromBankWithCapacity(item, bankItems, capacity), remainingActions);
   if (maxCrafts <= 0) {
     return false;
   }
@@ -1770,6 +1827,7 @@ function stopCraftAutomation(message: string) {
   craftAutomationItemCode = null;
   craftAutomationStartedAt = null;
   craftAutomationLabel = null;
+  craftAutomationTargetRemaining = null;
   craftAutomationToken += 1;
   updateAutomationControls();
   renderFightState(message, 'info');
@@ -2788,12 +2846,6 @@ async function toggleCraftAutomation(code: string) {
     return;
   }
 
-  const item = getCraftModalItem(code);
-  if (!item || !item.craft) {
-    showStatus('Craft item data not found', 'error');
-    return;
-  }
-
   if (!craftAutomationWorkshopTile) {
     showStatus('No workshop selected for auto-craft', 'error');
     return;
@@ -2806,6 +2858,11 @@ async function toggleCraftAutomation(code: string) {
 
   craftAutoEnabled = true;
   craftAutoItemCode = code;
+
+  if (!craftAutoTargetQuantities.has(code)) {
+    const defaultTarget = Math.max(1, getMaxCraftableWithBank(item, currentCharacter));
+    craftAutoTargetQuantities.set(code, defaultTarget);
+  }
 
   if (craftModal.classList.contains('visible')) {
     renderCraftModal(currentCharacter);
@@ -2844,10 +2901,19 @@ async function startCraftAutomation(code: string) {
     return;
   }
 
+  const item = getCraftModalItem(code);
+  if (!item || !item.craft) {
+    showStatus('Craft item data not found', 'error');
+    return;
+  }
+
+  const targetQuantity = craftAutoTargetQuantities.get(code) || Math.max(1, getMaxCraftableWithBank(item, currentCharacter));
+  craftAutomationTargetRemaining = targetQuantity;
+
   craftAutomationActive = true;
   craftAutomationItemCode = code;
   craftAutomationStartedAt = Date.now();
-  craftAutomationLabel = `Auto: Crafting ${code}`;
+  craftAutomationLabel = `Auto: Crafting ${code} x${targetQuantity}`;
   craftAutomationToken += 1;
   updateAutomationControls();
 
@@ -3776,6 +3842,22 @@ craftModalBody.addEventListener('click', (event) => {
     const rawQuantity = quantitySelect?.value ? Number.parseInt(quantitySelect.value, 10) : 1;
     const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
     handleCraftItem(code, quantity);
+  }
+});
+
+craftModalBody.addEventListener('change', (event) => {
+  const target = event.target as HTMLSelectElement | null;
+  if (!target || !target.classList.contains('craft-qty')) {
+    return;
+  }
+  const code = target.dataset.code;
+  if (!code) {
+    return;
+  }
+  if (craftAutoEnabled && craftAutoItemCode === code && target.dataset.auto === 'true') {
+    const rawQuantity = Number.parseInt(target.value, 10);
+    const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+    craftAutoTargetQuantities.set(code, quantity);
   }
 });
 
