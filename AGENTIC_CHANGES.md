@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-13 12:56] - Track crafted sample progress
+
+### Changed
+- File: `scripts/skill_research.ts`
+  - Persist `sampleCraftedResources` and skip crafted items on resume
+
 ## [2026-02-13 12:44] - Add nested craft materials
 
 ### Changed

@@ -114,6 +114,7 @@ const PROGRESS_FILE = path.resolve(process.cwd(), 'skill_research_progress.json'
 
 type ProgressState = {
   sampledResources: string[];
+  sampleCraftedResources: string[];
 };
 
 function getEnv(name: string, fallback?: string): string {
@@ -187,16 +188,17 @@ async function waitForCharacterCooldown(character: Character | null): Promise<vo
 
 function loadProgress(): ProgressState {
   if (!fs.existsSync(PROGRESS_FILE)) {
-    return { sampledResources: [] };
+    return { sampledResources: [], sampleCraftedResources: [] };
   }
   try {
     const raw = fs.readFileSync(PROGRESS_FILE, 'utf8');
     const parsed = JSON.parse(raw) as ProgressState;
     return {
-      sampledResources: Array.isArray(parsed.sampledResources) ? parsed.sampledResources : []
+      sampledResources: Array.isArray(parsed.sampledResources) ? parsed.sampledResources : [],
+      sampleCraftedResources: Array.isArray(parsed.sampleCraftedResources) ? parsed.sampleCraftedResources : []
     };
   } catch {
-    return { sampledResources: [] };
+    return { sampledResources: [], sampleCraftedResources: [] };
   }
 }
 
@@ -807,7 +809,8 @@ async function craftSamples(
   workshopIndex: Map<string, MapTile>,
   itemsByCode: Map<string, Item>,
   maxTargets: number,
-  logs: ActionLog[]
+  logs: ActionLog[],
+  progress: ProgressState
 ): Promise<Character> {
   const skills = ['weaponcrafting', 'gearcrafting', 'jewelrycrafting', 'cooking', 'alchemy'];
   const resourceIndex = buildResourceIndex(resources);
@@ -815,6 +818,7 @@ async function craftSamples(
   const maxMonsterLevelEnv = process.env.MONSTER_LEVEL_MAX;
   const minMonsterLevel = minMonsterLevelEnv ? Number(minMonsterLevelEnv) : character.level;
   const maxMonsterLevel = maxMonsterLevelEnv ? Number(maxMonsterLevelEnv) : character.level;
+  const craftedSamples = new Set(progress.sampleCraftedResources);
 
   for (const skill of skills) {
     const skillLevel = getSkillLevel(character, skill);
@@ -828,6 +832,9 @@ async function craftSamples(
     }
 
     for (const item of targets) {
+      if (craftedSamples.has(item.code)) {
+        continue;
+      }
       const requirements = item.craft?.items || [];
       let missingMaterials = false;
 
@@ -889,6 +896,10 @@ async function craftSamples(
       appendLogEntry(logs[logs.length - 1]);
       character = response.data.character;
       await waitForCooldown(response.data.cooldown);
+
+      craftedSamples.add(item.code);
+      progress.sampleCraftedResources = Array.from(craftedSamples.values()).sort();
+      saveProgress(progress);
     }
   }
 
@@ -918,7 +929,9 @@ async function main(): Promise<void> {
   const itemsByCode = new Map(items.map(item => [item.code, item] as const));
 
   const progress = loadProgress();
-  logStatus(`Loaded progress: ${progress.sampledResources.length} resources already sampled.`);
+  logStatus(
+    `Loaded progress: ${progress.sampledResources.length} resources sampled, ${progress.sampleCraftedResources.length} crafts sampled.`
+  );
   logStatus(`Loaded ${maps.length} map tiles, ${resources.length} resources, ${items.length} items, ${monsters.length} monsters.`);
   const logs: ActionLog[] = [];
 
@@ -937,7 +950,8 @@ async function main(): Promise<void> {
     workshopIndex,
     itemsByCode,
     craftTargets,
-    logs
+    logs,
+    progress
   );
 
   logStatus(`Logged ${logs.length} actions to SKILL_XP_LOG.md`);
