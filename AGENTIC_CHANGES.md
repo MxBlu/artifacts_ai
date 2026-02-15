@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-16 10:17] - Allow auto craft start
+
+### Changed
+- File: `src/main.ts`
+  - Enable the craft button when auto-craft is active even with zero materials
+
 ## [2026-02-16 10:11] - Refresh craft cooldown state
 
 ### Changed

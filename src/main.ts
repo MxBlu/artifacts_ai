@@ -597,7 +597,7 @@ function renderCraftModal(character: Character) {
       const maxCraftable = autoActive && bankDetails
         ? maxCraftableFromBank
         : maxCraftableFromInventory;
-      const canCraft = !locked && maxCraftable > 0 && !onCooldown;
+      const canCraft = !locked && !onCooldown && (autoActive || maxCraftable > 0);
       const autoDisabled = locked || onCooldown || (craftAutomationActive && !autoActive);
 
       const autoTargetMax = 99;
