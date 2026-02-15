@@ -1,86 +1,11 @@
 # Agentic Changes Log
 
-## [2026-02-13 22:33] - Show transition conditions on hover
+## [2026-02-16 10:11] - Refresh craft cooldown state
 
 ### Changed
 - File: `src/main.ts`
-  - Rendered transition condition requirements in the tile hover modal
-
-## [2026-02-13 22:31] - Gate transition conditions
-
-### Changed
-- File: `src/main.ts`
-  - Added transition condition checks to disable consumable-gated transitions
-  - Blocked transition action when requirements are not met
-
-## [2026-02-13 22:27] - Add transition tile support
-
-### Changed
-- File: `index.html`
-  - Added transition label toggle, icon styling, and context menu entry
-- File: `src/api.ts`
-  - Added transition response types and API helper
-- File: `src/main.ts`
-  - Added transition label toggle, map icon rendering, and context menu action
-  - Added transition move/trigger flow with cooldown handling and map reload
-
-## [2026-02-13 17:18] - Add task master map labels
-
-### Changed
-- File: `index.html`
-  - Added Tasks checkbox to map labels and task icon styling
-- File: `src/main.ts`
-  - Added task label toggle and task master icon rendering
-
-## [2026-02-13 17:12] - Move view tasks button
-
-### Changed
-- File: `index.html`
-  - Removed View Tasks button from config panel
-- File: `src/main.ts`
-  - Rendered View Tasks button inside Character Info
-  - Wired inline button after character info refresh
-
-## [2026-02-13 17:05] - Add tasks list button
-
-### Changed
-- File: `index.html`
-  - Added View Tasks button in configuration panel
-- File: `src/main.ts`
-  - Added available tasks list modal rendering and handler
-
-## [2026-02-13 16:58] - Add tasks master support
-
-### Changed
-- File: `src/api.ts`
-  - Added task schemas, reward listings, and task master action helpers
-- File: `src/main.ts`
-  - Added tasks master modal with task actions and reward list
-  - Added context menu action for tasks master tiles
-- File: `index.html`
-  - Added tasks master modal markup and styling
-  - Added tasks menu item to the context menu
-- File: `GAME_KNOWLEDGE.md`
-  - Noted tasks master actions and task list endpoints
-
-## [2026-02-13 16:32] - Add NPC trading support
-
-### Changed
-- File: `src/api.ts`
-  - Added NPC item types plus buy/sell API helpers
-- File: `src/main.ts`
-  - Added NPC trade modal with buy/sell actions
-  - Added context menu action for NPC tiles
-- File: `index.html`
-  - Added NPC trade modal markup and styling
-  - Added NPC trade context menu item
-
-## [2026-02-13 16:12] - Add woodcutting workshop support
-
-### Changed
-- File: `src/main.ts`
-  - Map woodcutting workshop codes to the woodcutting skill
-  - Use woodcutting level for workshop gating in the craft modal
+  - Disable craft and auto buttons while the character is on cooldown
+  - Re-render the craft modal when cooldown status changes so buttons re-enable
 
 ## [2026-02-13 15:26] - Add nested crafting automation
 
