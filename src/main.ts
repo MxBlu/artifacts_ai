@@ -4631,11 +4631,6 @@ function renderMap(maps: MapTile[], character: Character | null) {
         cell.title = `Unknown (${x}, ${y})`;
       }
       
-      const coords = document.createElement('span');
-      coords.className = 'map-cell-coords';
-      coords.textContent = `${x},${y}`;
-      cell.appendChild(coords);
-      
       mapGrid.appendChild(cell);
     }
   }

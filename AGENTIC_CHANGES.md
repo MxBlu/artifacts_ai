@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-16 12:23] - Hide map grid coordinates
+
+### Changed
+- File: `src/main.ts`
+  - Removed coordinate labels from map grid cells
+
 ## [2026-02-16 12:18] - Add item recycling
 
 ### Changed
