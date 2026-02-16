@@ -31,6 +31,9 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - Gearcrafting
 - Jewelrycrafting
 - Cooking
+- Mining
+- Woodcutting
+- Alchemy
 
 **Combat:**
 - Combat level (separate from skill levels)
@@ -41,6 +44,8 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - Crafting and gathering actions return `details.xp` plus `details.items` in the action response (SkillResponseSchema).
 - Character schema includes per-skill XP fields like `weaponcrafting_xp`, `weaponcrafting_max_xp`, and `weaponcrafting_total_xp`.
 - Logs endpoints `/my/logs` and `/my/logs/{name}` include action history with `type`, `description`, `content`, `cooldown`, and `created_at`; useful for deriving XP per action and cooldowns.
+- **Skill lists:** Use `/resources` to list gatherable resources and `/items?craft_skill=weaponcrafting` (or other skill) to list crafts.
+- **XP table:** Skill XP uses a shared level table (see skills docs for full values).
 
 ### Combat System
 - **Elements:** Fire, Earth, Water, Air
@@ -52,6 +57,17 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - **Fight action:** `/my/{name}/action/fight` uses current map tile; request body only supports optional `participants` (max 2), and monster must be present on the tile
 - **Fight response:** Includes win/lose, per-turn log, drops, and XP
 - **Fight cooldown:** Scales with fight duration; stronger stats reduce cooldown
+- **Fight rules:** Max 100 turns; losing returns you to (0,0) overworld with 1 HP
+- **Cooldown formula:** `turns * 2 - (haste * 0.01) * (turns * 2)` with minimum 5s
+- **Damage formula:** `Round(Attack * Round(Damage * 0.01))` per element; multi-element weapons resolve separately
+- **Resistance formula:** `Round(Attack * Round(Resistance * 0.01))` per element
+- **Critical strike:** 1 critical strike = 1% chance; crit deals 1.5x total attack
+- **Initiative ties:** Higher HP goes first, then random
+- **Threat targeting:** 90% highest threat, 10% lowest HP; ties prefer lowest HP then random
+- **Wisdom/Prospecting:** 1 point = 0.1% XP/drop bonus
+- **Utilities keywords:** Restore, Splash Restore, Boost, Antipoison
+- **Rune keywords:** Burn, Lifesteal, Healing, Healing Aura, Vampiric Strike, Frenzy, Shell, Guard
+- **Monster effects:** Burn, Lifesteal, Healing, Reconstitution, Poison, Corrupted, Frenzy, Berserker Rage, Void Drain, Barrier
 
 ### Resources & Items
 - **Items have levels:** Equipment requires character level
@@ -59,21 +75,31 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - **Item types:** utility, equipment, resource, consumable, currency, rune, bag, artifact
 - **Tradeable flag:** Some items cannot be traded
 - **Effects:** Items can have stat bonuses and special effects
+- **Item conditions:** Use `gt`, `lt`, `eq`, `ne` against character fields to gate equip/use
+- **Consumable effects:** Heal, Gold, Teleport_x, Teleport_y
 
 ### Map & Navigation
 - **Layers:** interior, overworld, underground
 - **Coordinates:** X, Y position on each layer
-- **Move action:** POST `/my/{name}/action/move` with `{ "x": number, "y": number }`
+- **Move action:** POST `/my/{name}/action/move` with `{ "x": number, "y": number }` or `{ "map_id": number }`
 - **Map IDs:** Unique identifier per map tile
 - **Content types:** monster, resource, workshop, bank, grand_exchange, tasks_master, npc
 - **Access types:** standard, teleportation, conditional, blocked
 - **Transitions:** Special teleports between layers (may have requirements)
+- **Pathfinding:** A* finds shortest path around blocked tiles; cooldown 5s per map
+- **Transition action:** POST `/my/{name}/action/transition` from a tile with a transition; 5s cooldown
+- **Conditions:** `access.conditions` gates entering tiles; `transition.conditions` gates using portals
+- **Condition operators:** `eq`, `ne`, `gt`, `lt` for character fields
+- **Map-only operators:** `has_item` (inventory or equipped), `cost` (consumes item or gold), `achievement_unlocked`
 
 ### Economy
 - **Gold:** Primary currency
 - **Grand Exchange:** Player marketplace (3% listing tax)
 - **NPCs:** Buy/sell items at fixed prices
 - **Bank:** Shared storage across characters (expandable, 20 slots per expansion)
+- **GE orders:** Check `/grandexchange/orders?code=ITEM_CODE` and `/grandexchange/history/ITEM_CODE`
+- **GE actions:** Must be on a grand exchange tile to buy/sell/cancel orders
+- **NPC currency:** NPC items can cost gold or a specific item code
 
 ### Tasks System
 - Tasks Master NPC gives repeatable tasks
@@ -82,7 +108,38 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - 6 task coins = 1 random reward from task rewards pool
 - Can cancel tasks for 1 task coin
 - Tasks Master actions: new task, complete, cancel, exchange coins, and trade items
-- Task lists: `/tasks/list` and `/tasks/rewards` list objectives and exchange rewards
+- Task lists: `/tasks/all` and `/tasks/rewards` list objectives and exchange rewards
+- Task progress: available on `/characters/{name}` responses
+
+### Achievements
+- Account-wide progress across all characters
+- Types: `combat_kill`, `combat_drop`, `combat_level`, `gathering`, `crafting`, `recycling`, `task`, `use`
+- Endpoints: `/accounts/{account}/achievements`, `/achievements`, `/badges`
+- Season requirements can change; check server status endpoint
+
+### Actions & Logs
+- Cooldowns (base): move 5s per map, fight 2s per turn, rest 1s per 5 HP (min 3s), gathering 30s + resource level/2, crafting 5s per item, recycling 3s per item, bank item in/out 3s per different item, give item 3s per different item, others 3s
+- Logs: `/my/{name}/logs?page=1&size=50` for action history
+
+### Events
+- Timed world events spawn exclusive monsters/resources/NPCs
+- Endpoints: `/events` (all), `/events/active` (active only)
+
+### Inventory & Bank
+- Inventory: 20 slots, up to 100 total items (max total +2 per level)
+- Bank: shared across characters; base 50 slots
+- Bank expansions: +20 slots for 4,500 gold; cost doubles each purchase
+- Bank item actions require bank tile; up to 20 different items per request
+- Bank gold actions have flat 3s cooldown per transaction
+
+### NPC Trading
+- List NPCs: `/npcs/details`
+- NPC items: `/npcs/items/{npc_code}`; `currency` is gold or item code
+- Buy/sell require standing on the NPC tile
+
+### Recycling
+- Recycle weapons/equipment at weaponcrafting/gearcrafting/jewelrycrafting workshops
+- Returns at least 1 resource from the original craft (random among its materials)
 
 ### Cooldowns
 - **All actions have cooldowns** (returned in API response)

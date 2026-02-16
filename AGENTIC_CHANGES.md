@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-16 12:09] - Add concept knowledge
+
+### Changed
+- File: `GAME_KNOWLEDGE.md`
+  - Added achievements, actions, events, inventory/bank, maps, NPCs, recycling, skills, stats, and GE details
+
 ## [2026-02-16 12:00] - Add quickstart knowledge
 
 ### Changed
