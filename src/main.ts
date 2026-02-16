@@ -245,6 +245,10 @@ function getCraftSkillFromWorkshop(code: string): string | null {
   return null;
 }
 
+function isRecyclingSkill(skill: string): boolean {
+  return skill === 'weaponcrafting' || skill === 'gearcrafting' || skill === 'jewelrycrafting';
+}
+
 function getSkillLevel(character: Character, skill: string): number {
   switch (skill) {
     case 'weaponcrafting':
@@ -561,6 +565,7 @@ function renderCraftModal(character: Character) {
   const { skill, workshopCode, items } = craftModalState;
   const skillLevel = getSkillLevel(character, skill);
   const onCooldown = isOnCooldown(character);
+  const recyclingEnabled = isRecyclingSkill(skill);
   const filtered = items
     .filter(item => item.craft && item.craft.skill === skill)
     .sort((a, b) => (a.craft?.level || 0) - (b.craft?.level || 0));
@@ -599,6 +604,18 @@ function renderCraftModal(character: Character) {
         : maxCraftableFromInventory;
       const canCraft = !locked && !onCooldown && (autoActive || maxCraftable > 0);
       const autoDisabled = locked || onCooldown || (craftAutomationActive && !autoActive);
+      const inventoryQty = getInventoryQuantity(character, item.code);
+      const canRecycle = recyclingEnabled && inventoryQty > 0 && !onCooldown;
+      const recycleQtyControl = recyclingEnabled
+        ? inventoryQty > 1
+          ? `<select class="recycle-qty" data-code="${item.code}">
+              ${Array.from({ length: inventoryQty }, (_, i) => `<option value="${i + 1}">${i + 1}x</option>`).join('')}
+            </select>`
+          : `<span class="craft-qty-single">${inventoryQty}x</span>`
+        : '';
+      const recycleButton = recyclingEnabled
+        ? `<button class="recycle-btn secondary" data-code="${item.code}" ${canRecycle ? '' : 'disabled'}>Recycle</button>`
+        : '';
 
       const autoTargetMax = 99;
       const autoTargetSelected = craftAutoTargetQuantities.get(item.code) || Math.max(1, maxCraftableFromBank || 1);
@@ -627,6 +644,8 @@ function renderCraftModal(character: Character) {
               Lvl ${craftLevel}
               <button class="craft-btn" data-code="${item.code}" ${canCraft ? '' : 'disabled'}>Craft</button>
               <button class="craft-auto-btn ${autoActive ? 'active' : ''}" data-code="${item.code}" ${autoDisabled ? 'disabled' : ''}>Auto</button>
+              ${recycleQtyControl}
+              ${recycleButton}
             </span>
           </div>
           <div class="craft-item-meta">Makes: ${quantity} · Requires: ${ingredients}</div>
@@ -4064,6 +4083,46 @@ async function handleCraftItem(code: string, quantity: number) {
   }
 }
 
+async function handleRecycleItem(code: string, quantity: number) {
+  if (!currentCharacter || !api) {
+    return;
+  }
+
+  if (isOnCooldown(currentCharacter)) {
+    const remaining = getRemainingCooldown(currentCharacter);
+    showStatus(`Character is on cooldown for ${remaining} seconds`, 'error');
+    return;
+  }
+
+  if (getInventoryQuantity(currentCharacter, code) < quantity) {
+    showStatus('Not enough items to recycle', 'error');
+    return;
+  }
+
+  try {
+    showStatus(`Recycling ${code} x${quantity}...`, 'info');
+    const recycleData = await api.recycleItem(currentCharacter.name, code, quantity);
+    currentCharacter = recycleData.character;
+    setCooldownFromResponse(recycleData.cooldown, 'recycling');
+
+    updateCharacterInfo(currentCharacter);
+    updateTimers();
+    if (craftModal.classList.contains('visible')) {
+      renderCraftModal(currentCharacter);
+    }
+
+    const itemsSummary = recycleData.details.items.length
+      ? recycleData.details.items.map(item => `${item.code} x${item.quantity}`).join(', ')
+      : 'None';
+    const cooldown = recycleData.cooldown.total_seconds;
+    showStatus(`Recycled ${code} x${quantity}. Gained: ${itemsSummary}. Cooldown: ${cooldown}s`, 'success');
+  } catch (error: any) {
+    console.error('Recycle error:', error);
+    const message = error.response?.data?.error?.message || error.message || 'Recycle failed';
+    showStatus(`Error: ${message}`, 'error');
+  }
+}
+
 function getCraftModalItem(code: string): Item | null {
   if (craftModalState) {
     const found = craftModalState.items.find(item => item.code === code);
@@ -5155,6 +5214,18 @@ craftModalBody.addEventListener('click', (event) => {
     const code = autoButton.dataset.code;
     if (code) {
       toggleCraftAutomation(code);
+    }
+    return;
+  }
+  const recycleButton = target.closest('.recycle-btn') as HTMLButtonElement | null;
+  if (recycleButton) {
+    const code = recycleButton.dataset.code;
+    if (code) {
+      const container = recycleButton.closest('.craft-item');
+      const qtySelect = container?.querySelector('.recycle-qty') as HTMLSelectElement | null;
+      const rawQuantity = qtySelect?.value ? Number.parseInt(qtySelect.value, 10) : 1;
+      const quantity = Number.isFinite(rawQuantity) && rawQuantity > 0 ? rawQuantity : 1;
+      handleRecycleItem(code, quantity);
     }
     return;
   }

@@ -1,5 +1,13 @@
 # Agentic Changes Log
 
+## [2026-02-16 12:18] - Add item recycling
+
+### Changed
+- File: `src/api.ts`
+  - Added recycling response types and API helper
+- File: `src/main.ts`
+  - Added recycle controls to crafting modal and wired recycle actions
+
 ## [2026-02-16 12:09] - Add concept knowledge
 
 ### Changed
