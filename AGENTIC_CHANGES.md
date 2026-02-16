@@ -1,5 +1,12 @@
 # Agentic Changes Log
 
+## [2026-02-16 12:00] - Add quickstart knowledge
+
+### Changed
+- File: `GAME_KNOWLEDGE.md`
+  - Added quickstart notes on movement, fighting, resting, gathering, and crafting
+  - Noted example coordinates and early progression ideas
+
 ## [2026-02-16 10:17] - Allow auto craft start
 
 ### Changed

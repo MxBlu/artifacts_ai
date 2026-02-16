@@ -14,7 +14,7 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 
 ### Character Management
 - **Max Characters:** 5 per account
-- **Starting Location:** TBD (discover on first character creation)
+- **Starting Location:** Characters spawn at (0,0) on the map
 - **Character Slots:** weapon, shield, helmet, body_armor, leg_armor, boots, ring1, ring2, amulet, artifact1-3, utility1-2, bag, rune
 - **Inventory:** Limited slots, expandable via bag items
 - **HP Regen:** Rest action (1s per 5 HP, minimum 3s)
@@ -50,6 +50,8 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - **Multi-character:** Boss fights support up to 3 characters
 - **Threat:** Affects monster targeting in multi-char combat
 - **Fight action:** `/my/{name}/action/fight` uses current map tile; request body only supports optional `participants` (max 2), and monster must be present on the tile
+- **Fight response:** Includes win/lose, per-turn log, drops, and XP
+- **Fight cooldown:** Scales with fight duration; stronger stats reduce cooldown
 
 ### Resources & Items
 - **Items have levels:** Equipment requires character level
@@ -61,6 +63,7 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 ### Map & Navigation
 - **Layers:** interior, overworld, underground
 - **Coordinates:** X, Y position on each layer
+- **Move action:** POST `/my/{name}/action/move` with `{ "x": number, "y": number }`
 - **Map IDs:** Unique identifier per map tile
 - **Content types:** monster, resource, workshop, bank, grand_exchange, tasks_master, npc
 - **Access types:** standard, teleportation, conditional, blocked
@@ -87,6 +90,41 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 - Gathering/Crafting: depends on action
 - Combat: depends on outcome
 - Banking: 3s × number of different items (deposits/withdrawals)
+- **Move gating:** You cannot act again until the movement cooldown ends
+
+## Quickstart Notes
+
+### Client Basics
+- The web client shows action logs, character details, and map info for coordinates
+- The in-client code editor runs Node.js; scripts are run with `node index.js`
+- Chromium-based browsers are recommended for the editor
+
+### First Fight Flow
+- Example target: chicken at (0,1) with ~60 HP and water attack
+- Early weapon provides earth damage (check Equipment tab in client)
+- Fight via POST `/my/{name}/action/fight` on the current tile
+
+### HP Recovery
+- Rest via POST `/my/{name}/action/rest`
+- Rest cooldown is 1s per 5 HP recovered; good early, slow at high HP
+- Food from fishing/cooking is a better long-term recovery path
+
+### Gathering Basics
+- Gather via POST `/my/{name}/action/gathering` on a resource tile
+- Each gather action yields 1 resource in the response inventory summary
+- Example: ash_wood from ash_tree at (-1,0)
+
+### Crafting Basics
+- Weaponcrafting workshop example location: (2,1)
+- Unequip item via POST `/my/{name}/action/unequip` with `{ "slot": "weapon" }`
+- Craft via POST `/my/{name}/action/crafting` with `{ "code": "wooden_staff" }`
+- Equip via POST `/my/{name}/action/equip` with `{ "code": "wooden_staff", "slot": "weapon" }`
+- Craft responses include cooldown and XP gained
+
+### Early Progress Ideas
+- Mine copper, smelt bars, craft starter gear
+- Fish and cook for consumables
+- Craft level 1 weapons to push weaponcrafting to level 5
 
 ### Error Codes (Common)
 - 404: Not found (item, monster, resource, map, etc.)
