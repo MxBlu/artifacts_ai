@@ -1,93 +1,166 @@
-# Tasks & Goals
+# AI Agent Player Client - Tasks
 
-Track objectives, priorities, and progress for the Artifacts MMO client/bot.
+Implementation roadmap for autonomous AI agent client based on SPEC.md.
 
-## Immediate Setup Tasks
+## Phase 1: Script Executor Foundation 🔄
 
-- [ ] Initialize project (pnpm, TypeScript, dependencies)
-- [ ] Set up authentication (get Bearer token, store securely)
-- [ ] Create API client wrapper (axios)
-- [ ] Test basic API connectivity (GET `/` for server status)
-- [ ] Create first character if none exist
+### 1.1 DSL Parser
+- [ ] Define script AST (Abstract Syntax Tree) types
+- [ ] Implement tokenizer/lexer
+- [ ] Implement parser (commands, control flow, conditions)
+- [ ] Add variable substitution support
+- [ ] Write parser tests with sample scripts
 
-## Short-term Goals
+### 1.2 Command Executor
+- [ ] Create execution context (state, variables, line tracking)
+- [ ] Implement navigation commands (goto)
+- [ ] Implement gathering commands (gather, woodcut, mine, fish)
+- [ ] Implement combat commands (fight)
+- [ ] Implement banking commands (deposit, withdraw)
+- [ ] Implement crafting commands (craft)
+- [ ] Implement utility commands (rest, wait_cooldown, log)
+- [ ] Implement equipment commands (equip, unequip)
 
-### Core Infrastructure
-- [ ] Character state management
-- [ ] Cooldown tracking system
-- [ ] Basic movement navigation
-- [ ] Resource gathering automation
-- [ ] Simple combat loop
+### 1.3 Control Flow
+- [ ] Implement if/else conditionals
+- [ ] Implement loop constructs (count, until, while, forever)
+- [ ] Add loop iteration limits (prevent infinite loops)
+- [ ] Implement condition evaluator (inventory_full, skill_level, etc.)
+- [ ] Add variable support (set, get, interpolation)
 
-### Exploration
-- [ ] Map all accessible areas
-- [ ] Catalog resources and their locations
-- [ ] Document monster spawn locations
-- [ ] Identify NPC locations and inventories
-- [ ] Find banks and Grand Exchange locations
+### 1.4 Persistence Layer
+- [ ] Design execution state schema
+- [ ] Implement save state to JSON
+- [ ] Implement load state from JSON
+- [ ] Add atomic write (temp + rename)
+- [ ] Keep last 3 state snapshots
+- [ ] Add auto-save after each action
+- [ ] Test crash recovery
 
-## Medium-term Goals
+### 1.5 Error Handling & Safety
+- [ ] Add retry logic for API failures (exponential backoff)
+- [ ] Implement cooldown auto-wait
+- [ ] Add stuck detection (no progress after N actions)
+- [ ] Implement max execution time limits
+- [ ] Add graceful shutdown on errors
 
-### Automation
-- [ ] Skill leveling strategies (prioritize which skills?)
-- [ ] Efficient resource farming routes
-- [ ] Gold farming optimization
-- [ ] Automatic task completion
-- [ ] Smart inventory management (bank items when full)
+## Phase 2: Agent Integration 🎯
 
-### Economy
-- [ ] Grand Exchange price tracking
-- [ ] Profitable crafting identification
-- [ ] Automated trading strategies
-- [ ] Resource value analysis
+### 2.1 Information Tools
+- [ ] Implement get_game_state() tool
+- [ ] Implement get_execution_status() tool
+- [ ] Implement query_game_knowledge() (semantic search over GAME_KNOWLEDGE.md)
+- [ ] Implement lookup_item() tool
+- [ ] Implement lookup_monster() tool
+- [ ] Implement lookup_resource() tool
+- [ ] Implement find_location() tool
+- [ ] Implement get_market_prices() tool
 
-### Combat
-- [ ] Monster difficulty assessment
-- [ ] XP/hour optimization
-- [ ] Equipment progression path
-- [ ] Boss fight strategies (multi-character)
+### 2.2 Action Tools
+- [ ] Implement generate_script() tool
+- [ ] Implement start_script() tool
+- [ ] Implement pause_script() tool
+- [ ] Implement resume_script() tool
+- [ ] Implement stop_script() tool
 
-## Long-term Goals
+### 2.3 Check-in System
+- [ ] Implement 10-minute timer
+- [ ] Create check-in prompt template
+- [ ] Parse agent responses (CONTINUE/MODIFY/STOP)
+- [ ] Handle script modifications
+- [ ] Log check-in history
 
-### Multi-character Management
-- [ ] Coordinate multiple characters
-- [ ] Specialize characters (gatherer, crafter, fighter)
-- [ ] Transfer resources between characters
-- [ ] Synchronized bank usage
+### 2.4 Bootstrap System
+- [ ] Create initial agent prompt with game knowledge
+- [ ] Include DSL documentation in prompt
+- [ ] Add level 50 aspirational goal
+- [ ] Test initial agent script generation
 
-### Advanced Strategies
-- [ ] Event participation automation
-- [ ] Achievement hunting
-- [ ] Leaderboard ranking strategies
-- [ ] Seasonal content completion
+## Phase 3: Human Steering 🤝
 
-### Tools & Analysis
-- [ ] Crafting profit calculator
-- [ ] Skill XP optimizer
-- [ ] Drop rate tracker
-- [ ] Market price history
+### 3.1 Control Modes
+- [ ] Implement autonomous mode (agent only)
+- [ ] Implement collaborative mode (shared control)
+- [ ] Implement manual mode (human only)
 
-## Questions to Answer
+### 3.2 Takeover Mechanism
+- [ ] Implement human_takeover() - pause script
+- [ ] Implement human_release() - resume script
+- [ ] Implement human_action() - single command execution
+- [ ] Implement human_inject() - insert command into script
 
-- What's the optimal skill leveling order?
-- Which resources are most valuable?
-- What's the best gold/hour method at each level?
-- How does equipment progression work?
-- Are there any rare spawns or timed events?
-- What's the end-game content?
-- Which NPCs are most important?
-- How should we split tasks across 5 characters?
+### 3.3 State Synchronization
+- [ ] Log human actions to execution history
+- [ ] Update agent context after human release
+- [ ] Add "human intervention" notes to check-ins
 
-## Current Focus
+## Phase 4: Optimization & Polish ⚡
 
-**Priority 1:** Get project initialized and authenticate
-**Priority 2:** Create one character and explore basic mechanics
-**Priority 3:** Implement resource gathering automation
+### 4.1 Path Finding
+- [ ] Implement A* pathfinding algorithm
+- [ ] Cache map data for navigation
+- [ ] Optimize multi-tile movement
 
-## Completed
+### 4.2 Resource Caching
+- [ ] Cache item database
+- [ ] Cache monster database
+- [ ] Cache resource locations
+- [ ] Cache map tiles
 
-_Nothing yet - fresh start!_
+### 4.3 Metrics & Monitoring
+- [ ] Track actions executed
+- [ ] Track XP gains per skill
+- [ ] Track gold earned/spent
+- [ ] Track items gathered
+- [ ] Calculate efficiency metrics (XP/hour, gold/hour)
+- [ ] Add progress visualization
+
+### 4.4 Strategy Learning
+- [ ] Log successful strategies
+- [ ] Analyze execution history for patterns
+- [ ] Provide strategy recommendations to agent
+
+## Phase 5: Advanced Features 🚀
+
+### 5.1 Complex Crafting
+- [ ] Analyze crafting chains (dependencies)
+- [ ] Optimize material gathering order
+- [ ] Calculate crafting profitability
+
+### 5.2 Quest Support
+- [ ] Add quest tracking
+- [ ] Generate quest completion scripts
+- [ ] Handle quest rewards
+
+### 5.3 Death Recovery
+- [ ] Detect death events
+- [ ] Return to safe location
+- [ ] Re-equip from bank
+- [ ] Resume interrupted task
+
+## Current Sprint (Week 1)
+
+**Goal:** Complete Phase 1.1-1.3 (Parser + Basic Executor)
+
+- [ ] Set up project structure for script engine
+- [ ] Define script AST types
+- [ ] Implement basic parser
+- [ ] Implement basic command execution
+- [ ] Test with manual scripts (woodcutting loop)
+
+## Backlog Ideas
+
+- Web UI for monitoring agent progress
+- Discord bot for notifications
+- Multi-character coordination (future)
+- Machine learning for strategy optimization
+- Simulation mode (dry-run scripts)
+
+## Completed ✅
+
+_No items yet_
 
 ---
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-19
+**Current Focus:** Script Executor Foundation

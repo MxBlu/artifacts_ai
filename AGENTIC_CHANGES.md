@@ -1,5 +1,37 @@
 # Agentic Changes Log
 
+## [2026-02-19 13:45] - Create AI Agent Player Specification
+
+### Added
+- File: `SPEC.md`
+  - Complete specification for autonomous AI agent client
+  - Script DSL design (commands, control flow, variables)
+  - Script executor architecture with persistence
+  - Agent tool interface (13 tools for information and control)
+  - Human steering system for collaborative play
+  - Check-in system for 10-minute agent monitoring
+  - Bootstrap prompt with level 50 aspirational goal
+  - Safety systems (execution limits, error recovery, stuck detection)
+  - Implementation phases (5 phases from executor to advanced features)
+
+### Changed
+- File: `TASKS.md`
+  - Replaced human-operated client tasks with AI agent implementation roadmap
+  - Organized into 5 phases matching SPEC.md
+  - Phase 1: Script Executor (parser, executor, persistence, safety)
+  - Phase 2: Agent Integration (tools, check-ins, bootstrap)
+  - Phase 3: Human Steering (takeover, collaboration, injection)
+  - Phase 4: Optimization (pathfinding, caching, metrics)
+  - Phase 5: Advanced Features (crafting chains, quests, death recovery)
+
+### Notes
+- Design optimizes for agent cost reduction via script generation
+- Agent generates scripts, executor runs them cheaply
+- 10-minute check-ins balance autonomy with oversight
+- Single character focus with human steering for raids
+- Execution state saves to disk for crash recovery
+- Grand Exchange available but not prioritized
+
 ## [2026-02-16 12:23] - Hide map grid coordinates
 
 ### Changed
