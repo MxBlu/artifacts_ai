@@ -2,51 +2,51 @@
 
 Implementation roadmap for autonomous AI agent client based on SPEC.md.
 
-## Phase 1: Script Executor Foundation 🔄
+## Phase 1: Script Executor Foundation ✅
 
 ### 1.1 DSL Parser
-- [ ] Define script AST (Abstract Syntax Tree) types
-- [ ] Implement tokenizer/lexer
-- [ ] Implement parser (commands, control flow, conditions)
-- [ ] Add variable substitution support
-- [ ] Write parser tests with sample scripts
+- [x] Define script AST (Abstract Syntax Tree) types
+- [x] Implement tokenizer/lexer
+- [x] Implement parser (commands, control flow, conditions)
+- [x] Add variable substitution support
+- [x] Write parser tests with sample scripts
 
 ### 1.2 Command Executor
-- [ ] Create execution context (state, variables, line tracking)
-- [ ] Implement navigation commands (goto)
-- [ ] Implement gathering commands (gather, woodcut, mine, fish)
-- [ ] Implement combat commands (fight)
-- [ ] Implement banking commands (deposit, withdraw)
-- [ ] Implement crafting commands (craft)
-- [ ] Implement equipment commands (equip, unequip)
-- [ ] Implement NPC trading commands (npc buy, npc sell)
-- [ ] Implement task commands (task new, task complete, task cancel, task exchange, task trade)
-- [ ] Implement consumable commands (use)
-- [ ] Implement transition command (transition)
-- [ ] Implement utility commands (rest, wait_cooldown, log)
+- [x] Create execution context (state, variables, line tracking)
+- [x] Implement navigation commands (goto)
+- [x] Implement gathering commands (gather, woodcut, mine, fish)
+- [x] Implement combat commands (fight)
+- [x] Implement banking commands (deposit, withdraw)
+- [x] Implement crafting commands (craft)
+- [x] Implement equipment commands (equip, unequip)
+- [x] Implement NPC trading commands (npc buy, npc sell)
+- [x] Implement task commands (task new, task complete, task cancel, task exchange, task trade)
+- [x] Implement consumable commands (use)
+- [x] Implement transition command (transition)
+- [x] Implement utility commands (rest, wait_cooldown, log)
 
 ### 1.3 Control Flow
-- [ ] Implement if/else conditionals
-- [ ] Implement loop constructs (count, until, while, forever)
-- [ ] Add loop iteration limits (prevent infinite loops)
-- [ ] Implement condition evaluator (inventory_full, skill_level, etc.)
-- [ ] Add variable support (set, get, interpolation)
+- [x] Implement if/else conditionals
+- [x] Implement loop constructs (count, until, while, forever)
+- [x] Add loop iteration limits (prevent infinite loops)
+- [x] Implement condition evaluator (inventory_full, skill_level, etc.)
+- [x] Add variable support (set, get, interpolation)
 
 ### 1.4 Persistence Layer
-- [ ] Design execution state schema
-- [ ] Implement save state to JSON
-- [ ] Implement load state from JSON
-- [ ] Add atomic write (temp + rename)
-- [ ] Keep last 3 state snapshots
-- [ ] Add auto-save after each action
-- [ ] Test crash recovery
+- [x] Design execution state schema
+- [x] Implement save state to JSON
+- [x] Implement load state from JSON
+- [x] Add atomic write (temp + rename)
+- [x] Keep last 3 state snapshots
+- [x] Add auto-save after each action
+- [x] Test crash recovery
 
 ### 1.5 Error Handling & Safety
-- [ ] Add retry logic for API failures (exponential backoff)
-- [ ] Implement cooldown auto-wait
-- [ ] Add stuck detection (no progress after N actions)
-- [ ] Implement max execution time limits
-- [ ] Add graceful shutdown on errors
+- [x] Add retry logic for API failures (exponential backoff)
+- [x] Implement cooldown auto-wait
+- [x] Add stuck detection (no progress after N actions)
+- [x] Implement max execution time limits
+- [x] Add graceful shutdown on errors
 
 ## Phase 2: Agent Integration 🎯
 
@@ -193,19 +193,18 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [ ] Re-equip from bank
 - [ ] Resume interrupted task
 
-## Current Sprint (Week 1)
+## Current Sprint (Week 2)
 
-**Goal:** Complete Phase 1.1-1.3 (Parser + Basic Executor)
+**Goal:** Complete Phase 2 (Agent Integration) + Phase 3 (Web Interface)
 
-- [ ] Set up project structure for script engine
-- [ ] Define script AST types
-- [ ] Implement basic parser
-- [ ] Implement basic command execution
-- [ ] Test with manual scripts (woodcutting loop)
+- [ ] Implement agent tools (get_game_state, lookup_*, etc.)
+- [ ] Build check-in system (10-minute timer + prompt)
+- [ ] Create bootstrap prompt with level 50 goal
+- [ ] Set up WebSocket server
+- [ ] Build web dashboard (logs, stats, script viewer, steering)
 
 ## Backlog Ideas
 
-- Web UI for monitoring agent progress
 - Discord bot for notifications
 - Multi-character coordination (future)
 - Machine learning for strategy optimization
@@ -213,9 +212,15 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 
 ## Completed ✅
 
-_No items yet_
+- Phase 1: Script Executor Foundation (parser, executor, persistence, error handling)
+  - DSL parser with full AST, tokenizer, all commands, conditions, control flow
+  - ScriptExecutor class with live API integration
+  - Atomic persistence with snapshot rotation
+  - Retry logic, cooldown handling, stuck detection
+  - CLI entry point: run, resume, status, stop
+  - Smoke tested against live API (greenglasses character)
 
 ---
 
 **Last Updated:** 2026-02-19
-**Current Focus:** Script Executor Foundation
+**Current Focus:** Phase 2 - Agent Integration

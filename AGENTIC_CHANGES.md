@@ -1,5 +1,63 @@
 # Agentic Changes Log
 
+## [2026-02-19 23:52] - Phase 1: Script Executor Foundation
+
+### Added
+- File: `src/engine/parser.ts`
+  - Full DSL tokenizer and parser
+  - AST node types for all 20+ commands (goto, gather, woodcut, mine, fish, fight, bank, equip, unequip, recycle, craft, ge, npc, task, use, transition, rest, wait_cooldown, log, set)
+  - Control flow: if/else, loop count, loop until, loop while, loop forever
+  - Condition evaluator types: inventory_full, inventory_space, has_item, skill_level, hp, hp_percent, gold, at_location, has_task, task_progress_complete, task_coins
+  - Variable interpolation: `{{var_name}}` syntax in goto and other commands
+  - Shorthand skill conditions: `woodcutting_level >= 5` (without `skill_level` prefix)
+  - Comment stripping (# comments)
+
+- File: `src/engine/state.ts`
+  - ExecutionState interface with script, currentLine, variables, callStack, metrics
+  - Atomic save with temp-then-rename strategy
+  - Snapshot rotation (last 3 states for crash recovery)
+  - `appendLog()` with timestamp formatting and console echo
+  - `loadState()` with fallback to snapshots on corruption
+
+- File: `src/engine/executor.ts`
+  - `ScriptExecutor` class - full execution engine
+  - All command implementations wired to ArtifactsAPI
+  - Condition evaluator using live character state
+  - Control flow: if/else, loop_count, loop_until, loop_while, loop_forever (10k iteration limit)
+  - API retry with exponential backoff (3 retries)
+  - Cooldown error (499) handling with automatic wait
+  - Already-at-destination (490) as no-op
+  - Stuck detection after 50 actions without state change
+  - Callbacks: `onAction`, `onStateChange` for web interface
+  - `stop()` / `pause()` for external control
+  - Location aliases: bank, workshop, grand_exchange, ge, tasks_master
+
+- File: `src/index.ts`
+  - Main CLI entry point
+  - Commands: `run <file>`, `resume`, `status`, `stop`
+  - Auto-recovery: resumes running state on startup
+  - Reads Bearer token from `auth_headers.txt`
+  - SIGINT/SIGTERM graceful shutdown
+
+- File: `scripts/combat_chickens.dsl`
+  - Sample script: fight chickens 20 times with HP-based bank/rest recovery
+
+- File: `scripts/woodcutting.dsl`
+  - Sample script: woodcut until level 5 with bank deposit on inventory full
+
+- File: `scripts/smoke_test.dsl`
+  - Minimal 2-action test: goto + fight
+
+### Changed
+- File: `package.json`
+  - Added `start` and `engine` scripts pointing to `tsx src/index.ts`
+
+### Notes
+- Smoke tested against live API: move to (0,1) + fight worked correctly
+- Fight won in 29 turns against chicken at (0,1); character at level 1
+- State persistence verified (state/execution_state.json written after each action)
+- Cooldown waiting works: 58s fight cooldown waited correctly
+
 ## [2026-02-19 14:50] - Add test character configuration
 
 ### Changed

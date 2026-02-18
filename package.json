@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "start": "tsx src/index.ts",
+    "engine": "tsx src/index.ts",
     "analyze:weaponcrafting": "tsx src/weaponcrafting_analysis.ts",
     "api": "bash scripts/api.sh",
     "research:skills": "tsx scripts/skill_research.ts"
