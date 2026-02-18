@@ -1,5 +1,40 @@
 # Agentic Changes Log
 
+## [2026-02-19 14:30] - Add web interface specification
+
+### Changed
+- File: `SPEC.md`
+  - Replaced "Human Steering Interface" section with comprehensive "Web Interface" section
+  - Added 5 UI components: Agent Log, Execution Log, Stats Dashboard, Script Viewer, Steering Input
+  - Defined WebSocket message protocol for real-time updates
+  - Added XP/hr and gold/hr tracking specifications
+  - Included manual play mode for taking control during raids
+  - Added natural language steering input for mid-execution course correction
+  - Updated implementation Phase 3 to focus on Web Interface
+  - Added "Design Decisions" section explaining web interface choice and technology stack
+
+- File: `TASKS.md`
+  - Replaced Phase 3 "Human Steering" with "Phase 3: Web Interface"
+  - Added 9 subsections with detailed implementation tasks:
+    - WebSocket server setup
+    - Frontend core UI
+    - Agent log panel
+    - Execution log panel
+    - Stats dashboard with XP/hr tracking
+    - Script viewer with line highlighting
+    - Human steering text input
+    - Manual play mode
+    - Testing and polish
+
+### Notes
+- Web interface provides real-time monitoring and steering capabilities
+- Dual logs separate AI reasoning from action execution for clarity
+- Stats tracking includes XP/hr, gold/hr, and session metrics
+- Natural language steering allows human to give new instructions mid-execution
+- Manual play mode enables seamless takeover for complex content
+- WebSocket architecture ensures low-latency bidirectional communication
+- Dark terminal aesthetic for easy monitoring during long sessions
+
 ## [2026-02-19 14:15] - Add missing script commands to SPEC
 
 ### Changed

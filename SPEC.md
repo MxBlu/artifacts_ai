@@ -293,41 +293,153 @@ Terminate script execution.
 **insert_command(line: number, command: string)**
 Insert command at specific line in running script.
 
-### 4. Human Steering Interface
+### 4. Web Interface
 
-Allows human to take control during script execution for collaborative content.
+A web-based dashboard for monitoring and steering the autonomous agent.
 
-**Modes:**
-- **Autonomous:** Agent script runs, no human input
-- **Collaborative:** Human and agent share control
-- **Manual:** Human has full control, agent monitors
+**Architecture:**
+- **Backend:** WebSocket server for real-time updates
+- **Frontend:** Single-page app (React/Vue/vanilla JS)
+- **Port:** Local server on http://localhost:3000
 
-**Commands:**
-```typescript
-// Pause agent script and take control
-human_takeover()
+**UI Components:**
 
-// Return control to agent
-human_release()
-
-// Execute single action while paused
-human_action(command: string)
-
-// Inject command into running script
-human_inject(command: string)
+**1. Agent Log Panel**
+```
+┌─ AI Agent Responses ────────────────────────┐
+│ [10:23:45] Analyzing current state...       │
+│ [10:23:47] Woodcutting level is 4/5         │
+│ [10:23:47] Inventory: 15/20 slots           │
+│ [10:23:48] CONTINUE - Script is efficient   │
+│ [10:33:52] Check-in: Level 5 reached!       │
+│ [10:33:53] MODIFY - Switching to mining     │
+│ [10:33:55] Generated new script (15 lines)  │
+└─────────────────────────────────────────────┘
 ```
 
-**Use Cases:**
-- **Raids/Dungeons:** Complex mechanics requiring real-time decisions
-- **Trading:** Manual negotiation or market timing
-- **Recovery:** Fix stuck states manually
-- **Learning:** Agent observes human strategy
+**2. Execution Log Panel**
+```
+┌─ Action Log ────────────────────────────────┐
+│ [10:30:12] goto 2 -1                        │
+│ [10:30:18] woodcut (cooldown: 15s)          │
+│ [10:30:33] woodcut (cooldown: 15s)          │
+│ [10:30:48] woodcut (inventory full)         │
+│ [10:30:48] goto 4 1                         │
+│ [10:30:55] bank deposit allitems            │
+│ [10:31:00] goto 2 -1                        │
+└─────────────────────────────────────────────┘
+```
+
+**3. Stats Dashboard**
+```
+┌─ Character Stats ───────────────────────────┐
+│ Name: Warrior123        Level: 15           │
+│ HP: 85/100              Gold: 1,523         │
+│ Position: (2, -1)       Cooldown: 12s       │
+│                                              │
+│ Skills (hover for XP/hr):                   │
+│ ▓▓▓▓▓▓░░░░ Mining      Lv 5  (+120 XP/hr)  │
+│ ▓▓▓▓▓░░░░░ Woodcutting Lv 5  (+0 XP/hr)    │
+│ ▓▓▓░░░░░░░ Fishing     Lv 3  (+0 XP/hr)    │
+│ ▓▓░░░░░░░░ Combat      Lv 2  (+0 XP/hr)    │
+│                                              │
+│ Session Stats:                               │
+│ Runtime: 2h 15m                              │
+│ Actions: 487                                 │
+│ Gold Earned: +523                            │
+│ Levels Gained: 2                             │
+└─────────────────────────────────────────────┘
+```
+
+**4. Current Script View**
+```
+┌─ Active Script (Line 8/25) ─────────────────┐
+│  5  goto 2 -1                               │
+│  6  loop until mining_level >= 10:          │
+│  7    mine                                   │
+│→ 8    wait_cooldown                  ← HERE │
+│  9    if inventory_full:                     │
+│ 10      goto 4 1                             │
+│ 11      bank deposit allitems                │
+└─────────────────────────────────────────────┘
+```
+
+**5. Human Steering Input**
+```
+┌─ Steer Agent ───────────────────────────────┐
+│ > Stop mining and go fight chickens         │
+│                                     [Send]   │
+│                                              │
+│ Quick Actions:                               │
+│ [Pause Script] [Resume] [Emergency Stop]    │
+│ [Take Control] [Release Control]            │
+└─────────────────────────────────────────────┘
+```
+
+**Real-time Metrics:**
+```typescript
+interface WebSocketMessage {
+  type: 'agent_response' | 'action_executed' | 'stats_update' | 
+        'script_update' | 'error' | 'check_in';
+  timestamp: number;
+  data: any;
+}
+
+// Stats update every action
+{
+  type: 'stats_update',
+  data: {
+    character: CharacterState;
+    xpPerHour: Record<string, number>; // Per skill
+    goldPerHour: number;
+    actionsPerHour: number;
+    sessionStats: {
+      runtime: number;
+      totalActions: number;
+      goldEarned: number;
+      levelsGained: number;
+      xpGained: Record<string, number>;
+    }
+  }
+}
+```
+
+**Human Interaction:**
+
+**Text Commands:**
+- Natural language input: "Go fight chickens until level 10"
+- Agent interprets and generates new script
+- Agent responds with plan before executing
+
+**Quick Actions:**
+- **Pause Script:** Stops execution, maintains state
+- **Resume:** Continues from paused state
+- **Emergency Stop:** Hard stop, saves state
+- **Take Control:** Manual mode for human play
+- **Release Control:** Return to autonomous mode
 
 **State Synchronization:**
-- Human actions logged to execution history
-- Agent receives state update after human release
-- Agent can query: "Why did human intervene?"
-- Agent adapts script based on observed human actions
+- WebSocket broadcasts state changes
+- Human inputs queued and processed by agent
+- Agent acknowledges instructions before acting
+- Execution log shows human vs agent actions (different colors)
+
+**Manual Play Mode:**
+When user clicks "Take Control":
+- Script execution pauses
+- Character can be played manually via web UI
+- Action buttons appear (Move, Fight, Gather, Bank, etc.)
+- Grid-based map view for navigation
+- Agent monitors and logs human actions
+- Click "Release Control" to return to autonomous mode
+- Agent receives context: "Human played for X minutes, performed Y actions"
+
+**Use Cases:**
+- **Steering:** Give agent new goals mid-execution
+- **Raids/Dungeons:** Take control for complex mechanics
+- **Trading:** Manual GE transactions or NPC negotiations  
+- **Recovery:** Fix stuck states or errors
+- **Learning:** Agent observes and adapts to human strategies
 
 ### 5. Persistence Layer
 
@@ -523,11 +635,16 @@ Track and report to agent:
 - Create bootstrap prompt with level 50 goal
 - Test agent script generation
 
-**Phase 3: Human Steering**
-- Implement takeover/release mechanism
-- Build collaborative mode
-- Add manual action injection
-- Test handoff scenarios
+**Phase 3: Web Interface**
+- Set up WebSocket server
+- Create HTML/CSS/JS frontend
+- Implement real-time log streaming (agent responses, actions)
+- Build stats dashboard with XP/hr tracking
+- Add current script viewer with line highlighting
+- Implement human steering text input
+- Add quick action buttons (pause, resume, stop)
+- Build manual play mode (take control/release)
+- Test real-time updates and commands
 
 **Phase 4: Optimization**
 - Path finding for efficient navigation
@@ -563,6 +680,14 @@ Track and report to agent:
 - **Debugging:** Clear execution model
 
 ## Design Decisions
+
+### Web Interface
+- **Real-time Dashboard:** WebSocket-based UI for monitoring and steering
+- **Dual Logs:** Separate views for AI reasoning and action execution
+- **Metrics Tracking:** XP/hr, gold/hr, session stats with live updates
+- **Natural Language Steering:** Text input for giving agent new instructions
+- **Manual Play Mode:** Take control for raids or complex content
+- **Technology:** Node.js + WebSocket backend, vanilla JS frontend
 
 ### Goal Structure
 - **Aspirational Goal:** Reach level 50 in all skills and base level

@@ -80,23 +80,74 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [ ] Add level 50 aspirational goal
 - [ ] Test initial agent script generation
 
-## Phase 3: Human Steering 🤝
+## Phase 3: Web Interface 🌐
 
-### 3.1 Control Modes
-- [ ] Implement autonomous mode (agent only)
-- [ ] Implement collaborative mode (shared control)
-- [ ] Implement manual mode (human only)
+### 3.1 Backend - WebSocket Server
+- [ ] Set up Node.js WebSocket server (ws library)
+- [ ] Define WebSocket message protocol
+- [ ] Implement connection handling
+- [ ] Broadcast state updates to all clients
+- [ ] Handle client commands (pause, resume, stop, steering)
+- [ ] Implement message queuing for reliability
 
-### 3.2 Takeover Mechanism
-- [ ] Implement human_takeover() - pause script
-- [ ] Implement human_release() - resume script
-- [ ] Implement human_action() - single command execution
-- [ ] Implement human_inject() - insert command into script
+### 3.2 Frontend - Core UI
+- [ ] Create HTML structure (split panes layout)
+- [ ] Implement dark theme CSS (terminal aesthetic)
+- [ ] Set up WebSocket client connection
+- [ ] Handle reconnection on disconnect
+- [ ] Add auto-scroll for log panels
 
-### 3.3 State Synchronization
-- [ ] Log human actions to execution history
-- [ ] Update agent context after human release
-- [ ] Add "human intervention" notes to check-ins
+### 3.3 Agent Log Panel
+- [ ] Display AI agent responses in real-time
+- [ ] Show timestamps for each entry
+- [ ] Color-code message types (thinking, decision, error)
+- [ ] Add filtering options (show/hide types)
+- [ ] Implement log size limit (keep last N entries)
+
+### 3.4 Execution Log Panel
+- [ ] Display executed actions in real-time
+- [ ] Show command, result, and cooldown
+- [ ] Color-code human vs agent actions
+- [ ] Add action icons (move, fight, gather, etc.)
+- [ ] Implement search/filter
+
+### 3.5 Stats Dashboard
+- [ ] Display current character state
+- [ ] Show skill levels with progress bars
+- [ ] Calculate and display XP/hr per skill
+- [ ] Calculate and display gold/hr
+- [ ] Show session statistics (runtime, actions, gold earned)
+- [ ] Add level-up notifications (toast/flash)
+- [ ] Implement stats history graph (optional)
+
+### 3.6 Script Viewer
+- [ ] Display current script with line numbers
+- [ ] Highlight current execution line
+- [ ] Show loop depth with indentation
+- [ ] Syntax highlighting for commands
+- [ ] Add expand/collapse for large scripts
+
+### 3.7 Human Steering Input
+- [ ] Create text input field
+- [ ] Implement send button and Enter key handling
+- [ ] Show agent acknowledgment of input
+- [ ] Display steering history (past commands)
+- [ ] Add quick action buttons (pause, resume, emergency stop)
+
+### 3.8 Manual Play Mode
+- [ ] Implement "Take Control" button
+- [ ] Create action button panel (Move, Fight, Gather, etc.)
+- [ ] Add grid-based map view for navigation
+- [ ] Show available actions at current tile
+- [ ] Implement "Release Control" to return to agent
+- [ ] Log human actions with special marking
+
+### 3.9 Testing & Polish
+- [ ] Test real-time updates under load
+- [ ] Test reconnection scenarios
+- [ ] Mobile responsive layout (optional)
+- [ ] Add keyboard shortcuts
+- [ ] Performance optimization (virtualized logs)
 
 ## Phase 4: Optimization & Polish ⚡
 
