@@ -132,7 +132,7 @@ All modifications, additions, and deletions should be logged in a single `AGENTI
 
 ## Implementation Phases
 
-Follow the phases outlined in [TASKS.md](TASKS.md):
+Follow the phases outlined in [TASKS.md](TASKS.md) and update as you progress:
 
 **Phase 1: Script Executor** (Current Priority)
 - DSL parser (tokenizer, AST, command execution)
