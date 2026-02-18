@@ -1,5 +1,18 @@
 # Agentic Changes Log
 
+## [2026-02-19 14:50] - Add test character configuration
+
+### Changed
+- File: `AGENTS.md`
+  - Added Configuration section specifying "greenglasses" as the test character
+  - Included example API call using the greenglasses character
+  - Clarified that all autonomous agent actions will use this character
+
+### Notes
+- greenglasses is the designated character for testing and development
+- All script executor commands and agent tools will target this character
+- API endpoints require character name in path: `/my/greenglasses/action/*`
+
 ## [2026-02-19 14:45] - Update AGENTS.md for autonomous AI agent project
 
 ### Changed

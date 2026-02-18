@@ -15,6 +15,17 @@ This is an agentic development project building a system where an AI agent contr
 
 **See [SPEC.md](SPEC.md) for complete architectural specification.**
 
+## Configuration
+
+**Character:** `greenglasses` - The designated character for autonomous agent testing and development.
+
+All API calls should use this character name when making action requests:
+```bash
+# Example API call for greenglasses
+curl -X POST -H @auth_headers.txt -H "Content-Type: application/json" \
+  -d '{"x":0,"y":0}' "https://api.artifactsmmo.com/my/greenglasses/action/move"
+```
+
 ## Agent Autonomy
 
 You have FULL AUTONOMY to:
