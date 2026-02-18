@@ -1,56 +1,62 @@
-# Agent Configuration for MMO Game Client Development
+# Agent Configuration for Autonomous AI MMO Player
 
-## Project Status
+## Project Overview
 
-**Greenfield project** - workspace requires initialization. No code exists yet.
+**Building an autonomous AI agent that plays Artifacts MMO.**
+
+This is an agentic development project building a system where an AI agent controls a game character autonomously. The agent generates scripts in a custom DSL, executes them, monitors progress, and adapts strategies to achieve long-term goals (reach level 50 in all skills).
+
+**Key Architecture Components:**
+- **Script Engine:** Parser and executor for custom DSL
+- **Agent Tools:** 13+ tools for querying game state and generating scripts
+- **Web Interface:** Real-time monitoring dashboard with stats tracking (XP/hr, gold/hr)
+- **Human Steering:** Natural language input for course correction
+- **Persistence:** Auto-save execution state for crash recovery
+
+**See [SPEC.md](SPEC.md) for complete architectural specification.**
+
+## Agent Autonomy
+
+You have FULL AUTONOMY to:
+- ✅ Make API requests directly using curl with `auth_headers.txt`
+- ✅ Fetch documentation from docs.artifactsmmo.com
+- ✅ Read openapi.json for endpoint details
+- ✅ Test API endpoints to verify behavior
+- ✅ Experiment and iterate without asking permission
+- ✅ Make architectural decisions aligned with SPEC.md
+- ✅ Refactor code as patterns emerge
+- ✅ Add dependencies when they save time
+
+Do NOT ask permission for:
+- Testing API endpoints
+- Fetching documentation
+- Making obvious bug fixes
+- Adding helpful utilities
+- Restructuring code for clarity
 
 ## Quick Start (First-Time Setup)
 
-When initializing this project, follow this sequence:
-
 ```bash
-# Initialize Node.js project
-pnpm init
+# Project is already initialized - verify dependencies
+pnpm install
 
-# Install TypeScript and essential dependencies
-pnpm add -D typescript @types/node tsx
-pnpm add axios
+# Create new directory structure if needed
+mkdir -p src/{engine,agent,web,utils}
 
-# Create TypeScript config
-npx tsc --init --target ES2022 --module NodeNext --moduleResolution NodeNext --outDir dist --rootDir src
-
-# Create directory structure
-mkdir -p src/{client,game,strategies,utils}
-
-# Create entry point
-touch src/index.ts AGENTIC_CHANGES.md
-
-# Create initial AGENTIC_CHANGES.md entry
-echo "# Agentic Changes Log\n\n## [$(date '+%Y-%m-%d %H:%M')] - Project initialized\n\n### Added\n- Created project structure and configuration\n" > AGENTIC_CHANGES.md
-```
-
-## Build and Test
-
-```bash
-# Development mode (watch and recompile)
+# Development mode (if main entry exists)
 npx tsx watch src/index.ts
 
-# Run once
-npx tsx src/index.ts
-
-# Compile TypeScript (if needed)
-npx tsc
-
-# Run compiled code
-node dist/index.js
+# Run web server (Phase 3)
+npx tsx src/web/server.ts
 ```
 
-Add these scripts to package.json for convenience:
+Expected package.json scripts:
 ```json
 {
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "web": "tsx src/web/server.ts",
     "build": "tsc"
   }
 }
@@ -58,7 +64,7 @@ Add these scripts to package.json for convenience:
 
 ## Core Principles
 
-This agent assists in building a game player and client for an API-driven MMO using **TypeScript**. Code is written for **single-user execution** - no need for enterprise patterns, extensive documentation, or multi-user considerations.
+Build an autonomous AI agent that plays Artifacts MMO efficiently. Code is for **single-user execution** - prioritize rapid iteration and agent cost optimization over enterprise patterns.
 
 ## Communication Style
 
@@ -113,16 +119,40 @@ All modifications, additions, and deletions should be logged in a single `AGENTI
 
 - Changes should also be committed to git after each request is completed
 
+## Implementation Phases
+
+Follow the phases outlined in [TASKS.md](TASKS.md):
+
+**Phase 1: Script Executor** (Current Priority)
+- DSL parser (tokenizer, AST, command execution)
+- Control flow (loops, conditionals, variables)
+- Persistence (auto-save state, crash recovery)
+- Safety (execution limits, retry logic, stuck detection)
+
+**Phase 2: Agent Integration**
+- Agent tools (get_game_state, query_game_knowledge, lookup_*, etc.)
+- Check-in system (10-minute intervals)
+- Bootstrap prompt (level 50 goal)
+
+**Phase 3: Web Interface**
+- WebSocket server
+- Real-time dashboard (agent log, execution log, stats, script viewer)
+- Human steering input
+- Manual play mode
+
+**Phase 4-5: Optimization & Advanced Features**
+- Pathfinding, caching, metrics
+- Crafting chains, quest support, death recovery
+
 ## Code Style
 
-### Single-User Optimization
-- **Authentication required** - API uses Bearer tokens, implement simple token management
-- **No multi-threading safety** - async/await is fine, complex concurrency isn't needed
-- **Config object** - store API token and base URL in a simple config object or env
-- **No input validation** beyond what prevents crashes
-- **No logging frameworks** - simple console.log statements are fine
-- **No error recovery** for user errors - let it crash and fix it
-- **Respect cooldowns** - track and wait for character cooldowns before next action
+### Optimization Focus
+- **Cost Efficiency:** Agent generates scripts (expensive), executor runs them (cheap API calls)
+- **Simple State Management:** Single character, flat state structure
+- **Persistence First:** Save state after every action for crash recovery
+- **Real-time Updates:** WebSocket broadcasts for web UI
+- **Respect Cooldowns:** Wait automatically between actions
+- **Cache Static Data:** Items, monsters, resources, maps (don't re-fetch)
 
 ### Practical Patterns
 - Direct and simple over abstracted and flexible
@@ -134,22 +164,39 @@ All modifications, additions, and deletions should be logged in a single `AGENTI
 - Prefer `interface` for data shapes, `type` for unions/utilities
 
 ### When Complexity is Warranted
-- API client abstractions (you'll use them repeatedly)
-- Game state management (central to functionality)
-- Type definitions for API responses (clarity and autocomplete)
-- Performance-critical loops or calculations
+- DSL parser (needs proper AST and execution model)
+- Agent tool interface (will be called repeatedly)
+- WebSocket message protocol (needs clear contract)
+- State persistence (atomic writes, recovery logic)
+- Execution safety (stuck detection, retry logic)
 
 ## Project Structure Expectations
 
 ```
 project/
-├── AGENTIC_CHANGES.md    # All changes tracked here
+├── SPEC.md              # Architecture specification
+├── TASKS.md             # Implementation roadmap
+├── GAME_KNOWLEDGE.md    # Game mechanics and data
+├── AGENTIC_CHANGES.md   # All changes tracked here
+├── auth_headers.txt     # Auth token for curl testing
+├── openapi.json         # API specification
 ├── src/
-│   ├── client/           # API client code
-│   ├── game/             # Game logic and state
-│   ├── strategies/       # AI/bot strategies
-│   ├── utils/            # Helper functions
-│   └── index.ts          # Entry point
+│   ├── engine/          # Script parser and executor
+│   │   ├── parser.ts    # DSL parser (tokenizer, AST)
+│   │   ├── executor.ts  # Command execution engine
+│   │   ├── state.ts     # Execution state management
+│   │   └── commands/    # Individual command implementations
+│   ├── agent/           # AI agent integration
+│   │   ├── tools.ts     # Agent tools (get_game_state, etc.)
+│   │   ├── checkin.ts   # 10-minute check-in system
+│   │   └── bootstrap.ts # Initial agent prompt
+│   ├── web/             # Web interface
+│   │   ├── server.ts    # WebSocket server
+│   │   ├── index.html   # Dashboard UI
+│   │   └── client.js    # Frontend WebSocket client
+│   ├── api.ts           # API client wrapper
+│   ├── config.ts        # Configuration
+│   └── index.ts         # Main entry point
 ├── package.json
 └── tsconfig.json
 ```
@@ -269,29 +316,24 @@ The goal is rapid iteration:
 
 ## Example Interaction
 
-**User:** "Add support for the combat API endpoint"
+**User:** "Add support for the 'goto' command in the script executor"
 
 **Good Response:**
 ```typescript
-// src/client/combat.ts
-interface AttackResponse {
-  damage: number;
-  target_hp: number;
-}
+// src/engine/commands/movement.ts
+import { apiPost } from '../../api';
 
-export async function attack(targetId: string, weaponId: string): Promise<AttackResponse> {
-  const response = await apiPost('/combat/attack', {
-    target: targetId,
-    weapon: weaponId
-  });
-  return response;
+export async function executeGoto(x: number, y: number, characterName: string) {
+  const response = await apiPost(`/my/${characterName}/action/move`, { x, y });
+  const cooldown = response.data.cooldown;
+  return { success: true, cooldown };
 }
 ```
 
 Updated AGENTIC_CHANGES.md
 
 **Bad Response:**
-"I'll help you add combat support! First, let me create a comprehensive combat module with proper error handling, logging, and a full test suite. We should also create an abstract CombatStrategy class for future flexibility..."
+"I'll help you add goto support! First, let me create a comprehensive movement module with proper error handling, logging, pathfinding, and a full test suite. We should also create an abstract Command class for future flexibility..."
 
 ---
 

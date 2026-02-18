@@ -1,5 +1,26 @@
 # Agentic Changes Log
 
+## [2026-02-19 14:45] - Update AGENTS.md for autonomous AI agent project
+
+### Changed
+- File: `AGENTS.md`
+  - Rewrote project overview to focus on autonomous AI agent player (not human-operated)
+  - Referenced SPEC.md as the authoritative architecture specification
+  - Added "Agent Autonomy" section explicitly granting permission to make API requests, fetch docs, etc.
+  - Updated quick start instructions for new project structure
+  - Replaced "Build and Test" with implementation phases overview
+  - Updated code style section to emphasize cost efficiency and agent-focused patterns
+  - Changed project structure to match new architecture (engine/, agent/, web/)
+  - Updated example interaction to show script executor command implementation
+  - Emphasized autonomous operation, script generation, and web interface monitoring
+
+### Notes
+- Agents now have explicit autonomy to test APIs with curl using auth_headers.txt
+- Can fetch documentation from docs.artifactsmmo.com without asking
+- Project focused on building autonomous agent, not human-operated client
+- Core components: Script engine, agent tools, web interface
+- Goal: Reach level 50 in all skills via autonomous gameplay
+
 ## [2026-02-19 14:30] - Add web interface specification
 
 ### Changed
