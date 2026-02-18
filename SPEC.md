@@ -42,6 +42,23 @@ A simple domain-specific language (DSL) for game actions.
 - `ge sell <item_code> <quantity> <min_price>` - Place sell order
 - `ge collect` - Collect completed orders
 
+**NPC Trading:**
+- `npc buy <item_code> <quantity>` - Buy from NPC at current tile
+- `npc sell <item_code> <quantity>` - Sell to NPC at current tile
+
+**Task Management:**
+- `task new` - Accept new task from Tasks Master
+- `task complete` - Complete current task
+- `task cancel` - Cancel current task (costs 1 task coin)
+- `task exchange` - Exchange 6 task coins for random reward
+- `task trade <item_code> <quantity>` - Trade items with Tasks Master
+
+**Consumables:**
+- `use <item_code>` - Use consumable item (potion, food, teleport scroll)
+
+**Transitions:**
+- `transition` - Use portal/transition at current tile to change layers
+
 **Utility:**
 - `rest <seconds>` - Wait for specified time
 - `wait_cooldown` - Wait until character cooldown is 0
@@ -79,6 +96,9 @@ else:
 - `hp < <value>` / `hp_percent < <value>`
 - `gold > <value>`
 - `at_location <x> <y>`
+- `has_task` - Character has active task
+- `task_progress_complete` - Current task requirements met
+- `task_coins >= <value>` - Has enough task coins
 
 **Variables:**
 ```
@@ -86,7 +106,9 @@ set <var_name> = <value>
 set <var_name> = <expression>
 ```
 
-#### Script Example
+#### Script Examples
+
+**Example 1: Train woodcutting to level 5**
 ```
 # Train woodcutting to level 5
 set ash_tree_x = 2
@@ -109,6 +131,53 @@ loop until woodcutting_level >= 5:
     goto {{ash_tree_x}} {{ash_tree_y}}
 
 log "Woodcutting level 5 achieved!"
+```
+
+**Example 2: Complete task and buy gear**
+```
+# Accept and complete a task, then buy equipment
+goto 5 1  # Tasks Master location
+task new
+wait_cooldown
+
+goto 2 -1  # Go to resource location
+loop until task_progress_complete:
+  gather
+  wait_cooldown
+  if hp < 50:
+    use life_potion
+
+# Complete task
+goto 5 1
+task complete
+wait_cooldown
+
+# Buy equipment with rewards
+goto 2 1  # NPC shop location
+npc buy iron_sword 1
+wait_cooldown
+equip iron_sword
+
+log "Task complete and equipped new weapon!"
+```
+
+**Example 3: Transition to new area**
+```
+# Travel to underground layer
+goto 3 2  # Portal location
+transition
+wait_cooldown
+
+# Explore and gather in new layer
+goto 5 -3
+loop 10:
+  mine
+  wait_cooldown
+
+# Return to surface
+goto 3 2
+transition
+wait_cooldown
 ```
 
 ### 2. Script Executor

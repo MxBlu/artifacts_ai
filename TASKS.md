@@ -18,8 +18,12 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [ ] Implement combat commands (fight)
 - [ ] Implement banking commands (deposit, withdraw)
 - [ ] Implement crafting commands (craft)
-- [ ] Implement utility commands (rest, wait_cooldown, log)
 - [ ] Implement equipment commands (equip, unequip)
+- [ ] Implement NPC trading commands (npc buy, npc sell)
+- [ ] Implement task commands (task new, task complete, task cancel, task exchange, task trade)
+- [ ] Implement consumable commands (use)
+- [ ] Implement transition command (transition)
+- [ ] Implement utility commands (rest, wait_cooldown, log)
 
 ### 1.3 Control Flow
 - [ ] Implement if/else conditionals

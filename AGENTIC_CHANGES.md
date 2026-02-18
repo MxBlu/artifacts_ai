@@ -1,5 +1,25 @@
 # Agentic Changes Log
 
+## [2026-02-19 14:15] - Add missing script commands to SPEC
+
+### Changed
+- File: `SPEC.md`
+  - Added NPC trading commands (npc buy, npc sell)
+  - Added task management commands (task new, task complete, task cancel, task exchange, task trade)
+  - Added consumable command (use item_code)
+  - Added transition command (transition between layers)
+  - Added task-related conditions (has_task, task_progress_complete, task_coins)
+  - Added three script examples showing different features
+
+- File: `TASKS.md`
+  - Updated Phase 1.2 to include new commands in implementation checklist
+
+### Notes
+- Transition command allows portal/layer teleportation (5s cooldown)
+- Task system provides repeatable objectives for gold/items/task coins
+- Consumables include potions, food, teleport scrolls
+- NPC trading is separate from Grand Exchange (shop-based)
+
 ## [2026-02-19 13:45] - Create AI Agent Player Specification
 
 ### Added
