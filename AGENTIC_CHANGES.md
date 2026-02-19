@@ -1,5 +1,11 @@
 # Agentic Changes Log
 
+## [2026-02-19 10] - Fix agent log lines misclassified as errors
+
+### Changed
+- File: `src/web/client.js`
+  - `classifyAgentLine()`: removed `|| line.toLowerCase().includes('error')` from the error check — only lines tagged `[ERROR]` are now styled as errors; agent response text mentioning the word "error" no longer gets incorrectly highlighted
+
 ## [2026-02-19 10] - Fix current line tracking in script viewer
 
 ### Changed

@@ -235,7 +235,7 @@ function appendLog(panelId, text, cls = 'exec') {
 
 function classifyAgentLine(line) {
   if (line.includes('[HUMAN]')) return 'human';
-  if (line.includes('[ERROR]') || line.toLowerCase().includes('error')) return 'error';
+  if (line.includes('[ERROR]')) return 'error';
   if (line.includes('[WS]') || line.includes('[AGENT]')) return 'agent';
   return 'system';
 }
