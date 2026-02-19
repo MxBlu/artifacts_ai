@@ -1,5 +1,14 @@
 # Agentic Changes Log
 
+## [2026-02-19 07] - Fix script viewer syntax highlighting corruption
+
+### Changed
+- File: `src/web/client.js`
+  - Rewrote `highlightDSL()` — replaced chained regex-on-HTML approach with a tokeniser
+  - Root cause: string regex `"([^"]*)"` was matching `"kw"` inside already-emitted `<span class="kw">` tags, corrupting span attributes and causing the browser to misparse them, rendering literal `"kw">` text
+  - New approach: tokenise the raw line first (quoted strings, `{{vars}}`, numbers, words, punctuation), classify each token, then HTML-escape and wrap — spans are never re-processed
+  - Also adds `break`, `deposit`, `withdraw`, `allitems`, `new`, `complete`, `cancel`, `exchange` to keyword set
+
 ## [2026-02-19 06] - Fix cooldown retries exhausting MAX_RETRIES budget
 
 ### Changed

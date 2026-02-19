@@ -307,23 +307,46 @@ function scrollToLine(lineNum) {
 }
 
 function highlightDSL(line) {
-  const esc = line.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  // Work on the raw line — build spans without re-processing their contents.
+  // Strategy: split into tokens and emit each as escaped text or a span.
 
-  // Comments
-  if (esc.trimStart().startsWith('#')) {
-    return `<span class="cmt">${esc}</span>`;
+  const KEYWORDS = new Set([
+    'goto','gather','woodcut','mine','fish','fight','bank','equip','unequip',
+    'craft','npc','task','use','transition','rest','sleep','wait_cooldown',
+    'log','set','if','else','loop','forever','until','while','break',
+    'deposit','withdraw','allitems','new','complete','cancel','exchange',
+  ]);
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  return esc
-    // keywords
-    .replace(/\b(goto|gather|woodcut|mine|fish|fight|bank|equip|unequip|craft|npc|task|use|transition|rest|sleep|wait_cooldown|log|set|if|else|loop|forever|until|while)\b/g,
-      '<span class="kw">$1</span>')
-    // numbers
-    .replace(/\b(-?\d+)\b/g, '<span class="num">$1</span>')
-    // strings
-    .replace(/"([^"]*)"/g, '<span class="str">"$1"</span>')
-    // variables
-    .replace(/\{\{(\w+)\}\}/g, '<span class="str">{{$1}}</span>');
+  // Comment lines
+  if (line.trimStart().startsWith('#')) {
+    return `<span class="cmt">${esc(line)}</span>`;
+  }
+
+  // Tokenise: quoted strings | words/identifiers | numbers (incl. negative) | other chars
+  const TOKEN_RE = /"[^"]*"|\{\{[\w]+\}\}|-?\d+(\.\d+)?|[A-Za-z_][\w]*|[^\s\w"{}]+|\s+/g;
+  let out = '';
+  let m;
+  while ((m = TOKEN_RE.exec(line)) !== null) {
+    const tok = m[0];
+    if (/^\s+$/.test(tok)) {
+      out += tok; // preserve whitespace as-is
+    } else if (tok.startsWith('"')) {
+      out += `<span class="str">${esc(tok)}</span>`;
+    } else if (/^\{\{[\w]+\}\}$/.test(tok)) {
+      out += `<span class="str">${esc(tok)}</span>`;
+    } else if (/^-?\d/.test(tok)) {
+      out += `<span class="num">${esc(tok)}</span>`;
+    } else if (KEYWORDS.has(tok)) {
+      out += `<span class="kw">${esc(tok)}</span>`;
+    } else {
+      out += esc(tok);
+    }
+  }
+  return out;
 }
 
 // ─── Skills ───────────────────────────────────────────────────────────────────
