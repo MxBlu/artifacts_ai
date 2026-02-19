@@ -102,7 +102,8 @@ export class ScriptExecutor {
       case 'task':          return this.execTask(node);
       case 'use':           return this.execUse(node);
       case 'transition':    return this.execTransition();
-      case 'rest':          return this.execRest(node);
+      case 'rest':          return this.execRest();
+      case 'sleep':         return this.execSleep(node);
       case 'wait_cooldown': return this.execWaitCooldown();
       case 'log':           return this.execLog(node);
       case 'set':           return this.execSet(node);
@@ -455,9 +456,13 @@ export class ScriptExecutor {
     await this.apiCall('transition', () => this.api.transitionCharacter(this.characterName));
   }
 
-  private async execRest(node: any): Promise<void> {
+  private async execRest(): Promise<void> {
+    await this.apiCall('rest', () => this.api.restCharacter(this.characterName));
+  }
+
+  private async execSleep(node: any): Promise<void> {
     const seconds = Number(this.evalExpr(node.seconds));
-    appendLog(this.state, `rest ${seconds}s`);
+    appendLog(this.state, `sleep ${seconds}s`);
     await sleep(seconds * 1000);
   }
 

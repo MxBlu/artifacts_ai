@@ -1,5 +1,28 @@
 # Agentic Changes Log
 
+## [2026-02-19] - Fix rest command: HP restore via API; rename sleep command
+
+### Changed
+- File: `src/engine/parser.ts`
+  - `RestNode` no longer carries a `seconds` field; `rest` parses as a no-argument command
+  - Added `SleepNode { type: 'sleep'; seconds: Expr }` for timed waits
+  - Added `sleep` to `ASTNode` union
+  - Parse rule: `rest` → `RestNode`; `sleep <n>` → `SleepNode`
+- File: `src/engine/executor.ts`
+  - `execRest()` now calls `this.api.restCharacter()` (HP restore endpoint, cooldown scales with HP restored)
+  - Added `execSleep(node)` for the old timed-wait behaviour
+  - Dispatch table updated: `'rest'` → `execRest()`, `'sleep'` → `execSleep(node)`
+- File: `src/agent/bootstrap.ts`
+  - DSL docs updated: `rest` documented as HP-restore API call; `sleep <seconds>` as timed wait
+- File: `src/agent/checkin.ts`
+  - System prompt command list updated to reflect `rest` / `sleep <seconds>` distinction
+- File: `scripts/combat_chickens.dsl`
+  - `rest 10` → `rest` (now correctly calls HP-restore endpoint instead of sleeping)
+- File: `SPEC.md`
+  - Utility commands section updated: `rest` = REST API call; `sleep <seconds>` = timed wait
+- File: `TASKS.md`
+  - Annotated utility commands task with note on `rest` / `sleep` distinction
+
 ## [2026-02-19 23:52] - Phase 1: Script Executor Foundation
 
 ### Added

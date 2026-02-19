@@ -60,7 +60,8 @@ A simple domain-specific language (DSL) for game actions.
 - `transition` - Use portal/transition at current tile to change layers
 
 **Utility:**
-- `rest <seconds>` - Wait for specified time
+- `rest` - Call the rest API endpoint to restore HP (has a cooldown proportional to HP restored)
+- `sleep <seconds>` - Wait for specified time (no API call)
 - `wait_cooldown` - Wait until character cooldown is 0
 - `log <message>` - Log message to execution log
 

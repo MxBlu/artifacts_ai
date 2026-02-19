@@ -20,7 +20,7 @@ loop 20:
   
   if hp_percent < 30:
     goto {{bank_x}} {{bank_y}}
-    rest 10
+    rest
     goto {{chicken_x}} {{chicken_y}}
 
 log "Combat loop complete!"

@@ -24,6 +24,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Implement consumable commands (use)
 - [x] Implement transition command (transition)
 - [x] Implement utility commands (rest, wait_cooldown, log)
+  - Note: `rest` calls the REST endpoint for HP recovery; `sleep <seconds>` is the timed wait command
 
 ### 1.3 Control Flow
 - [x] Implement if/else conditionals

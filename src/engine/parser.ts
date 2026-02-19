@@ -17,6 +17,7 @@ export type ASTNode =
   | UseNode
   | TransitionNode
   | RestNode
+  | SleepNode
   | WaitCooldownNode
   | LogNode
   | SetNode
@@ -39,7 +40,8 @@ export interface NPCNode        { type: 'npc';         action: 'buy' | 'sell'; i
 export interface TaskNode       { type: 'task';        action: 'new' | 'complete' | 'cancel' | 'exchange' | 'trade'; item?: string; quantity?: Expr }
 export interface UseNode        { type: 'use';         item: string }
 export interface TransitionNode { type: 'transition' }
-export interface RestNode       { type: 'rest';        seconds: Expr }
+export interface RestNode       { type: 'rest' }
+export interface SleepNode      { type: 'sleep';       seconds: Expr }
 export interface WaitCooldownNode { type: 'wait_cooldown' }
 export interface LogNode        { type: 'log';         message: string }
 export interface SetNode        { type: 'set';         name: string; value: Expr }
@@ -333,8 +335,11 @@ function parseLine(lines: ParseLine[], pos: { i: number }, baseIndent: number): 
   // ─── transition ───
   if (cmd === 'transition') { pos.i++; return { type: 'transition' }; }
 
-  // ─── rest ───
-  if (cmd === 'rest') { pos.i++; return { type: 'rest', seconds: parseExpr(toks[1] ?? '3') }; }
+  // ─── rest (HP restore via API) ───
+  if (cmd === 'rest') { pos.i++; return { type: 'rest' }; }
+
+  // ─── sleep (timed wait) ───
+  if (cmd === 'sleep') { pos.i++; return { type: 'sleep', seconds: parseExpr(toks[1] ?? '3') }; }
 
   // ─── wait_cooldown ───
   if (cmd === 'wait_cooldown') { pos.i++; return { type: 'wait_cooldown' }; }
