@@ -1,5 +1,32 @@
 # Agentic Changes Log
 
+## [2026-02-19] - Phase 4: XP tracking + skills dashboard
+
+### Changed
+- File: `src/engine/executor.ts`
+  - Added `NODE_TYPE_TO_SKILL` map: `woodcut→woodcutting`, `mine→mining`, `fish→fishing`, `gather→alchemy`
+  - `execGather` now takes `nodeType` param and records XP under the correct skill key
+  - Removed dead `detectGatherSkill()` fallback that always returned `'gathering'`
+  - `execFight`: fixed `data.character` bug — now uses `data.characters?.[0]` (top-level array in `FightData`) with fallback to `data.fight.characters?.[0]`
+  - `execFight`: `fight.drops` cast to `any` to avoid strict type error (drops not in schema but present in practice)
+  - `execCraft`: tracks XP under correct craft skill via `getItemByCode` lookup; updates `this.character` from response
+  - Added import for `getItemByCode` from `../cache`
+
+- File: `src/web/server.ts`
+  - `wss.on('connection')` handler made `async`
+  - Fetches live character via `api.getCharacter()` on connect (best-effort, non-fatal)
+  - Adds `characterSnapshot` field to `hello` WS payload
+
+- File: `src/web/client.js`
+  - `handleHello` stores `characterSnapshot`; calls `renderSkills` on connect even without xpGains
+  - `renderSkills(xpGains, xpPerHour)` now shows: skill name, `Lv{N}` (from character snapshot), `+XP` session gains, `XP/hr`; shows combat skill too
+  - XP bar shows progress within current level using `xpForLevel()` approximation and character's raw XP
+  - Skills with no data are hidden (cleaner display on first connect)
+  - Removed unused `xpSnapshot` / `xpSnapshotTime` state vars
+
+- File: `src/web/index.html`
+  - `.skill-label` CSS updated: `.skill-name` (white, capitalized), `.skill-info` (blue, 10px) for level/rate/XP display
+
 ## [2026-02-19] - Phase 4: Game data cache + location aliases fix
 
 ### Added

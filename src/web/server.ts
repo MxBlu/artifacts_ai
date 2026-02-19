@@ -148,7 +148,7 @@ async function main() {
 
   // ─── WebSocket connection handler ────────────────────────────────────────
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', async (ws) => {
     console.log('[WS] Client connected');
 
     // Send current state snapshot on connect
@@ -158,8 +158,16 @@ async function main() {
       currentState.status = 'stopped';
       saveState(currentState);
     }
+
+    // Fetch live character data for skills panel (best-effort)
+    let characterSnapshot: any = null;
+    try {
+      characterSnapshot = await api.getCharacter(CHARACTER_NAME);
+    } catch { /* non-fatal */ }
+
     send(ws, msg('hello', {
       character: CHARACTER_NAME,
+      characterSnapshot,
       state: currentState ? {
         status: currentState.status,
         currentLine: currentState.currentLine,

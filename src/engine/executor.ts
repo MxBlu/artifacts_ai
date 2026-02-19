@@ -1,11 +1,18 @@
 import { ArtifactsAPI, Character, SimpleItem } from '../api';
 import { ASTNode, Condition, Expr, CmpOp, parseScript } from './parser';
 import { ExecutionState, appendLog, saveState } from './state';
-import { nearestTile } from '../cache';
+import { nearestTile, getItemByCode } from '../cache';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
 const MAX_LOOP_ITERATIONS = 10_000;
+
+const NODE_TYPE_TO_SKILL: Record<string, string> = {
+  woodcut: 'woodcutting',
+  mine:    'mining',
+  fish:    'fishing',
+  gather:  'alchemy',
+};
 const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
 const STUCK_THRESHOLD = 50; // actions without state change = stuck
@@ -100,7 +107,7 @@ export class ScriptExecutor {
       case 'gather':
       case 'woodcut':
       case 'mine':
-      case 'fish':          return this.execGather();
+      case 'fish':          return this.execGather(node.type);
       case 'fight':         return this.execFight(node);
       case 'bank':          return this.execBank(node);
       case 'equip':         return this.execEquip(node);
@@ -310,31 +317,50 @@ export class ScriptExecutor {
     await this.apiCall(`goto ${x} ${y}`, () => this.api.moveCharacter(this.characterName, x, y));
   }
 
-  private async execGather(): Promise<void> {
-    appendLog(this.state, 'gather');
-    const data = await this.apiCall('gather', () => this.api.gather(this.characterName));
-    if (data && (data as any).details) {
-      const details = (data as any).details;
-      const xp = details.xp ?? 0;
-      // detect skill from character (simplified - just log items)
-      for (const item of details.items ?? []) {
+  private async execGather(nodeType: string = 'gather'): Promise<void> {
+    appendLog(this.state, nodeType);
+    const data = await this.apiCall(nodeType, () => this.api.gather(this.characterName));
+    if (data?.details) {
+      const { xp, items } = data.details;
+      const skill = NODE_TYPE_TO_SKILL[nodeType] ?? 'woodcutting';
+      if (xp) {
+        this.state.metrics.xpGains[skill] = (this.state.metrics.xpGains[skill] ?? 0) + xp;
+      }
+      for (const item of items ?? []) {
         this.state.metrics.itemsGathered[item.code] =
           (this.state.metrics.itemsGathered[item.code] ?? 0) + item.quantity;
       }
-      appendLog(this.state, `  → gathered: ${JSON.stringify(details.items)}, xp: ${xp}`);
+      if (data.character) this.character = data.character;
+      appendLog(this.state, `  → ${items?.map((i: any) => `${i.quantity}x ${i.code}`).join(', ')}, xp: ${xp}`);
     }
   }
 
   private async execFight(node: any): Promise<void> {
     appendLog(this.state, `fight${node.monster ? ` (${node.monster})` : ''}`);
     const data = await this.apiCall('fight', () => this.api.fightCharacter(this.characterName));
-    if (data && (data as any).fight) {
-      const fight = (data as any).fight;
-      appendLog(this.state, `  → ${fight.result}, ${fight.turns} turns`);
-
+    if (data?.fight) {
+      const fight = data.fight;
+      // Updated character is in data.characters[0] (top-level) or fight.characters[0]
+      const updatedChar: Character | undefined = data.characters?.[0] ?? fight.characters?.[0];
+      if (updatedChar) {
+        const prev = this.character;
+        this.character = updatedChar;
+        if (prev) {
+          const xpDelta = (updatedChar.xp ?? 0) - (prev.xp ?? 0);
+          if (xpDelta > 0) {
+            this.state.metrics.xpGains['combat'] = (this.state.metrics.xpGains['combat'] ?? 0) + xpDelta;
+          }
+          const goldDelta = (updatedChar.gold ?? 0) - (prev.gold ?? 0);
+          if (goldDelta > 0) {
+            this.state.metrics.goldGained += goldDelta;
+          }
+        }
+      }
+      // drops may appear in fight logs as part of items — parse from logs if not direct
+      const drops = (fight as any).drops?.map((d: any) => `${d.quantity}x ${d.code}`).join(', ') ?? '';
+      appendLog(this.state, `  → ${fight.result}, ${fight.turns} turns${drops ? `, drops: ${drops}` : ''}`);
       if (fight.result === 'loss') {
-        appendLog(this.state, '  → DIED - character returned to spawn');
-        // After death, character is at 0,0 with 1hp - just continue
+        appendLog(this.state, '  → DIED — character returned to spawn');
       }
     }
   }
@@ -408,9 +434,16 @@ export class ScriptExecutor {
       `craft ${node.item}`,
       () => this.api.craftItem(this.characterName, node.item, qty)
     );
-    if (data && (data as any).details) {
-      const details = (data as any).details;
-      appendLog(this.state, `  → crafted: ${JSON.stringify(details.items)}, xp: ${details.xp}`);
+    if (data?.details) {
+      const { xp, items } = data.details;
+      // Determine craft skill from item definition
+      const itemDef = await getItemByCode(this.api, node.item).catch(() => undefined);
+      const skill = itemDef?.craft?.skill ?? 'weaponcrafting';
+      if (xp) {
+        this.state.metrics.xpGains[skill] = (this.state.metrics.xpGains[skill] ?? 0) + xp;
+      }
+      if (data.character) this.character = data.character;
+      appendLog(this.state, `  → crafted: ${JSON.stringify(items)}, xp: ${xp}`);
     }
   }
 

@@ -15,9 +15,8 @@ let currentLine = 0;
 let sessionStart = Date.now();
 let runtimeTimer = null;
 
-// XP tracking for rates
-let xpSnapshot = {};
-let xpSnapshotTime = Date.now();
+// Live character snapshot (from hello payload)
+let characterSnapshot = null;
 
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 
@@ -81,6 +80,9 @@ function handleMessage(msg) {
 
 function handleHello(data) {
   appendLog('agentLog', `[WS] Connected — character: ${data.character}`, 'system');
+  if (data.characterSnapshot) {
+    characterSnapshot = data.characterSnapshot;
+  }
   if (data.state) {
     handleStateUpdate(data.state);
     if (data.state.recentLog) {
@@ -93,6 +95,10 @@ function handleHello(data) {
       renderScript(data.state.script, data.state.currentLine ?? 0);
     }
   }
+  // Render skills immediately with whatever data we have
+  const xpGains = data.state?.metrics?.xpGains ?? {};
+  const xpPerHour = data.state?.metrics?.xpPerHour ?? {};
+  renderSkills(xpGains, xpPerHour);
 }
 
 function handleStateUpdate(data) {
@@ -124,7 +130,7 @@ function handleStatsUpdate(data) {
   el('hdrRuntime').textContent = formatDuration(data.runtime ?? 0);
 
   if (data.metrics?.xpGains) {
-    renderSkills(data.metrics.xpGains);
+    renderSkills(data.metrics.xpGains, data.xpPerHour ?? {});
   }
 }
 
@@ -271,31 +277,69 @@ function highlightDSL(line) {
 
 // ─── Skills ───────────────────────────────────────────────────────────────────
 
-function renderSkills(xpGains) {
+// XP required to reach each level (cumulative). Index = level.
+// Approximate formula used by Artifacts MMO; enough for visual XP bar.
+function xpForLevel(lvl) {
+  // Each level roughly doubles: base 150xp, x1.2 factor per level
+  if (lvl <= 1) return 0;
+  let total = 0;
+  for (let i = 1; i < lvl; i++) total += Math.floor(150 * Math.pow(1.2, i - 1));
+  return total;
+}
+
+function renderSkills(xpGains, xpPerHour) {
   const container = el('skillsList');
   container.innerHTML = '';
 
-  for (const skill of SKILLS) {
-    const xp = xpGains[skill] ?? 0;
+  // Include 'combat' in addition to gathering/crafting skills
+  const allSkills = [...SKILLS, 'combat'];
+
+  for (const skill of allSkills) {
+    const xpGained = xpGains[skill] ?? 0;
+    const xphr = xpPerHour?.[skill] ?? 0;
+
+    // Get live level from character snapshot
+    const levelKey = skill === 'combat' ? 'level' : `${skill}_level`;
+    const level = characterSnapshot?.[levelKey] ?? '-';
 
     const row = document.createElement('div');
     row.className = 'skill-row';
 
     const label = document.createElement('div');
     label.className = 'skill-label';
-    label.innerHTML = `${skill} <span>+${xp} XP</span>`;
+    const levelStr = level !== '-' ? `Lv${level}` : '';
+    const xphrStr = xphr > 0 ? ` · ${xphr.toLocaleString()}/hr` : '';
+    label.innerHTML =
+      `<span class="skill-name">${skill}</span>` +
+      `<span class="skill-info">${levelStr}${xphr > 0 ? xphrStr : ''}${xpGained > 0 ? ` +${xpGained.toLocaleString()} XP` : ''}</span>`;
+
+    // XP bar: progress within current level
+    let barPct = 0;
+    if (typeof level === 'number' && xpGained > 0) {
+      const lvlStart = xpForLevel(level);
+      const lvlEnd = xpForLevel(level + 1);
+      const span = lvlEnd - lvlStart || 1;
+      const charXp = characterSnapshot?.[skill === 'combat' ? 'xp' : `${skill}_xp`] ?? 0;
+      barPct = Math.min(100, ((charXp - lvlStart) / span) * 100);
+    }
 
     const barWrap = document.createElement('div');
     barWrap.className = 'skill-bar';
     const fill = document.createElement('div');
     fill.className = 'skill-bar-fill';
-    // Visual indicator: scale so 10k XP = full bar
-    fill.style.width = Math.min(100, (xp / 10000) * 100) + '%';
+    fill.style.width = barPct + '%';
     barWrap.appendChild(fill);
 
     row.appendChild(label);
-    row.appendChild(barWrap);
-    container.appendChild(row);
+    if (level !== '-' || xpGained > 0) {
+      row.appendChild(barWrap);
+      container.appendChild(row);
+    }
+  }
+
+  // If nothing at all, show placeholder
+  if (container.children.length === 0) {
+    container.innerHTML = '<div style="color:var(--text2);font-size:11px;">No skill data yet</div>';
   }
 }
 
