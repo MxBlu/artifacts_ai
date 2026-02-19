@@ -153,6 +153,11 @@ async function main() {
 
     // Send current state snapshot on connect
     const currentState = loadState();
+    // Sanitise stale 'running' status: if no agent is actually running, mark as stopped
+    if (currentState && currentState.status === 'running' && !agent) {
+      currentState.status = 'stopped';
+      saveState(currentState);
+    }
     send(ws, msg('hello', {
       character: CHARACTER_NAME,
       state: currentState ? {

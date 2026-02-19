@@ -1,5 +1,15 @@
 # Agentic Changes Log
 
+## [2026-02-19] - Fix stale 'running' status on web UI connect
+
+### Changed
+- File: `src/web/server.ts`
+  - On WebSocket `connection`, if saved state has `status: 'running'` but no agent is active, reset to `'stopped'` and persist to disk before sending `hello` payload
+  - Prevents dashboard from showing "Running" on a fresh server start after a crash
+
+### Notes
+- Both bugs from previous session now fixed: lazy DeepSeek client (already in `llm.ts`) + stale status sanitisation
+
 ## [2026-02-19] - Phase 2 complete + Phase 3 web interface
 
 ### Added
