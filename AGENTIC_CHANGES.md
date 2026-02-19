@@ -1,5 +1,17 @@
 # Agentic Changes Log
 
+## [2026-02-19 19] - Strip markdown code fences from LLM-generated scripts
+
+### Changed
+- File: `src/agent/bootstrap.ts`
+  - Added `stripCodeFences()` helper; applied to initial script extraction and correction path
+- File: `src/agent/checkin.ts`
+  - Added `stripCodeFences()` helper; applied to MODIFY script extraction
+
+### Notes
+- deepseek-chat wraps scripts in ```...``` code fences, causing parse errors on the fence lines
+- Stripping fences before validation avoids a wasted correction round-trip
+
 ## [2026-02-19 18] - Fix bootstrap using wrong model for structured output
 
 ### Changed

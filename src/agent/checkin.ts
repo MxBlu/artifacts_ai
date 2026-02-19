@@ -346,7 +346,7 @@ function parseCheckInResponse(raw: string): CheckInResult {
     return {
       decision: 'MODIFY',
       reasoning,
-      newScript: scriptMatch?.[1]?.trim() ?? '',
+      newScript: stripCodeFences(scriptMatch?.[1]?.trim() ?? ''),
     };
   }
 
@@ -355,6 +355,10 @@ function parseCheckInResponse(raw: string): CheckInResult {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function stripCodeFences(text: string): string {
+  return text.replace(/^```[^\n]*\n?/, '').replace(/\n?```\s*$/, '').trim();
+}
 
 function formatDuration(seconds: number): string {
   const h = Math.floor(seconds / 3600);

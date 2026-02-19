@@ -295,7 +295,7 @@ SCRIPT:
   const scriptMatch = raw.match(/SCRIPT:\s*\n([\s\S]+)/);
 
   const reasoning = reasoningMatch?.[1]?.trim() ?? raw;
-  let script = scriptMatch?.[1]?.trim() ?? generateFallbackScript();
+  let script = stripCodeFences(scriptMatch?.[1]?.trim() ?? '') || generateFallbackScript();
 
   // Validate and retry once if there are parse errors
   const errors = validateScript(script);
@@ -331,7 +331,7 @@ SCRIPT:
       const correctionRaw = await chat(correctionMessages, MODEL_CHAT, 4096);
       const correctedScriptMatch = correctionRaw.match(/SCRIPT:\s*\n([\s\S]+)/);
       if (correctedScriptMatch?.[1]) {
-        const correctedScript = correctedScriptMatch[1].trim();
+        const correctedScript = stripCodeFences(correctedScriptMatch[1].trim());
         const correctionErrors = validateScript(correctedScript);
         if (correctionErrors.length === 0) {
           console.warn('[bootstrap] Corrected script is valid — using it');
@@ -352,6 +352,11 @@ SCRIPT:
   }
 
   return { script, reasoning };
+}
+
+// Strip markdown code fences LLMs tend to wrap scripts in
+function stripCodeFences(text: string): string {
+  return text.replace(/^```[^\n]*\n?/, '').replace(/\n?```\s*$/, '').trim();
 }
 
 // Fallback script if LLM fails or produces unparseable output
