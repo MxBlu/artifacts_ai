@@ -26,6 +26,9 @@ Banking:
   bank deposit allitems     Deposit everything except equipped
   bank deposit <item>       Deposit specific item
   bank withdraw <item> <qty>
+  fetch <item> <qty>        Ensure <qty> of <item> is in inventory — checks inventory first,
+                            then withdraws the shortfall from bank (moves to bank if needed).
+                            Does nothing if already have enough. Logs warning if bank also lacks stock.
 
 Equipment:
   equip <item_code>
@@ -69,6 +72,7 @@ Control Flow:
 Conditions:
   inventory_full
   has_item <code> [qty]
+  has_item_total <code> <qty>   true if inventory + bank combined >= qty
   <skill>_level >= <n>      e.g. mining_level >= 5
   hp < <n>                  absolute HP
   hp_percent < <n>          HP as percentage

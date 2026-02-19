@@ -7,6 +7,7 @@ export type ASTNode =
   | GatherNode
   | FightNode
   | BankNode
+  | FetchNode
   | EquipNode
   | UnequipNode
   | RecycleNode
@@ -32,6 +33,7 @@ export interface GotoNode       { type: 'goto';        x?: Expr; y?: Expr; locat
 export interface GatherNode     { type: 'gather' | 'woodcut' | 'mine' | 'fish' }
 export interface FightNode      { type: 'fight';       monster?: string }
 export interface BankNode       { type: 'bank';        action: 'deposit' | 'withdraw'; item?: string; quantity?: Expr; allItems?: boolean }
+export interface FetchNode      { type: 'fetch';       item: string; quantity: Expr }
 export interface EquipNode      { type: 'equip';       item: string }
 export interface UnequipNode    { type: 'unequip';     slot: string }
 export interface RecycleNode    { type: 'recycle';     item: string }
@@ -64,6 +66,7 @@ export type Condition =
   | { cond: 'inventory_full' }
   | { cond: 'inventory_space'; op: CmpOp; value: Expr }
   | { cond: 'has_item';        item: string; quantity?: Expr }
+  | { cond: 'has_item_total';  item: string; quantity: Expr }
   | { cond: 'skill_level';     skill: string; op: CmpOp; value: Expr }
   | { cond: 'hp';              op: CmpOp; value: Expr }
   | { cond: 'hp_percent';      op: CmpOp; value: Expr }
@@ -177,6 +180,10 @@ function parseCondition(tokens: Token[]): Condition {
   }
   if (head === 'has_item') {
     return { cond: 'has_item', item: tokens[1], quantity: tokens[2] ? parseExpr(tokens[2]) : undefined };
+  }
+  if (head === 'has_item_total') {
+    if (!tokens[2]) throw new Error('has_item_total requires: has_item_total <item> <qty>');
+    return { cond: 'has_item_total', item: tokens[1], quantity: parseExpr(tokens[2]) };
   }
   if (head === 'hp_percent') {
     return { cond: 'hp_percent', op: parseCmpOp(tokens[1]), value: parseExpr(tokens[2]) };
@@ -297,11 +304,16 @@ function parseLine(lines: ParseLine[], pos: { i: number }, baseIndent: number): 
     throw new Error(`Unknown bank action: ${action}`);
   }
 
+  // ─── fetch ───
+  if (cmd === 'fetch') {
+    pos.i++;
+    if (!toks[1]) throw new Error('fetch requires: fetch <item> <qty>');
+    return { type: 'fetch', item: toks[1], quantity: parseExpr(toks[2] ?? '1') };
+  }
+
   // ─── equip / unequip ───
   if (cmd === 'equip')   { pos.i++; return { type: 'equip',   item: toks[1] }; }
   if (cmd === 'unequip') { pos.i++; return { type: 'unequip', slot: toks[1] }; }
-
-  // ─── recycle ───
   if (cmd === 'recycle') { pos.i++; return { type: 'recycle', item: toks[1] }; }
 
   // ─── craft ───

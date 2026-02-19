@@ -1,5 +1,27 @@
 # Agentic Changes Log
 
+## [2026-02-19 14] - Add fetch command and has_item_total condition
+
+### Changed
+- File: `src/engine/parser.ts`
+  - Added `FetchNode` interface: `{ type: 'fetch'; item: string; quantity: Expr }`
+  - Added `has_item_total` to `Condition` union: true when inventory + bank >= qty
+  - `parseCondition`: handles `has_item_total <item> <qty>`
+  - `parseLine`: handles `fetch <item> <qty>` command
+- File: `src/engine/executor.ts`
+  - `execFetch`: checks inventory quantity first; if short, calls `getAllBankItems()` to find how much the bank has, moves to bank (if not there), withdraws exactly the shortfall (capped at bank stock). Logs clearly at each decision point.
+  - `evalCondition`: handles `has_item_total` — queries bank via `getAllBankItems()` and returns true if inventory + bank >= required qty
+  - Dispatch table: routes `fetch` → `execFetch`
+- File: `src/agent/bootstrap.ts`
+  - DSL_DOCS: documented `fetch` command with full behaviour description
+  - Conditions list: added `has_item_total`
+- File: `src/agent/checkin.ts`
+  - SYSTEM_PROMPT: added `fetch` to banking commands, added `has_item_total` to conditions
+
+### Notes
+- Typical crafting usage: `fetch copper_ore 48` before moving to workshop — pulls from bank if needed, no-ops if already stocked
+- `has_item_total` is useful for loop guards: `loop until has_item_total copper_ore 48:`
+
 ## [2026-02-19 13] - Fix line-highlight desync when agent replaces script mid-run
 
 ### Changed

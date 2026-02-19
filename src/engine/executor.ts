@@ -121,6 +121,7 @@ export class ScriptExecutor {
       case 'fish':          return this.execGather(node.type);
       case 'fight':         return this.execFight(node);
       case 'bank':          return this.execBank(node);
+      case 'fetch':         return this.execFetch(node);
       case 'equip':         return this.execEquip(node);
       case 'unequip':       return this.execUnequip(node);
       case 'recycle':       return this.execRecycle(node);
@@ -188,6 +189,23 @@ export class ScriptExecutor {
         if (!item) return false;
         if (cond.quantity) return item.quantity >= Number(this.evalExpr(cond.quantity));
         return true;
+      }
+      case 'has_item_total': {
+        // Check inventory first
+        const inv2: any[] = char.inventory ?? [];
+        const invItem = inv2.find((i: any) => i?.code === cond.item);
+        const invQty = invItem?.quantity ?? 0;
+        const needed = Number(this.evalExpr(cond.quantity));
+        if (invQty >= needed) return true;
+        // Check bank for the remainder
+        try {
+          const bankItems = await this.api.getAllBankItems();
+          const bankItem = bankItems.find((i: any) => i.code === cond.item);
+          const bankQty = bankItem?.quantity ?? 0;
+          return (invQty + bankQty) >= needed;
+        } catch {
+          return false;
+        }
       }
       case 'skill_level': {
         const lvl = char[`${cond.skill}_level`] ?? 0;
@@ -484,6 +502,46 @@ export class ScriptExecutor {
         () => this.api.withdrawBankItems(this.characterName, [{ code: node.item, quantity: qty }])
       );
     }
+  }
+
+  private async execFetch(node: any): Promise<void> {
+    const needed = Number(this.evalExpr(node.quantity));
+    const item: string = node.item;
+
+    // How much do we already have in inventory?
+    const char = await this.getCharacter();
+    const invItem = (char.inventory as any[] ?? []).find((i: any) => i?.code === item);
+    const invQty = invItem?.quantity ?? 0;
+
+    if (invQty >= needed) {
+      appendLog(this.state, `fetch ${item} x${needed} — already have ${invQty} in inventory, skipping`);
+      return;
+    }
+
+    const toWithdraw = needed - invQty;
+
+    // Check bank for availability
+    const bankItems = await this.api.getAllBankItems();
+    const bankItem = bankItems.find((i: any) => i.code === item);
+    const bankQty = bankItem?.quantity ?? 0;
+
+    if (bankQty === 0) {
+      appendLog(this.state, `fetch ${item} x${needed} — not in bank (have ${invQty}/${needed} in inventory), proceeding with available`);
+      return;
+    }
+
+    const withdrawQty = Math.min(toWithdraw, bankQty);
+    appendLog(this.state, `fetch ${item} x${needed} — withdrawing ${withdrawQty} from bank (have ${invQty} in inventory)`);
+
+    // Move to bank if not already there
+    if (char.x !== 4 || char.y !== 1) {
+      await this.apiCall('goto bank', () => this.api.moveCharacter(this.characterName, 4, 1));
+    }
+
+    await this.apiCall(
+      `bank withdraw ${item} ${withdrawQty}`,
+      () => this.api.withdrawBankItems(this.characterName, [{ code: item, quantity: withdrawQty }])
+    );
   }
 
   private async execEquip(node: any): Promise<void> {
