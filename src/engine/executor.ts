@@ -247,7 +247,9 @@ export class ScriptExecutor {
     fn: () => Promise<T>,
     retries = MAX_RETRIES,
   ): Promise<T> {
-    for (let attempt = 0; attempt <= retries; attempt++) {
+    let attempt = 0;
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
       try {
         const result = await fn();
         this.state.metrics.actionsExecuted++;
@@ -260,12 +262,12 @@ export class ScriptExecutor {
         const status = err?.response?.status;
         const code   = err?.response?.data?.error?.code;
 
-        // Cooldown error (499) - wait and retry
+        // Cooldown error (499) — wait and retry without counting against attempt budget
         if (status === 499 || code === 499) {
           const remaining = err?.response?.data?.error?.cooldown_remaining ?? 5;
-          appendLog(this.state, `${label} - cooldown, waiting ${remaining}s`);
+          appendLog(this.state, `${label} - cooldown, waiting ${Math.ceil(remaining)}s`);
           await sleep((remaining + 0.5) * 1000);
-          continue;
+          continue; // does NOT increment attempt
         }
 
         // Already at destination (490) - treat as success
@@ -285,12 +287,12 @@ export class ScriptExecutor {
           const delay = RETRY_BASE_MS * Math.pow(2, attempt);
           appendLog(this.state, `${label} failed (${status}), retry in ${delay}ms: ${err.message}`);
           await sleep(delay);
+          attempt++;
         } else {
           throw err;
         }
       }
     }
-    throw new Error(`${label} failed after ${retries} retries`);
   }
 
   private checkStuck(): void {

@@ -1,5 +1,18 @@
 # Agentic Changes Log
 
+## [2026-02-19 06] - Fix cooldown retries exhausting MAX_RETRIES budget
+
+### Changed
+- File: `src/engine/executor.ts`
+  - Rewrote `apiCall` loop from `for (attempt = 0..retries)` to `while(true)` with a separate `attempt` counter
+  - 499 cooldown errors now `continue` without incrementing `attempt` — they never burn the retry budget
+  - Real failures still count against `MAX_RETRIES = 3` and rethrow after exhaustion
+  - Previously: 3 consecutive cooldown waits would throw "failed after 3 retries", killing the executor
+
+### Notes
+- Root cause: woodcut actions have a ~30s cooldown; three consecutive 499s would exhaust retries and crash the script
+- The wait value is now `Math.ceil(remaining)` in the log message for cleaner output
+
 ## [2026-02-19 05] - Phase 5.1 & 5.2: Crafting chain tools + task support
 
 ### Added
