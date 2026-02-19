@@ -119,8 +119,34 @@ Example: to craft copper_bar (craft.skill = mining): goto workshop_mining → cr
 | Tasks Master (monsters) | (1, 2) | tasks |
 | Tasks Master (items) | (4, 13) | tasks |
 | Grand Exchange | (5, 1) | trading |
+| Rune NPC | (6, 13) | npc (sells runes for rune_slot) |
 
-## Skill XP Rates (observed)
+## Gathering Tools (equip in weapon_slot to reduce gathering cooldown)
+Base gathering cooldown = 30s + resource_level/2. Tools reduce this directly.
+
+| Tool | Lvl | Skill | Reduction | Craft |
+|------|-----|-------|-----------|-------|
+| copper_axe | 1 | woodcutting | -10s | 6x copper_bar (weaponcrafting) |
+| copper_pickaxe | 1 | mining | -10s | 6x copper_bar (weaponcrafting) |
+| fishing_net | 1 | fishing | -10s | 6x ash_plank (weaponcrafting) |
+| apprentice_gloves | 1 | alchemy | -10s | 6x feather (weaponcrafting) |
+| iron_axe | 10 | woodcutting | -20s | 2x spruce_plank + 8x iron_bar + 1x jasper_crystal |
+| iron_pickaxe | 10 | mining | -20s | 2x spruce_plank + 8x iron_bar + 1x jasper_crystal |
+| spruce_fishing_rod | 10 | fishing | -20s | 8x spruce_plank + 2x iron_bar + 1x jasper_crystal |
+| leather_gloves | 10 | alchemy | -20s | 2x ash_plank + 8x cowhide + 1x jasper_crystal |
+| steel_axe | 20 | woodcutting | -30s | (requires monster drops) |
+| steel_pickaxe | 20 | mining | -30s | (requires monster drops) |
+
+**Priority:** Craft copper_axe and copper_pickaxe ASAP — they cut gathering time by 33%. Always equip the right tool before a gathering loop. Unequip and re-equip when switching skill (e.g. unequip axe, equip pickaxe before mining).
+
+Example:
+\`\`\`
+equip copper_axe
+goto -1 0
+loop 20:
+  woodcut
+\`\`\`
+
 
 | Skill | Action | XP/action | Cooldown |
 |-------|--------|-----------|----------|
@@ -193,6 +219,7 @@ Script writing guidelines:
 - Comments (#) are helpful for explaining loop purpose
 - Crafting is fast XP but requires gathering materials first
 - Early priority: woodcutting and mining to get copper gear, then combat
+- **Craft gathering tools early:** copper_axe and copper_pickaxe each cost 6x copper_bar (weaponcrafting lv1) and reduce gathering cooldown by 10s (33% faster). Always equip the correct tool before a gathering loop.
 - Crafting chains: gather raw materials → smelt/plank → craft gear (each step gives XP)
 - Item tasks (at 4,13) are great for gathering loops — get a task, gather to fill it, complete it for bonus gold
 - Monster tasks (at 1,2) integrate naturally into combat farming loops`;

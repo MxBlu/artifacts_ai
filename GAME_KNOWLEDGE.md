@@ -119,7 +119,46 @@ This document tracks discovered game mechanics, data, and patterns. Update as we
 
 ### Actions & Logs
 - Cooldowns (base): move 5s per map, fight 2s per turn, rest 1s per 5 HP (min 3s), gathering 30s + resource level/2, crafting 5s per item, recycling 3s per item, bank item in/out 3s per different item, give item 3s per different item, others 3s
+- **Gathering cooldown is reduced by equipping a gathering tool in the weapon slot** (see Gathering Tools table below)
 - Logs: `/my/{name}/logs?page=1&size=50` for action history
+
+### Gathering Tools
+Tools are `weapon`-type items crafted via `weaponcrafting`. Equip in `weapon_slot` before gathering to reduce cooldown. Effect value is seconds subtracted from the base gathering cooldown.
+
+| Tool | Level | Skill | Cooldown Reduction | Craft Recipe |
+|------|-------|-------|--------------------|--------------|
+| copper_axe | 1 | woodcutting | -10s | 6x copper_bar |
+| copper_pickaxe | 1 | mining | -10s | 6x copper_bar |
+| fishing_net | 1 | fishing | -10s | 6x ash_plank |
+| apprentice_gloves | 1 | alchemy | -10s | 6x feather |
+| iron_axe | 10 | woodcutting | -20s | 2x spruce_plank + 8x iron_bar + 1x jasper_crystal |
+| iron_pickaxe | 10 | mining | -20s | 2x spruce_plank + 8x iron_bar + 1x jasper_crystal |
+| spruce_fishing_rod | 10 | fishing | -20s | 8x spruce_plank + 2x iron_bar + 1x jasper_crystal |
+| leather_gloves | 10 | alchemy | -20s | 2x ash_plank + 8x cowhide + 1x jasper_crystal |
+| steel_axe | 20 | woodcutting | -30s | 7x steel_bar + 4x ogre_eye + 2x flying_wing + 2x astralyte_crystal |
+| steel_pickaxe | 20 | mining | -30s | 7x steel_bar + 3x pig_skin + 3x spider_leg + 2x astralyte_crystal |
+| steel_fishing_rod | 20 | fishing | -30s | 7x steel_bar + 3x ogre_skin + 3x green_cloth + 2x astralyte_crystal |
+| steel_gloves | 20 | alchemy | -30s | 7x steel_bar + 3x pig_skin + 3x skeleton_bone + 2x astralyte_crystal |
+| gold_axe | 30 | woodcutting | -40s | 2x dead_wood_plank + 7x gold_bar + 1x ruby + 2x magical_cure + 3x red_cloth |
+| gold_pickaxe | 30 | mining | -40s | 2x dead_wood_plank + 7x gold_bar + 1x topaz + 2x magical_cure + 2x demon_horn |
+| gold_fishing_rod | 30 | fishing | -40s | 2x dead_wood_plank + 7x gold_bar + 1x sapphire + 2x magical_cure + 3x owlbear_claw |
+| golden_gloves | 30 | alchemy | -40s | 7x dead_wood_plank + 2x obsidian_bar + 1x emerald + 2x magical_cure + 3x demoniac_dust |
+| mithril_axe | 40 | woodcutting | -50s | 8x mithril_bar + 3x owlbear_claw + 3x wolfrider_hair + 3x dark_essence + 3x vampire_tooth |
+| mithril_pickaxe | 40 | mining | -50s | 8x mithril_bar + 3x owlbear_claw + 1x broken_sword + 3x dark_essence + 5x vampire_blood |
+| mithril_fishing_rod | 40 | fishing | -50s | 8x mithril_bar + 3x cursed_plank + 3x hellhound_hair + 3x cursed_flask + 3x goblin_eye |
+| mithril_gloves | 40 | alchemy | -50s | 8x mithril_bar + 3x cursed_book + 3x hellhound_bone + 3x cyclops_eye + 3x cursed_flask |
+| adamantite_axe | 50 | woodcutting | -60s | 10x adamantite_bar + 4x lava_bucket + 3x adventurer_skull + 3x cursed_flask + 4x golden_dust + 2x astralyte_crystal |
+| adamantite_pickaxe | 50 | mining | -60s | 10x adamantite_bar + 4x efreet_cloth + 4x desert_scorpion_carapace + 4x dark_essence + 2x broken_sword + 2x astralyte_crystal |
+| adamantite_fishing_rod | 50 | fishing | -60s | 5x adamantite_bar + 5x palm_plank + 4x lava_bucket + 4x desert_scorpion_carapace + 3x cursed_flask + 3x cursed_plank + 2x astralyte_crystal |
+| adamantite_gloves | 50 | alchemy | -60s | 10x adamantite_bar + 4x efreet_cloth + 4x desert_scorpion_carapace + 4x goblin_tooth + 1x rosenblood_elixir + 3x astralyte_crystal |
+| voidstone_axe | 50 | woodcutting | -70s | (no craft — drop/reward only) |
+| voidstone_pickaxe | 50 | mining | -70s | (no craft — drop/reward only) |
+| voidstone_fishing_rod | 50 | fishing | -70s | (no craft — drop/reward only) |
+| voidstone_gloves | 50 | alchemy | -70s | (no craft — drop/reward only) |
+| christmas_stocking | 1 | all skills | -10s each | (artifact slot — seasonal event item) |
+
+**Tool priority:** Craft copper tools (level 1) immediately when starting — they reduce base 30s cooldown by 10s (33% faster gathering). Each tier doubles the reduction.
+**Key insight:** A `copper_axe` reduces ash_wood gathering from 30s → 20s; `copper_pickaxe` reduces copper_ore mining from 27s → 17s.
 
 ### Events
 - Timed world events spawn exclusive monsters/resources/NPCs

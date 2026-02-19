@@ -243,6 +243,14 @@ ALWAYS goto the correct workshop BEFORE craft. Workshop aliases by craft.skill:
   weaponcrafting → workshop_weaponcrafting (2,1) | gearcrafting → workshop_gearcrafting (3,1)
   jewelrycrafting → workshop_jewelrycrafting (1,3) | cooking → workshop_cooking (1,1) | alchemy → workshop_alchemy (2,3)
 
+Gathering tools (equip in weapon_slot to reduce cooldown — base = 30s + resource_level/2):
+  copper_axe (lv1, -10s woodcutting), copper_pickaxe (lv1, -10s mining), fishing_net (lv1, -10s fishing), apprentice_gloves (lv1, -10s alchemy)
+  iron_axe (lv10, -20s), iron_pickaxe (lv10, -20s), spruce_fishing_rod (lv10, -20s), leather_gloves (lv10, -20s)
+  steel_axe/pickaxe/rod/gloves (lv20, -30s), gold tier (lv30, -40s), mithril tier (lv40, -50s), adamantite tier (lv50, -60s)
+  All lv1 tools cost 6x copper_bar or 6x ash_plank (weaponcrafting). Always equip right tool before a gathering loop.
+
+Other locations: bank (4,1), grand_exchange (5,1), tasks_master monsters (1,2), tasks_master items (4,13), rune NPC (6,13)
+
 Use the reasoner model when you need to rethink strategy from scratch. Use chat model for routine CONTINUE decisions.`;
 
 function buildCheckInPrompt(

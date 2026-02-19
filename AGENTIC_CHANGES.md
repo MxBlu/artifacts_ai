@@ -1,5 +1,27 @@
 # Agentic Changes Log
 
+## [2026-02-19 15] - Document and propagate gathering tool mechanics
+
+### Changed
+- File: `GAME_KNOWLEDGE.md`
+  - Added full Gathering Tools table (all tiers lv1–50, all four skills)
+  - Documented cooldown reduction effect values (lv1=-10s, lv10=-20s, lv20=-30s, lv30=-40s, lv40=-50s, lv50=-60s, voidstone=-70s)
+  - Updated Actions section to note that gathering cooldown is reducible with tools
+- File: `src/agent/bootstrap.ts`
+  - Added Gathering Tools reference table to `KNOWN_LOCATIONS` prompt section
+  - Added equip-tool example DSL snippet
+  - Added rune NPC location (6, 13) to Known Locations table
+  - Added strategy guideline: craft copper_axe/copper_pickaxe early (33% gathering speed boost)
+- File: `src/agent/checkin.ts`
+  - Added gathering tools reference to `SYSTEM_PROMPT` (all tiers, all skills, with cooldown values)
+  - Added rune NPC and other key locations to `SYSTEM_PROMPT`
+
+### Notes
+- Tools are `weapon`-type items equipped in `weapon_slot`; each reduces gathering cooldown for a specific skill
+- Confirmed via `/items?type=weapon` API: lv1 tools (copper_axe, copper_pickaxe, fishing_net, apprentice_gloves) each cost 6x copper_bar or 6x ash_plank via weaponcrafting lv1
+- voidstone tools (lv50, -70s) have no craft recipe — drop/reward only
+- christmas_stocking is an artifact (-10s to all gathering skills, seasonal)
+
 ## [2026-02-19 14] - Add fetch command and has_item_total condition
 
 ### Changed
