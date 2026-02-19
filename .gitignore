@@ -2,6 +2,7 @@ node_modules/
 dist/
 .env
 *.log
+state
 
 skill_research_progress.json
 auth_headers.txt
