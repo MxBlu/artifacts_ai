@@ -123,6 +123,7 @@ async function main() {
         Object.entries(state.metrics.xpGains).map(([k, v]) => [k, Math.round(v / hours)])
       ),
       goldPerHour: Math.round(state.metrics.goldGained / hours),
+      tasksCoinsGained: state.metrics.tasksCoinsGained,
       runtime,
     };
   }

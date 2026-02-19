@@ -151,6 +151,7 @@ function handleStatsUpdate(data) {
   el('statActions').textContent = data.metrics?.actionsExecuted ?? 0;
   el('statGold').textContent = data.metrics?.goldGained ?? 0;
   el('statGoldHr').textContent = data.goldPerHour ?? 0;
+  el('statTaskCoins').textContent = data.tasksCoinsGained ?? 0;
   el('statRuntime').textContent = formatDuration(data.runtime ?? 0);
   el('hdrRuntime').textContent = formatDuration(data.runtime ?? 0);
 

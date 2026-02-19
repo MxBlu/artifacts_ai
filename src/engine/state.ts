@@ -6,6 +6,7 @@ export interface ExecutionMetrics {
   xpGains: Record<string, number>;
   goldGained: number;
   itemsGathered: Record<string, number>;
+  tasksCoinsGained: number;
 }
 
 export interface ExecutionState {
@@ -41,6 +42,7 @@ export function createEmptyState(script: string = ''): ExecutionState {
       xpGains: {},
       goldGained: 0,
       itemsGathered: {},
+      tasksCoinsGained: 0,
     },
   };
 }

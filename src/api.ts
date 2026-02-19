@@ -558,6 +558,49 @@ export interface NpcMerchantTransactionResponse {
   data: NpcMerchantTransactionData;
 }
 
+export interface GEOrder {
+  id: string;
+  seller: string;
+  code: string;
+  quantity: number;
+  price: number;
+  created_at: string;
+}
+
+export interface GEOrdersPage {
+  data: GEOrder[];
+  total?: number;
+  page?: number;
+  size?: number;
+  pages?: number;
+}
+
+export interface GEOrderCreated {
+  id: string;
+  created_at: string;
+  code: string;
+  quantity: number;
+  price: number;
+  total_price: number;
+  tax: number;
+}
+
+export interface GEOrderTransactionData {
+  cooldown: {
+    total_seconds: number;
+    remaining_seconds: number;
+    started_at: string;
+    expiration: string;
+    reason: string;
+  };
+  order: GEOrderCreated;
+  character: Character;
+}
+
+export interface GEOrderTransactionResponse {
+  data: GEOrderTransactionData;
+}
+
 export class ArtifactsAPI {
   private client: AxiosInstance;
 
@@ -951,6 +994,35 @@ export class ArtifactsAPI {
   async buyBankExpansion(characterName: string): Promise<BankExtensionTransactionData> {
     const response = await this.client.post<BankExtensionTransactionResponse>(
       `/my/${characterName}/action/bank/buy_expansion`
+    );
+    return response.data.data;
+  }
+
+  async getGEOrders(params: { code?: string; seller?: string; page?: number; size?: number } = {}): Promise<GEOrdersPage> {
+    const response = await this.client.get<GEOrdersPage>('/grandexchange/orders', { params });
+    return response.data;
+  }
+
+  async geCreateSellOrder(characterName: string, code: string, quantity: number, price: number): Promise<GEOrderTransactionData> {
+    const response = await this.client.post<GEOrderTransactionResponse>(
+      `/my/${characterName}/action/grandexchange/sell`,
+      { code, quantity, price }
+    );
+    return response.data.data;
+  }
+
+  async geBuyOrder(characterName: string, id: string, quantity: number): Promise<GEOrderTransactionData> {
+    const response = await this.client.post<GEOrderTransactionResponse>(
+      `/my/${characterName}/action/grandexchange/buy`,
+      { id, quantity }
+    );
+    return response.data.data;
+  }
+
+  async geCancelOrder(characterName: string, id: string): Promise<GEOrderTransactionData> {
+    const response = await this.client.post<GEOrderTransactionResponse>(
+      `/my/${characterName}/action/grandexchange/cancel`,
+      { id }
     );
     return response.data.data;
   }

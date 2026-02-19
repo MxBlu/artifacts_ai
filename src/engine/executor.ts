@@ -124,6 +124,7 @@ export class ScriptExecutor {
       case 'rest':          return this.execRest();
       case 'sleep':         return this.execSleep(node);
       case 'wait_cooldown': return this.execWaitCooldown();
+      case 'break':         throw new Error('BREAK');
       case 'log':           return this.execLog(node);
       case 'set':           return this.execSet(node);
       case 'if':            return this.execIf(node);
@@ -526,8 +527,96 @@ export class ScriptExecutor {
   }
 
   private async execGE(node: any): Promise<void> {
-    // Grand Exchange - TODO: implement when GE endpoints are confirmed
-    appendLog(this.state, `ge ${node.action} (not yet implemented)`);
+    switch (node.action) {
+      case 'sell': {
+        const qty = node.quantity ? Number(this.evalExpr(node.quantity)) : 1;
+        const price = Number(this.evalExpr(node.price));
+        appendLog(this.state, `ge sell ${node.item} x${qty} @ ${price}g`);
+        const data = await this.apiCall(
+          `ge sell ${node.item}`,
+          () => this.api.geCreateSellOrder(this.characterName, node.item, qty, price)
+        );
+        if (data) {
+          if (data.character) this.character = data.character;
+          appendLog(this.state, `GE sell order created: ${data.order.id}`);
+        }
+        break;
+      }
+      case 'buy': {
+        const qty = node.quantity ? Number(this.evalExpr(node.quantity)) : 1;
+        appendLog(this.state, `ge buy ${node.item} x${qty}`);
+        // find cheapest order for this item
+        const ordersPage = await this.api.getGEOrders({ code: node.item, size: 100 });
+        const orders = (ordersPage.data || [])
+          .filter((o: any) => o.quantity >= qty)
+          .sort((a: any, b: any) => a.price - b.price);
+        if (orders.length === 0) {
+          appendLog(this.state, `ge buy: no orders found for ${node.item}`);
+          return;
+        }
+        const order = orders[0];
+        appendLog(this.state, `ge buy: filling order ${order.id} @ ${order.price}g each`);
+        const data = await this.apiCall(
+          `ge buy ${node.item}`,
+          () => this.api.geBuyOrder(this.characterName, order.id, qty)
+        );
+        if (data) {
+          if (data.character) this.character = data.character;
+          appendLog(this.state, `GE buy complete: ${qty}x ${node.item}`);
+        }
+        break;
+      }
+      case 'cancel': {
+        // node.item is used as order id here
+        appendLog(this.state, `ge cancel order ${node.item}`);
+        const data = await this.apiCall(
+          `ge cancel ${node.item}`,
+          () => this.api.geCancelOrder(this.characterName, node.item)
+        );
+        if (data) {
+          if (data.character) this.character = data.character;
+        }
+        break;
+      }
+      case 'buy': {
+        const qty = node.quantity ? Number(this.evalExpr(node.quantity)) : 1;
+        appendLog(this.state, `ge buy ${node.item} x${qty}`);
+        // find cheapest order for this item
+        const ordersPage = await this.api.getGEOrders({ code: node.item, size: 100 });
+        const orders = (ordersPage.data || [])
+          .filter((o: any) => o.quantity >= qty)
+          .sort((a: any, b: any) => a.price - b.price);
+        if (orders.length === 0) {
+          appendLog(this.state, `ge buy: no orders found for ${node.item}`);
+          return;
+        }
+        const order = orders[0];
+        appendLog(this.state, `ge buy: filling order ${order.id} @ ${order.price}g each`);
+        const data = await this.apiCall(
+          `ge buy ${node.item}`,
+          () => this.api.geBuyOrder(this.characterName, order.id, qty)
+        );
+        if (data) {
+          if (data.character) this.character = data.character;
+          appendLog(this.state, `GE buy complete: ${qty}x ${node.item}`);
+        }
+        break;
+      }
+      case 'cancel': {
+        // node.item is used as order id here
+        appendLog(this.state, `ge cancel order ${node.item}`);
+        const data = await this.apiCall(
+          `ge cancel ${node.item}`,
+          () => this.api.geCancelOrder(this.characterName, node.item)
+        );
+        if (data) {
+          if (data.character) this.character = data.character;
+        }
+        break;
+      }
+      default:
+        appendLog(this.state, `ge: unknown action '${node.action}'`);
+    }
   }
 
   private async execNPC(node: any): Promise<void> {
@@ -552,15 +641,27 @@ export class ScriptExecutor {
       case 'new':
         await this.apiCall('task new', () => this.api.acceptNewTask(this.characterName));
         break;
-      case 'complete':
-        await this.apiCall('task complete', () => this.api.completeTask(this.characterName));
+      case 'complete': {
+        const data = await this.apiCall('task complete', () => this.api.completeTask(this.characterName));
+        if (data?.rewards?.items) {
+          const coins = data.rewards.items.find((i: any) => i.code === 'tasks_coin');
+          if (coins) this.state.metrics.tasksCoinsGained += coins.quantity;
+        }
+        if (data?.character) this.character = data.character;
         break;
+      }
       case 'cancel':
         await this.apiCall('task cancel', () => this.api.cancelTask(this.characterName));
         break;
-      case 'exchange':
-        await this.apiCall('task exchange', () => this.api.exchangeTaskCoins(this.characterName));
+      case 'exchange': {
+        const data = await this.apiCall('task exchange', () => this.api.exchangeTaskCoins(this.characterName));
+        if (data?.rewards?.items) {
+          const coins = data.rewards.items.find((i: any) => i.code === 'tasks_coin');
+          if (coins) this.state.metrics.tasksCoinsGained += coins.quantity;
+        }
+        if (data?.character) this.character = data.character;
         break;
+      }
       case 'trade': {
         const qty = node.quantity ? Number(this.evalExpr(node.quantity)) : 1;
         await this.apiCall(
@@ -625,7 +726,12 @@ export class ScriptExecutor {
     const count = Number(this.evalExpr(node.count));
     for (let i = 0; i < count && i < MAX_LOOP_ITERATIONS; i++) {
       if (this.stopped) throw new Error('STOPPED');
-      await this.execBlock(node.body);
+      try {
+        await this.execBlock(node.body);
+      } catch (err: any) {
+        if (err.message === 'BREAK') break;
+        throw err;
+      }
     }
   }
 
@@ -635,7 +741,12 @@ export class ScriptExecutor {
       if (this.stopped) throw new Error('STOPPED');
       const done = await this.evalCondition(node.condition);
       if (done) break;
-      await this.execBlock(node.body);
+      try {
+        await this.execBlock(node.body);
+      } catch (err: any) {
+        if (err.message === 'BREAK') break;
+        throw err;
+      }
       iterations++;
     }
     if (iterations >= MAX_LOOP_ITERATIONS) {
@@ -649,7 +760,12 @@ export class ScriptExecutor {
       if (this.stopped) throw new Error('STOPPED');
       const cont = await this.evalCondition(node.condition);
       if (!cont) break;
-      await this.execBlock(node.body);
+      try {
+        await this.execBlock(node.body);
+      } catch (err: any) {
+        if (err.message === 'BREAK') break;
+        throw err;
+      }
       iterations++;
     }
   }
@@ -658,10 +774,17 @@ export class ScriptExecutor {
     let iterations = 0;
     while (iterations < MAX_LOOP_ITERATIONS) {
       if (this.stopped) throw new Error('STOPPED');
-      await this.execBlock(node.body);
+      try {
+        await this.execBlock(node.body);
+      } catch (err: any) {
+        if (err.message === 'BREAK') break;
+        throw err;
+      }
       iterations++;
     }
-    appendLog(this.state, `WARNING: Forever loop hit ${MAX_LOOP_ITERATIONS} iteration limit`);
+    if (iterations >= MAX_LOOP_ITERATIONS) {
+      appendLog(this.state, `WARNING: Forever loop hit ${MAX_LOOP_ITERATIONS} iteration limit`);
+    }
   }
 }
 

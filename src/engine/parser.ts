@@ -25,7 +25,8 @@ export type ASTNode =
   | LoopCountNode
   | LoopUntilNode
   | LoopWhileNode
-  | LoopForeverNode;
+  | LoopForeverNode
+  | BreakNode;
 
 export interface GotoNode       { type: 'goto';        x?: Expr; y?: Expr; location?: string }
 export interface GatherNode     { type: 'gather' | 'woodcut' | 'mine' | 'fish' }
@@ -50,6 +51,7 @@ export interface LoopCountNode  { type: 'loop_count';  count: Expr; body: ASTNod
 export interface LoopUntilNode  { type: 'loop_until';  condition: Condition; body: ASTNode[] }
 export interface LoopWhileNode  { type: 'loop_while';  condition: Condition; body: ASTNode[] }
 export interface LoopForeverNode{ type: 'loop_forever';body: ASTNode[] }
+export interface BreakNode      { type: 'break' }
 
 // Expressions (simple numeric / variable)
 export type Expr =
@@ -343,6 +345,9 @@ function parseLine(lines: ParseLine[], pos: { i: number }, baseIndent: number): 
 
   // ─── wait_cooldown ───
   if (cmd === 'wait_cooldown') { pos.i++; return { type: 'wait_cooldown' }; }
+
+  // ─── break ───
+  if (cmd === 'break') { pos.i++; return { type: 'break' }; }
 
   // ─── log ───
   if (cmd === 'log') {

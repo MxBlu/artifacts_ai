@@ -191,7 +191,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Add `get_available_tasks(characterLevel, skillLevels)` tool — fetches /tasks/list, filters by character readiness
 - [x] Add task loop DSL example to `KNOWN_LOCATIONS` in bootstrap.ts
 - [x] Update bootstrap prompt: task integration guidance, item vs monster task masters, tasks_coin exchange
-- [ ] Add tasks_coin exchange tracking to stats dashboard
+  - [x] Add tasks_coin exchange tracking to stats dashboard
 
 ### 5.3 Death Recovery
 - [x] Detect death events (fight.result === 'loss')
@@ -205,7 +205,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 
 - [x] Death recovery: auto re-equip from bank after death, resume script inline
 - [x] Strategy learning: log strategies to `state/strategies.json`, include in check-in context
-- [ ] GE command: implement grand exchange buy/sell in executor
+  - [x] GE command: implement grand exchange buy/sell in executor
 
 ## Backlog Ideas
 

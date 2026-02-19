@@ -1,5 +1,28 @@
 # Agentic Changes Log
 
+## [2026-02-19 08] - break statement, GE commands, tasks_coin tracking
+
+### Changed
+- File: `src/engine/executor.ts`
+  - Fixed duplicate loop methods (stray `}` closed class early at line 689; old non-break-aware `execLoopUntil/While/Forever` bodies outside class deleted)
+  - Implemented `execGE()`: `ge sell <item> <qty> <price>` → `geCreateSellOrder`; `ge buy <item> <qty>` → finds cheapest order via GET then `geBuyOrder`; `ge cancel <id>` → `geCancelOrder`
+  - `execTask('complete')` and `execTask('exchange')` now capture return value, count `tasks_coin` items in rewards, accumulate into `state.metrics.tasksCoinsGained`, and update `this.character`
+- File: `src/engine/state.ts`
+  - Added `tasksCoinsGained: number` to `ExecutionMetrics` interface and `createEmptyState()`
+- File: `src/api.ts`
+  - Added interfaces: `GEOrder`, `GEOrdersPage`, `GEOrderCreated`, `GEOrderTransactionData`, `GEOrderTransactionResponse`
+  - Added methods: `getGEOrders()`, `geCreateSellOrder()`, `geBuyOrder()`, `geCancelOrder()`
+- File: `src/web/server.ts`
+  - `buildStatsUpdate()` now includes `tasksCoinsGained` from metrics
+- File: `src/web/client.js`
+  - `handleStatsUpdate()` renders `tasksCoinsGained` to `#statTaskCoins`
+- File: `src/web/index.html`
+  - Added "Task coins" stat row (`#statTaskCoins`) in stats panel
+
+### Notes
+- `break` dispatch in executor (throws `BREAK`) was already committed; this PR fixes the class structure that was preventing it from compiling
+- GE buy auto-selects cheapest order with sufficient quantity; no partial fills
+
 ## [2026-02-19 07] - Fix script viewer syntax highlighting corruption
 
 ### Changed
