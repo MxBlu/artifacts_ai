@@ -27,5 +27,10 @@ export async function chat(
     messages,
     max_tokens: maxTokens,
   });
-  return response.choices[0]?.message?.content ?? '';
+  const message = response.choices[0]?.message as any;
+  // deepseek-reasoner puts the actual response in reasoning_content; content is always ""
+  if (model === MODEL_REASONER) {
+    return message?.reasoning_content ?? message?.content ?? '';
+  }
+  return message?.content ?? '';
 }

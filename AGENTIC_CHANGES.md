@@ -1,5 +1,18 @@
 # Agentic Changes Log
 
+## [2026-02-19 17] - Fix deepseek-reasoner returning empty content
+
+### Changed
+- File: `src/agent/llm.ts`
+  - `chat()` now reads `reasoning_content` instead of `content` when model is `deepseek-reasoner`
+  - `content` is always `""` for the reasoner model; the actual response is in `reasoning_content`
+- File: `src/agent/bootstrap.ts`
+  - Removed temporary debug logging added during diagnosis
+
+### Notes
+- Root cause: DeepSeek's reasoner API returns the response in `message.reasoning_content`, not `message.content`
+- This caused every bootstrap call to get an empty string → fallback script used every time
+
 ## [2026-02-19 16] - Add `not` condition prefix to DSL
 
 ### Changed
