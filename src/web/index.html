@@ -292,6 +292,71 @@
     }
     .conn-dot.connected { background: var(--green); }
 
+    /* ── Manual play bar ── */
+    .manual-bar {
+      border-top: 1px solid var(--border);
+      background: #0d1a0d;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 12px;
+    }
+    .manual-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .manual-actions button {
+      background: #1a2a1a;
+      border-color: #3fb95040;
+      color: var(--green);
+      font-size: 11px;
+      padding: 3px 10px;
+    }
+    .manual-actions button:hover { background: #223322; }
+    .manual-custom {
+      display: flex;
+      gap: 6px;
+    }
+    .manual-custom input {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      padding: 4px 8px;
+      outline: none;
+    }
+    .manual-custom input:focus { border-color: var(--green); }
+
+    /* ── Level-up toast ── */
+    .toast-levelup {
+      position: fixed;
+      bottom: 60px;
+      right: 20px;
+      background: #1a3a1a;
+      border: 1px solid var(--green);
+      color: var(--green);
+      padding: 10px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .toast-levelup.toast-visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast-icon { font-size: 15px; margin-right: 4px; }
+
     /* ── Scrollbar ── */
     ::-webkit-scrollbar { width: 6px; }
     ::-webkit-scrollbar-track { background: transparent; }
@@ -317,6 +382,8 @@
     <button id="btnStart" class="primary" onclick="agentStart()">Start Agent</button>
     <button id="btnResume" onclick="agentResume()">Resume</button>
     <button id="btnStop" class="danger" onclick="agentStop()" disabled>Stop</button>
+    <button id="btnTakeControl" onclick="takeControl()" title="Pause agent and play manually">Take Control</button>
+    <button id="btnReleaseControl" onclick="releaseControl()" style="display:none" class="primary">Release Control</button>
   </div>
 </header>
 
@@ -368,6 +435,21 @@
     <div class="steer-bar">
       <input id="steerInput" placeholder="Steer agent... (e.g. 'switch to fishing')" onkeydown="steerKeydown(event)">
       <button onclick="steerSend()">Send</button>
+    </div>
+    <!-- Manual play bar (shown in manual mode) -->
+    <div class="manual-bar" id="manualBar" style="display:none">
+      <div class="manual-actions">
+        <button onclick="manualAction('fight')" title="Fight monster on current tile">Fight</button>
+        <button onclick="manualAction('gather')" title="Gather on current tile">Gather</button>
+        <button onclick="manualAction('rest')" title="Restore HP">Rest</button>
+        <button onclick="manualGoto()" title="Move to coordinates">Move</button>
+        <button onclick="manualAction('bank deposit allitems')" title="Deposit all inventory">Bank Deposit</button>
+        <button onclick="manualAction('bank withdraw gold 100')" title="Withdraw 100 gold">Withdraw Gold</button>
+      </div>
+      <div class="manual-custom">
+        <input id="manualInput" placeholder="DSL command... (e.g. goto 0 0, craft copper_sword)" onkeydown="manualKeydown(event)">
+        <button onclick="manualSend()">Run</button>
+      </div>
     </div>
   </div>
 </div>

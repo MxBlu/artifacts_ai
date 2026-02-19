@@ -10,6 +10,7 @@ const SKILLS = ['mining','woodcutting','fishing','weaponcrafting','gearcrafting'
 let ws = null;
 let reconnectTimer = null;
 let agentRunning = false;
+let manualMode = false;
 let currentScript = '';
 let currentLine = 0;
 let sessionStart = Date.now();
@@ -72,6 +73,10 @@ function handleMessage(msg) {
     case 'script_update':
       if (msg.data?.script) renderScript(msg.data.script, msg.data.currentLine ?? 0);
       break;
+    case 'level_up':
+      showLevelUpToast(msg.data.skill, msg.data.newLevel);
+      appendLog('agentLog', `LEVEL UP! ${msg.data.skill} → ${msg.data.newLevel}`, 'agent');
+      break;
     case 'error':
       appendLog('agentLog', `[ERROR] ${msg.data.message}`, 'error');
       break;
@@ -82,6 +87,9 @@ function handleHello(data) {
   appendLog('agentLog', `[WS] Connected — character: ${data.character}`, 'system');
   if (data.characterSnapshot) {
     characterSnapshot = data.characterSnapshot;
+  }
+  if (typeof data.manualMode === 'boolean') {
+    setManualMode(data.manualMode);
   }
   if (data.state) {
     handleStateUpdate(data.state);
@@ -103,6 +111,16 @@ function handleHello(data) {
 
 function handleStateUpdate(data) {
   if (!data) return;
+  if (typeof data.manualMode === 'boolean') {
+    setManualMode(data.manualMode);
+  }
+  if (data.characterSnapshot) {
+    characterSnapshot = data.characterSnapshot;
+    renderSkills(
+      data.metrics?.xpGains ?? {},
+      data.metrics?.xpPerHour ?? {}
+    );
+  }
   if (data.script !== undefined && data.script !== currentScript) {
     currentScript = data.script;
     renderScript(data.script, data.currentLine ?? 0);
@@ -136,6 +154,24 @@ function handleStatsUpdate(data) {
 
 // ─── UI helpers ───────────────────────────────────────────────────────────────
 
+function showLevelUpToast(skill, level) {
+  const toast = document.createElement('div');
+  toast.className = 'toast-levelup';
+  toast.innerHTML = `<span class="toast-icon">&#x2B06;</span> <strong>${skill}</strong> reached level <strong>${level}</strong>!`;
+  document.body.appendChild(toast);
+
+  // Animate in
+  requestAnimationFrame(() => {
+    toast.classList.add('toast-visible');
+  });
+
+  // Fade out after 4s
+  setTimeout(() => {
+    toast.classList.remove('toast-visible');
+    toast.addEventListener('transitionend', () => toast.remove());
+  }, 4000);
+}
+
 function el(id) { return document.getElementById(id); }
 
 function setConn(connected) {
@@ -152,9 +188,10 @@ function setStatus(status) {
 }
 
 function updateButtons() {
-  el('btnStart').disabled = agentRunning;
-  el('btnResume').disabled = agentRunning;
+  el('btnStart').disabled = agentRunning || manualMode;
+  el('btnResume').disabled = agentRunning || manualMode;
   el('btnStop').disabled = !agentRunning;
+  el('btnTakeControl').disabled = manualMode;
 }
 
 // ─── Log panels ───────────────────────────────────────────────────────────────
@@ -361,6 +398,55 @@ function agentStop() {
   send({ type: 'agent_stop' });
   agentRunning = false;
   updateButtons();
+}
+
+function takeControl() {
+  send({ type: 'take_control' });
+}
+
+function releaseControl() {
+  send({ type: 'release_control' });
+}
+
+function setManualMode(on) {
+  manualMode = on;
+  el('steerInput').closest('.steer-bar').style.display = on ? 'none' : '';
+  el('manualBar').style.display = on ? 'flex' : 'none';
+  el('btnTakeControl').style.display = on ? 'none' : '';
+  el('btnReleaseControl').style.display = on ? '' : 'none';
+  // Update status badge
+  if (on) {
+    const badge = el('statusBadge');
+    badge.className = 'status-badge status-paused';
+    badge.textContent = 'manual';
+  }
+  updateButtons();
+}
+
+function manualAction(dsl) {
+  send({ type: 'manual_action', dsl });
+}
+
+function manualGoto() {
+  const coords = prompt('Move to (x y):');
+  if (!coords) return;
+  const parts = coords.trim().split(/\s+/);
+  if (parts.length === 2) {
+    manualAction(`goto ${parts[0]} ${parts[1]}`);
+  } else if (parts.length === 1) {
+    manualAction(`goto ${parts[0]}`);
+  }
+}
+
+function manualSend() {
+  const input = el('manualInput').value.trim();
+  if (!input) return;
+  manualAction(input);
+  el('manualInput').value = '';
+}
+
+function manualKeydown(e) {
+  if (e.key === 'Enter') manualSend();
 }
 
 function steerSend() {

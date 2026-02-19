@@ -1,5 +1,44 @@
 # Agentic Changes Log
 
+## [2026-02-19] - Level-up toasts + manual play mode
+
+### Changed
+- File: `src/engine/executor.ts`
+  - Added `onLevelUp?: (skill, newLevel) => void` callback
+  - Added `checkLevelUps(prev, next)` — compares all skill level fields and fires `onLevelUp` for any that increased
+  - `execGather`, `execFight`, `execCraft`: now call `checkLevelUps` whenever `this.character` is updated from an API response
+
+- File: `src/agent/agent.ts`
+  - Added `onLevelUp` callback; forwarded to executor in `runExecutorCycle`
+
+- File: `src/web/server.ts`
+  - Added `level_up` to `MsgType`
+  - `createAgent()`: wires `a.onLevelUp` to broadcast `level_up` WS message
+  - Added `manualMode` server state flag
+  - `hello` payload now includes `manualMode`
+  - New WS commands: `take_control`, `release_control`, `manual_action`
+    - `take_control`: stops agent, sets `manualMode = true`, broadcasts state update
+    - `release_control`: clears `manualMode`, broadcasts state update
+    - `manual_action { dsl }`: runs a single DSL line via temp executor; refreshes character snapshot on completion; fires `level_up` if applicable
+
+- File: `src/web/client.js`
+  - Added `manualMode` state var
+  - `handleHello`: reads `data.manualMode`, calls `setManualMode()`
+  - `handleStateUpdate`: reads `data.manualMode` and `data.characterSnapshot`
+  - `updateButtons()`: disables Start/Resume when in manual mode
+  - `setManualMode(on)`: toggles steer-bar vs manual-bar, Take Control vs Release Control buttons
+  - New functions: `takeControl`, `releaseControl`, `manualAction`, `manualGoto`, `manualSend`, `manualKeydown`
+  - `handleMessage`: handles `level_up` → `showLevelUpToast()` + agent log entry
+  - `showLevelUpToast(skill, level)`: animated green toast in bottom-right corner, auto-dismisses after 4s
+
+- File: `src/web/index.html`
+  - Header: added "Take Control" and "Release Control" buttons
+  - Script panel: added `.manual-bar` below steer bar (hidden by default)
+    - Quick action buttons: Fight, Gather, Rest, Move (prompts coords), Bank Deposit, Withdraw Gold
+    - Free-form DSL input with Run button and Enter key support
+  - CSS: `.manual-bar`, `.manual-actions`, `.manual-custom` styles (dark green theme)
+  - CSS: `.toast-levelup` / `.toast-visible` — fixed-position animated toast notification
+
 ## [2026-02-19] - Phase 4: XP tracking + skills dashboard
 
 ### Changed

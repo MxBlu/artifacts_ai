@@ -118,7 +118,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Calculate and display XP/hr per skill
 - [x] Calculate and display gold/hr
 - [x] Show session statistics (runtime, actions, gold earned)
-- [ ] Add level-up notifications (toast/flash)
+- [x] Level-up notifications (toast/flash in UI)
 - [ ] Implement stats history graph (optional)
 
 ### 3.6 Script Viewer
@@ -136,12 +136,12 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Add quick action buttons (Start, Resume, Stop)
 
 ### 3.8 Manual Play Mode
-- [ ] Implement "Take Control" button
-- [ ] Create action button panel (Move, Fight, Gather, etc.)
-- [ ] Add grid-based map view for navigation
-- [ ] Show available actions at current tile
-- [ ] Implement "Release Control" to return to agent
-- [ ] Log human actions with special marking
+- [x] Implement "Take Control" button (header)
+- [x] Quick action buttons (Fight, Gather, Rest, Move, Bank Deposit, Withdraw Gold)
+- [x] Free-form DSL command input
+- [x] Character snapshot refresh after each manual action
+- [x] Implement "Release Control" to return to agent mode
+- [x] Log human actions with special marking (`[MANUAL]` prefix)
 
 ### 3.9 Testing & Polish
 - [ ] Test real-time updates under load
@@ -205,7 +205,8 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Fixed LOCATION_ALIASES with accurate coordinates from live API
 - [x] `goto <name>` falls back to nearest-tile cache lookup for unknown locations
 - [x] XP tracking with per-session rates and live character data in skills dashboard
-- [ ] Manual play mode in web UI (take/release control)
+- [x] Level-up toast notifications
+- [x] Manual play mode in web UI (take/release control, action buttons, DSL input)
 
 ## Backlog Ideas
 

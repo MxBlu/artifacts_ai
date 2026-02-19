@@ -27,6 +27,7 @@ export class Agent {
   onAgentLog?: (msg: string) => void;
   onExecutionLog?: (msg: string) => void;
   onStateChange?: (state: ExecutionState) => void;
+  onLevelUp?: (skill: string, newLevel: number) => void;
 
   constructor(api: ArtifactsAPI, characterName: string) {
     this.api = api;
@@ -179,6 +180,9 @@ export class Agent {
     };
     this.executor.onStateChange = (s) => {
       this.onStateChange?.(s);
+    };
+    this.executor.onLevelUp = (skill, newLevel) => {
+      this.onLevelUp?.(skill, newLevel);
     };
 
     // Start check-in timer

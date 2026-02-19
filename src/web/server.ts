@@ -22,6 +22,7 @@ export type MsgType =
   | 'state_update'
   | 'stats_update'
   | 'script_update'
+  | 'level_up'
   | 'error'
   | 'hello';
 
@@ -97,6 +98,7 @@ async function main() {
 
   // Single agent instance shared across connections
   let agent: Agent | null = null;
+  let manualMode = false; // true when human has taken control
 
   const httpServer = http.createServer(serveStatic);
   const wss = new WebSocketServer({ server: httpServer });
@@ -143,6 +145,10 @@ async function main() {
       broadcast(wss, msg('stats_update', buildStatsUpdate(state)));
     };
 
+    a.onLevelUp = (skill, newLevel) => {
+      broadcast(wss, msg('level_up', { skill, newLevel }));
+    };
+
     return a;
   }
 
@@ -168,6 +174,7 @@ async function main() {
     send(ws, msg('hello', {
       character: CHARACTER_NAME,
       characterSnapshot,
+      manualMode,
       state: currentState ? {
         status: currentState.status,
         currentLine: currentState.currentLine,
@@ -249,6 +256,55 @@ async function main() {
             recentLog: state.executionLog.slice(-50),
             metrics: state.metrics,
           } : null));
+          break;
+        }
+
+        case 'take_control': {
+          // Pause agent if running, enter manual mode
+          if (agent) {
+            agent.stop();
+            agent = null;
+            broadcast(wss, msg('agent_log', { line: '[MANUAL] Agent paused — manual control active' }));
+          }
+          manualMode = true;
+          broadcast(wss, msg('state_update', { manualMode: true }));
+          break;
+        }
+
+        case 'release_control': {
+          manualMode = false;
+          broadcast(wss, msg('state_update', { manualMode: false }));
+          broadcast(wss, msg('agent_log', { line: '[MANUAL] Control released — agent mode' }));
+          break;
+        }
+
+        case 'manual_action': {
+          // Execute a single DSL command (e.g. "fight", "gather", "goto bank")
+          if (!manualMode) {
+            send(ws, msg('error', { message: 'Not in manual mode — take control first' }));
+            break;
+          }
+          const { ScriptExecutor } = await import('../engine/executor');
+          const { createEmptyState } = await import('../engine/state');
+          const dslLine: string = cmd.dsl ?? '';
+          if (!dslLine.trim()) break;
+          const actionState = createEmptyState(dslLine);
+          actionState.status = 'running';
+          const actionExec = new ScriptExecutor(api, CHARACTER_NAME, actionState);
+          actionExec.onAction = (line) => broadcast(wss, msg('execution_log', { line: `[MANUAL] ${line}` }));
+          actionExec.onLevelUp = (skill, newLevel) => {
+            broadcast(wss, msg('level_up', { skill, newLevel }));
+          };
+          broadcast(wss, msg('execution_log', { line: `[MANUAL] > ${dslLine}` }));
+          actionExec.run()
+            .then(async () => {
+              // Refresh character after manual action
+              try {
+                const snap = await api.getCharacter(CHARACTER_NAME);
+                broadcast(wss, msg('state_update', { characterSnapshot: snap }));
+              } catch { /* non-fatal */ }
+            })
+            .catch((e) => broadcast(wss, msg('error', { message: e.message })));
           break;
         }
       }

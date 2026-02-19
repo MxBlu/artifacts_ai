@@ -47,6 +47,7 @@ export class ScriptExecutor {
   // Callbacks for external observers (web interface)
   onAction?: (msg: string) => void;
   onStateChange?: (state: ExecutionState) => void;
+  onLevelUp?: (skill: string, newLevel: number) => void;
 
   constructor(api: ArtifactsAPI, characterName: string, state: ExecutionState) {
     this.api = api;
@@ -210,6 +211,22 @@ export class ScriptExecutor {
     return this.character;
   }
 
+  // Check if any skill levelled up between prev and next character state
+  private checkLevelUps(prev: Character, next: Character): void {
+    const skills = ['level', 'mining_level', 'woodcutting_level', 'fishing_level',
+      'weaponcrafting_level', 'gearcrafting_level', 'jewelrycrafting_level',
+      'cooking_level', 'alchemy_level'];
+    for (const key of skills) {
+      const oldLvl = prev[key] ?? 0;
+      const newLvl = next[key] ?? 0;
+      if (newLvl > oldLvl) {
+        const skillName = key === 'level' ? 'combat' : key.replace('_level', '');
+        appendLog(this.state, `LEVEL UP! ${skillName} → ${newLvl}`);
+        this.onLevelUp?.(skillName, newLvl);
+      }
+    }
+  }
+
   private async waitCooldown(): Promise<void> {
     const char = await this.getCharacter();
     if (!char.cooldown_expiration) return;
@@ -330,7 +347,11 @@ export class ScriptExecutor {
         this.state.metrics.itemsGathered[item.code] =
           (this.state.metrics.itemsGathered[item.code] ?? 0) + item.quantity;
       }
-      if (data.character) this.character = data.character;
+      if (data.character) {
+        const prev = this.character;
+        this.character = data.character;
+        if (prev) this.checkLevelUps(prev, data.character);
+      }
       appendLog(this.state, `  → ${items?.map((i: any) => `${i.quantity}x ${i.code}`).join(', ')}, xp: ${xp}`);
     }
   }
@@ -354,6 +375,7 @@ export class ScriptExecutor {
           if (goldDelta > 0) {
             this.state.metrics.goldGained += goldDelta;
           }
+          this.checkLevelUps(prev, updatedChar);
         }
       }
       // drops may appear in fight logs as part of items — parse from logs if not direct
@@ -442,7 +464,11 @@ export class ScriptExecutor {
       if (xp) {
         this.state.metrics.xpGains[skill] = (this.state.metrics.xpGains[skill] ?? 0) + xp;
       }
-      if (data.character) this.character = data.character;
+      if (data.character) {
+        const prev = this.character;
+        this.character = data.character;
+        if (prev) this.checkLevelUps(prev, data.character);
+      }
       appendLog(this.state, `  → crafted: ${JSON.stringify(items)}, xp: ${xp}`);
     }
   }
