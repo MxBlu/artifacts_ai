@@ -87,7 +87,7 @@ export class ScriptExecutor {
     }
   }
 
-  stop()  { this.stopped = true; this.state.status = 'stopped'; }
+  stop()  { this.stopped = true; this.state.status = 'stopped'; this.state.currentLine = 0; }
   pause() { this.stopped = true; this.state.status = 'paused'; }
 
   getState(): ExecutionState { return this.state; }
@@ -106,9 +106,9 @@ export class ScriptExecutor {
   private async execNode(node: ASTNode): Promise<void> {
     if (this.stopped) throw new Error('STOPPED');
 
-    // Update current line for web UI highlighting (only when it changes)
+    // Update current line for web UI highlighting (only when it changes, and not stopped)
     const lineNum = (node as any).line;
-    if (lineNum !== undefined && lineNum !== this.state.currentLine) {
+    if (lineNum !== undefined && lineNum !== this.state.currentLine && !this.stopped) {
       this.state.currentLine = lineNum;
       this.onStateChange?.(this.state);
     }
@@ -265,7 +265,7 @@ export class ScriptExecutor {
         this.state.metrics.actionsExecuted++;
         this.checkStuck();
         this.onAction?.(label);
-        this.onStateChange?.(this.state);
+        if (!this.stopped) this.onStateChange?.(this.state);
         saveState(this.state);
         return result;
       } catch (err: any) {

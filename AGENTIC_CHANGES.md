@@ -1,5 +1,16 @@
 # Agentic Changes Log
 
+## [2026-02-19 13] - Fix line-highlight desync when agent replaces script mid-run
+
+### Changed
+- File: `src/engine/executor.ts`
+  - `execNode`: guard `onStateChange` emission with `!this.stopped` — dying executor no longer emits stale line numbers after being stopped
+  - `apiCall`: same guard on the post-action `onStateChange` broadcast
+  - `stop()`: resets `state.currentLine = 0` so any accidental emission points to the top of the new script rather than a stale line
+
+### Notes
+- Root cause: on MODIFY, checkin stops the old executor and swaps in a new script. The old executor was still mid-`apiCall` and would emit one final `onStateChange` with its old `currentLine`, which `highlightLine()` would apply to the new script's DOM — pointing at the wrong line.
+
 ## [2026-02-19 12] - Explicit skill→workshop mapping in agent prompts
 
 ### Changed
