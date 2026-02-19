@@ -51,6 +51,18 @@ const SKILL_NAMES = [
   'gearcrafting', 'jewelrycrafting', 'cooking', 'alchemy',
 ];
 
+// Maps craft skill → workshop DSL location alias and coordinates
+// These match LOCATION_ALIASES in executor.ts
+export const SKILL_TO_WORKSHOP: Record<string, { alias: string; x: number; y: number }> = {
+  mining:           { alias: 'workshop_mining',          x: 1,  y: 5  },
+  woodcutting:      { alias: 'workshop_woodcutting',     x: -2, y: -3 },
+  weaponcrafting:   { alias: 'workshop_weaponcrafting',  x: 2,  y: 1  },
+  gearcrafting:     { alias: 'workshop_gearcrafting',    x: 3,  y: 1  },
+  jewelrycrafting:  { alias: 'workshop_jewelrycrafting', x: 1,  y: 3  },
+  cooking:          { alias: 'workshop_cooking',         x: 1,  y: 1  },
+  alchemy:          { alias: 'workshop_alchemy',         x: 2,  y: 3  },
+};
+
 const EQUIPMENT_SLOTS = [
   'weapon', 'shield', 'helmet', 'body_armor', 'leg_armor', 'boots',
   'ring1', 'ring2', 'amulet', 'artifact1', 'artifact2', 'artifact3',
@@ -272,13 +284,14 @@ export class AgentTools {
       const resolve = async (code: string, qty: number, depth: number) => {
         const it = await getItemByCode(this.api, code);
         if (!it?.craft || depth >= 2) {
-          // Raw material (or max depth reached)
           rawMaterials[code] = (rawMaterials[code] ?? 0) + qty;
           return;
         }
         const batchSize = it.craft.quantity ?? 1;
         const batches = Math.ceil(qty / batchSize);
-        steps.push(`  craft ${batches}x ${code} (${it.craft.skill ?? '?'} lv${it.craft.level ?? '?'})`);
+        const ws = it.craft.skill ? SKILL_TO_WORKSHOP[it.craft.skill] : undefined;
+        const wsNote = ws ? ` @ goto ${ws.alias} (${ws.x},${ws.y})` : '';
+        steps.push(`  craft ${batches}x ${code} (${it.craft.skill ?? '?'} lv${it.craft.level ?? '?'}${wsNote})`);
         for (const ing of (it.craft.items ?? [])) {
           await resolve(ing.code, ing.quantity * batches, depth + 1);
         }
@@ -286,7 +299,9 @@ export class AgentTools {
 
       const topBatchSize = item.craft.quantity ?? 1;
       const topBatches = Math.ceil(quantity / topBatchSize);
-      steps.push(`craft ${topBatches}x ${item_code} (${item.craft.skill ?? '?'} lv${item.craft.level ?? '?'})`);
+      const topWs = item.craft.skill ? SKILL_TO_WORKSHOP[item.craft.skill] : undefined;
+      const topWsNote = topWs ? ` @ goto ${topWs.alias} (${topWs.x},${topWs.y})` : '';
+      steps.push(`craft ${topBatches}x ${item_code} (${item.craft.skill ?? '?'} lv${item.craft.level ?? '?'}${topWsNote})`);
 
       for (const ing of (item.craft.items ?? [])) {
         await resolve(ing.code, ing.quantity * topBatches, 1);

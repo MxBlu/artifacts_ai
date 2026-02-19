@@ -237,6 +237,11 @@ When generating scripts, use only these commands:
 
 Conditions: inventory_full, has_item <code> [qty], <skill>_level >= <n>, hp < <n>, hp_percent < <n>, gold > <n>, has_task, task_progress_complete
 
+ALWAYS goto the correct workshop BEFORE craft. Workshop aliases by craft.skill:
+  mining → workshop_mining (1,5) | woodcutting → workshop_woodcutting (-2,-3)
+  weaponcrafting → workshop_weaponcrafting (2,1) | gearcrafting → workshop_gearcrafting (3,1)
+  jewelrycrafting → workshop_jewelrycrafting (1,3) | cooking → workshop_cooking (1,1) | alchemy → workshop_alchemy (2,3)
+
 Use the reasoner model when you need to rethink strategy from scratch. Use chat model for routine CONTINUE decisions.`;
 
 function buildCheckInPrompt(

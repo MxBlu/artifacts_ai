@@ -81,6 +81,20 @@ Comments: lines starting with # are ignored
 
 // Known locations from GAME_KNOWLEDGE.md
 const KNOWN_LOCATIONS = `\
+## Crafting Rule
+ALWAYS \`goto <workshop_alias>\` BEFORE \`craft\`. The workshop alias matches the item's craft skill:
+| craft.skill      | goto alias               | Coordinates |
+|------------------|--------------------------|-------------|
+| mining           | workshop_mining          | (1, 5)      |
+| woodcutting      | workshop_woodcutting     | (-2, -3)    |
+| weaponcrafting   | workshop_weaponcrafting  | (2, 1)      |
+| gearcrafting     | workshop_gearcrafting    | (3, 1)      |
+| jewelrycrafting  | workshop_jewelrycrafting | (1, 3)      |
+| cooking          | workshop_cooking         | (1, 1)      |
+| alchemy          | workshop_alchemy         | (2, 3)      |
+
+Example: to craft copper_bar (craft.skill = mining): goto workshop_mining → craft copper_bar
+
 ## Known Locations (overworld)
 
 | Location | Coordinates | Type |
@@ -90,12 +104,13 @@ const KNOWN_LOCATIONS = `\
 | Copper rocks | (2, 0) | mining (copper_ore) |
 | Sunflower field | (2, 2) | alchemy (sunflower) |
 | Gudgeon fishing | (4, 2) | fishing (gudgeon) |
-| Cooking workshop | (1, 1) | crafting (cooking) |
-| Weaponcrafting workshop | (2, 1) | crafting (weaponcrafting) |
-| Gearcrafting workshop | (3, 1) | crafting (gearcrafting) |
-| Jewelrycrafting workshop | (1, 3) | crafting (jewelrycrafting) |
-| Smelting workshop | (1, 5) | crafting (mining/smelting) |
-| Woodcutting workshop | (-2, -3) | crafting (woodcutting/planks) |
+| Cooking workshop | (1, 1) | crafting (cooking) — goto alias: workshop_cooking |
+| Weaponcrafting workshop | (2, 1) | crafting (weaponcrafting) — goto alias: workshop_weaponcrafting |
+| Gearcrafting workshop | (3, 1) | crafting (gearcrafting) — goto alias: workshop_gearcrafting |
+| Jewelrycrafting workshop | (1, 3) | crafting (jewelrycrafting) — goto alias: workshop_jewelrycrafting |
+| Smelting workshop | (1, 5) | crafting (mining/smelting) — goto alias: workshop_mining |
+| Woodcutting workshop | (-2, -3) | crafting (woodcutting/planks) — goto alias: workshop_woodcutting |
+| Alchemy workshop | (2, 3) | crafting (alchemy) — goto alias: workshop_alchemy |
 | Bank | (4, 1) | bank |
 | Tasks Master (monsters) | (1, 2) | tasks |
 | Tasks Master (items) | (4, 13) | tasks |

@@ -1,5 +1,20 @@
 # Agentic Changes Log
 
+## [2026-02-19 12] - Explicit skill→workshop mapping in agent prompts
+
+### Changed
+- File: `src/agent/tools.ts`
+  - Added exported `SKILL_TO_WORKSHOP` constant mapping skill names → `{ alias, x, y }`
+  - Updated `craft_chain()` output to include workshop alias + coords per step (e.g. `craft 1x copper_bar (mining lv1 @ goto workshop_mining (1,5))`)
+- File: `src/agent/bootstrap.ts`
+  - Added "Crafting Rule" section before KNOWN_LOCATIONS: explicit skill→alias→coords table + example
+  - Updated workshop rows in KNOWN_LOCATIONS to include `goto alias` inline
+- File: `src/agent/checkin.ts`
+  - Added workshop alias cheat-sheet to end of SYSTEM_PROMPT so check-in agent never needs to guess workshop coordinates
+
+### Notes
+- Fixes recurring agent confusion where it would craft without moving to the correct workshop first
+
 ## [2026-02-19 11] - Validate scripts before accepting; retry with error feedback
 
 ### Changed
