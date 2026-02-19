@@ -1,5 +1,20 @@
 # Agentic Changes Log
 
+## [2026-02-19 11] - Consult agent after script completes naturally
+
+### Changed
+- File: `src/engine/state.ts`
+  - Added `completedNaturally?: boolean` field to `ExecutionState`
+- File: `src/engine/executor.ts`
+  - Sets `state.completedNaturally = true` on normal script completion, `false` on any error/stop path
+- File: `src/agent/agent.ts`
+  - Replaced fragile line-count heuristic for natural-end detection with `state.completedNaturally` flag
+  - Natural completion always triggers `checkin.triggerNow()` so agent decides next strategy
+  - User-stop path (completedNaturally=false + status=stopped) exits the agent loop cleanly
+
+### Notes
+- Previous detection (`currentLine >= scriptLines`) was broken because `currentLine` is a source line number, not an index into filtered non-comment lines
+
 ## [2026-02-19 10] - Fix agent log lines misclassified as errors
 
 ### Changed

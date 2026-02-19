@@ -18,6 +18,7 @@ export interface ExecutionState {
   lastAgentCheckIn: number;
   status: 'running' | 'paused' | 'stopped' | 'error';
   errorMessage?: string;
+  completedNaturally?: boolean;  // true when script ran to the end without being stopped/errored
   executionLog: string[];
   metrics: ExecutionMetrics;
 }

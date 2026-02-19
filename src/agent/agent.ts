@@ -149,30 +149,26 @@ export class Agent {
       // Executor finished — check exit status
       const currentStatus = this.state.status;
 
-      if (currentStatus === 'stopped') {
-        // Distinguish script completion (no more lines) from explicit stop
-        const scriptLines = this.state.script.split('\n').filter(l => l.trim() && !l.trim().startsWith('#')).length;
-        const isNaturalEnd = this.state.currentLine >= scriptLines;
-
-        if (isNaturalEnd) {
-          this.log('Script completed — triggering check-in for new strategy');
-          this.closeStrategy('completed');
-          const result = await this.checkin.triggerNow();
-          if (result.decision === 'STOP') break;
-          if (result.decision === 'MODIFY' && result.newScript) {
-            this.openStrategy(result.reasoning, result.newScript);
-          } else {
-            // CONTINUE: re-run from start with same script
-            this.state.currentLine = 0;
-            this.state.status = 'running';
-            saveState(this.state);
-            this.openStrategy('Continuing same script after completion', this.state.script);
-          }
+      if (currentStatus === 'stopped' && this.state.completedNaturally) {
+        // Script ran to completion — always consult agent for next move
+        this.log('Script completed naturally — consulting agent for next strategy');
+        this.closeStrategy('completed');
+        const result = await this.checkin.triggerNow();
+        if (result.decision === 'STOP') break;
+        if (result.decision === 'MODIFY' && result.newScript) {
+          this.openStrategy(result.reasoning, result.newScript);
         } else {
-          this.closeStrategy('stopped');
-          this.log('Script stopped by command — agent loop ended');
-          break;
+          // CONTINUE: re-run same script from top
+          this.state.currentLine = 0;
+          this.state.status = 'running';
+          saveState(this.state);
+          this.openStrategy('Continuing same script after completion', this.state.script);
         }
+      } else if (currentStatus === 'stopped') {
+        // Stopped by user command — respect it and exit agent loop
+        this.closeStrategy('stopped');
+        this.log('Script stopped by user command — agent loop ended');
+        break;
       } else if (currentStatus === 'error') {
         this.log(`Script errored: ${this.state.errorMessage} — triggering check-in`);
         this.closeStrategy('error', this.state.errorMessage);

@@ -68,7 +68,9 @@ export class ScriptExecutor {
       await this.execBlock(nodes);
       appendLog(this.state, 'Script completed successfully');
       this.state.status = 'stopped';
+      this.state.completedNaturally = true;
     } catch (err: any) {
+      this.state.completedNaturally = false;
       if (err.message === 'STOPPED') {
         this.state.status = 'stopped';
         appendLog(this.state, 'Script stopped by user');
