@@ -1,5 +1,33 @@
 # Agentic Changes Log
 
+## [2026-02-19 03] - Strategy learning (Phase 4.4)
+
+### Added
+- File: `src/agent/strategies.ts`
+  - `StrategyEntry` interface: id, startedAt, endedAt, durationSecs, reasoning, script, outcome, outcomeNote, metrics
+  - `loadStrategies()`, `appendStrategy()`: atomic JSON persistence in `state/strategies.json` (max 50 entries, newest-first)
+  - `getRecentStrategySummary(n)`: compact text summary of last N strategies for LLM context
+
+### Changed
+- File: `src/agent/agent.ts`
+  - Added `currentStrategy: StrategyEntry | null` field
+  - Added `openStrategy(reasoning, script)` — creates and starts tracking a new strategy entry
+  - Added `closeStrategy(outcome, note?)` — finalises and appends the entry to strategies.json with final metrics snapshot
+  - `runBootstrap`: opens a strategy entry after bootstrap script is generated
+  - `startExecutorAndCheckins`: calls `closeStrategy` / `openStrategy` at each CONTINUE/MODIFY/error/complete transition
+  - `checkin.onModify` callback: closes current strategy and opens new one on mid-cycle MODIFY
+
+- File: `src/agent/checkin.ts`
+  - Imports `getRecentStrategySummary` from `./strategies`
+  - Added `onModify?: (reasoning, newScript) => void` callback on `CheckInSystem`
+  - `applyDecision` fires `onModify` before swapping the script
+  - `buildCheckInPrompt` now accepts `strategyHistory: string` and renders it as a "Strategy History" section at the top of the prompt
+
+### Changed
+- File: `TASKS.md`
+  - Marked Phase 4.4 Strategy Learning as completed
+  - Updated Current Sprint
+
 ## [2026-02-19 02] - Death recovery (Phase 5.3)
 
 ### Changed

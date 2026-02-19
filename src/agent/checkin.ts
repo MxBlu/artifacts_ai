@@ -2,6 +2,7 @@ import { chat, MODEL_CHAT, MODEL_REASONER, Message } from './llm';
 import { AgentTools, GameState } from './tools';
 import { ExecutionState, appendLog, saveState } from '../engine/state';
 import { ScriptExecutor } from '../engine/executor';
+import { getRecentStrategySummary } from './strategies';
 
 // Check-in every 10 minutes by default
 const CHECK_IN_INTERVAL_MS = 10 * 60 * 1000;
@@ -24,6 +25,8 @@ export class CheckInSystem {
 
   // External log callback for web UI
   onAgentLog?: (msg: string) => void;
+  // Fired when agent decides to MODIFY mid-run (mid-cycle steer)
+  onModify?: (reasoning: string, newScript: string) => void;
 
   constructor(tools: AgentTools, state: ExecutionState, intervalMs = CHECK_IN_INTERVAL_MS) {
     this.tools = tools;
@@ -79,7 +82,8 @@ export class CheckInSystem {
     }
 
     const execStatus = this.tools.get_execution_status();
-    const prompt = buildCheckInPrompt(gameState, execStatus, humanInput);
+    const strategyHistory = getRecentStrategySummary(5);
+    const prompt = buildCheckInPrompt(gameState, execStatus, strategyHistory, humanInput);
 
     this.log('Consulting agent for check-in...');
 
@@ -128,6 +132,7 @@ export class CheckInSystem {
             this.executor.stop();
             await sleep(500);
           }
+          this.onModify?.(result.reasoning, result.newScript);
           this.tools.updateScript(result.newScript);
           this.state.script = result.newScript;
           this.state.currentLine = 0;
@@ -198,6 +203,7 @@ Use the reasoner model when you need to rethink strategy from scratch. Use chat 
 function buildCheckInPrompt(
   gameState: GameState,
   execStatus: ExecutionStatus,
+  strategyHistory: string,
   humanInput?: string,
 ): string {
   const skills = Object.entries(gameState.skills)
@@ -223,6 +229,9 @@ function buildCheckInPrompt(
 
   return `[SCRIPT EXECUTION CHECK-IN]
 ${humanSection}
+## Strategy History (last 5 runs)
+${strategyHistory}
+
 ## Current Script (line ${execStatus.currentLine})
 \`\`\`
 ${scriptWithLines}

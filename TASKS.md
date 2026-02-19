@@ -175,9 +175,9 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [ ] Stats history graph (optional)
 
 ### 4.4 Strategy Learning
-- [ ] Log successful strategies
-- [ ] Analyze execution history for patterns
-- [ ] Provide strategy recommendations to agent
+- [x] Log successful strategies to `state/strategies.json`
+- [x] Include strategy history in check-in context so agent learns from past decisions
+- [x] Track: script, reasoning, duration, XP gained, gold gained, outcome
 
 ## Phase 5: Advanced Features 🚀
 
@@ -202,7 +202,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 **Goal:** Phase 5 — Advanced Features
 
 - [x] Death recovery: auto re-equip from bank after death, resume script inline
-- [ ] Strategy learning: log strategies to `state/strategies.json`, include in check-in context
+- [x] Strategy learning: log strategies to `state/strategies.json`, include in check-in context
 - [ ] GE command: implement grand exchange buy/sell in executor
 
 ## Backlog Ideas

@@ -7,6 +7,7 @@ import { createEmptyState, loadState, appendLog, saveState, ExecutionState } fro
 import { AgentTools } from './tools';
 import { CheckInSystem } from './checkin';
 import { bootstrapAgent } from './bootstrap';
+import { StrategyEntry, appendStrategy, loadStrategies } from './strategies';
 
 export interface AgentOptions {
   humanInput?: string;  // Initial instruction from user (passed to bootstrap + first check-in)
@@ -22,6 +23,7 @@ export class Agent {
   private executor: ScriptExecutor | null = null;
   private executorStartTime: number | null = null;
   private running = false;
+  private currentStrategy: StrategyEntry | null = null;
 
   // Callbacks for web UI (Phase 3)
   onAgentLog?: (msg: string) => void;
@@ -39,6 +41,12 @@ export class Agent {
     this.checkin.onAgentLog = (msg) => {
       this.log(msg);
       this.onAgentLog?.(msg);
+    };
+
+    // Mid-cycle MODIFY: close current strategy, open a new one
+    this.checkin.onModify = (reasoning, newScript) => {
+      this.closeStrategy('modified');
+      this.openStrategy(reasoning, newScript);
     };
   }
 
@@ -106,6 +114,15 @@ export class Agent {
     appendLog(this.state, `[AGENT] Bootstrap complete. Script: ${bootstrapResult.script.split('\n').length} lines`);
     saveState(this.state);
 
+    // Open a strategy entry for this bootstrap run
+    this.currentStrategy = {
+      id: new Date().toISOString(),
+      startedAt: Date.now(),
+      reasoning: bootstrapResult.reasoning,
+      script: bootstrapResult.script,
+      metrics: { actionsExecuted: 0, xpGains: {}, goldGained: 0 },
+    };
+
     this.tools.setExecutor(null, null);
     await this.startExecutorAndCheckins(humanInput);
   }
@@ -139,28 +156,39 @@ export class Agent {
 
         if (isNaturalEnd) {
           this.log('Script completed — triggering check-in for new strategy');
+          this.closeStrategy('completed');
           const result = await this.checkin.triggerNow();
           if (result.decision === 'STOP') break;
-          if (result.decision === 'CONTINUE') {
-            // Re-run from start
+          if (result.decision === 'MODIFY' && result.newScript) {
+            this.openStrategy(result.reasoning, result.newScript);
+          } else {
+            // CONTINUE: re-run from start with same script
             this.state.currentLine = 0;
             this.state.status = 'running';
             saveState(this.state);
+            this.openStrategy('Continuing same script after completion', this.state.script);
           }
-          // MODIFY: new script loaded; executor restarts in next cycle
         } else {
+          this.closeStrategy('stopped');
           this.log('Script stopped by command — agent loop ended');
           break;
         }
       } else if (currentStatus === 'error') {
         this.log(`Script errored: ${this.state.errorMessage} — triggering check-in`);
+        this.closeStrategy('error', this.state.errorMessage);
         const result = await this.checkin.triggerNow();
         if (result.decision === 'STOP') break;
-        // CONTINUE or MODIFY: reset to running for retry
-        this.state.status = 'running';
-        saveState(this.state);
+        if (result.decision === 'MODIFY' && result.newScript) {
+          this.openStrategy(result.reasoning, result.newScript);
+        } else {
+          // CONTINUE: reset to running for retry
+          this.state.status = 'running';
+          saveState(this.state);
+          this.openStrategy('Retrying after error', this.state.script);
+        }
       } else if (currentStatus === 'paused') {
         // Shouldn't normally end in paused state; treat like error
+        this.closeStrategy('stopped', 'paused unexpectedly');
         this.log('Script paused unexpectedly — stopping agent loop');
         break;
       }
@@ -210,5 +238,35 @@ export class Agent {
     const line = `[${ts}] ${msg}`;
     console.log(line);
     this.onAgentLog?.(line);
+  }
+
+  // ─── Strategy tracking ───────────────────────────────────────────────────────
+
+  private openStrategy(reasoning: string, script: string): void {
+    this.currentStrategy = {
+      id: new Date().toISOString(),
+      startedAt: Date.now(),
+      reasoning,
+      script,
+      metrics: { actionsExecuted: 0, xpGains: {}, goldGained: 0 },
+    };
+  }
+
+  private closeStrategy(outcome: StrategyEntry['outcome'], note?: string): void {
+    if (!this.currentStrategy) return;
+    const now = Date.now();
+    this.currentStrategy.endedAt = now;
+    this.currentStrategy.durationSecs = Math.round((now - this.currentStrategy.startedAt) / 1000);
+    this.currentStrategy.outcome = outcome;
+    if (note) this.currentStrategy.outcomeNote = note;
+    // Snapshot final metrics from execution state
+    this.currentStrategy.metrics = {
+      actionsExecuted: this.state.metrics.actionsExecuted,
+      xpGains: { ...this.state.metrics.xpGains },
+      goldGained: this.state.metrics.goldGained,
+    };
+    appendStrategy(this.currentStrategy);
+    this.log(`Strategy logged: ${outcome} after ${this.currentStrategy.durationSecs}s`);
+    this.currentStrategy = null;
   }
 }
