@@ -3,6 +3,7 @@ import { AgentTools, GameState } from './tools';
 import { ExecutionState, appendLog, saveState } from '../engine/state';
 import { ScriptExecutor } from '../engine/executor';
 import { getRecentStrategySummary } from './strategies';
+import { validateScript } from '../engine/parser';
 
 // Check-in every 10 minutes by default
 const CHECK_IN_INTERVAL_MS = 10 * 60 * 1000;
@@ -58,7 +59,6 @@ export class CheckInSystem {
     }
     return result;
   }
-
   private scheduleNext() {
     this.timer = setTimeout(async () => {
       if (this.state.status !== 'running') return;
@@ -127,6 +127,45 @@ export class CheckInSystem {
 
       case 'MODIFY':
         if (result.newScript) {
+          // Validate before accepting
+          const errors = validateScript(result.newScript);
+          if (errors.length > 0) {
+            const errorSummary = errors
+              .map(e => e.line > 0 ? `  Line ${e.line}: ${e.message} (raw: "${e.raw}")` : `  ${e.message}`)
+              .join('\n');
+            this.log(`Script validation failed (${errors.length} error(s)):\n${errorSummary}`);
+            this.log('Sending errors back to agent for correction...');
+
+            // Build correction prompt and retry once with reasoner
+            const correctionPrompt = buildCorrectionPrompt(result.newScript, errorSummary);
+            const messages: Message[] = [
+              { role: 'system', content: SYSTEM_PROMPT },
+              { role: 'user', content: correctionPrompt },
+            ];
+            let raw: string;
+            try {
+              raw = await chat(messages, MODEL_REASONER, 2048);
+            } catch (err: any) {
+              this.log(`Correction LLM error: ${err.message} — keeping old script`);
+              break;
+            }
+            this.log(`Agent correction response:\n${raw}`);
+            const corrected = parseCheckInResponse(raw);
+            if (corrected.decision === 'MODIFY' && corrected.newScript) {
+              const correctionErrors = validateScript(corrected.newScript);
+              if (correctionErrors.length > 0) {
+                const s = correctionErrors.map(e => e.line > 0 ? `Line ${e.line}: ${e.message}` : e.message).join('; ');
+                this.log(`Corrected script still has errors: ${s} — keeping old script`);
+                break;
+              }
+              result.newScript = corrected.newScript;
+              this.log('Agent correction accepted — using corrected script');
+            } else {
+              this.log(`Agent responded with ${corrected.decision} instead of MODIFY — keeping old script`);
+              break;
+            }
+          }
+
           this.log('Modifying script...');
           if (this.executor) {
             this.executor.stop();
@@ -314,6 +353,20 @@ function formatDuration(seconds: number): string {
 
 function sleep(ms: number): Promise<void> {
   return new Promise(r => setTimeout(r, ms));
+}
+
+function buildCorrectionPrompt(script: string, errorSummary: string): string {
+  return `The following DSL script has parse errors. Fix them and return a corrected version.
+
+## Script with errors
+\`\`\`
+${script}
+\`\`\`
+
+## Errors found
+${errorSummary}
+
+Respond with MODIFY using the corrected script. Only fix the invalid lines — do not change the rest of the script logic.`;
 }
 
 // Import used in prompt builder but defined in tools.ts - re-export for clarity

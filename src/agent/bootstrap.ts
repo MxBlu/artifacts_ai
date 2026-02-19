@@ -1,7 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import { chat, MODEL_REASONER, Message } from './llm';
+import { chat, MODEL_REASONER, MODEL_CHAT, Message } from './llm';
 import { GameState } from './tools';
+import { validateScript } from '../engine/parser';
 
 // DSL command reference injected into bootstrap prompt
 const DSL_DOCS = `\
@@ -247,7 +248,61 @@ SCRIPT:
   const scriptMatch = raw.match(/SCRIPT:\s*\n([\s\S]+)/);
 
   const reasoning = reasoningMatch?.[1]?.trim() ?? raw;
-  const script = scriptMatch?.[1]?.trim() ?? generateFallbackScript();
+  let script = scriptMatch?.[1]?.trim() ?? generateFallbackScript();
+
+  // Validate and retry once if there are parse errors
+  const errors = validateScript(script);
+  if (errors.length > 0) {
+    const errorSummary = errors
+      .map(e => e.line > 0 ? `  Line ${e.line}: ${e.message} (raw: "${e.raw}")` : `  ${e.message}`)
+      .join('\n');
+    console.warn(`[bootstrap] Script has ${errors.length} parse error(s):\n${errorSummary}`);
+    console.warn('[bootstrap] Sending errors back to agent for correction...');
+
+    const correctionPrompt = `The DSL script you generated has parse errors. Fix only the invalid lines and return the corrected script.
+
+## Script with errors
+\`\`\`
+${script}
+\`\`\`
+
+## Errors found
+${errorSummary}
+
+Respond with:
+REASONING:
+<brief note on what you fixed>
+SCRIPT:
+<corrected DSL script>`;
+
+    const correctionMessages: Message[] = [
+      { role: 'system', content: BOOTSTRAP_SYSTEM },
+      { role: 'user', content: correctionPrompt },
+    ];
+
+    try {
+      const correctionRaw = await chat(correctionMessages, MODEL_CHAT, 4096);
+      const correctedScriptMatch = correctionRaw.match(/SCRIPT:\s*\n([\s\S]+)/);
+      if (correctedScriptMatch?.[1]) {
+        const correctedScript = correctedScriptMatch[1].trim();
+        const correctionErrors = validateScript(correctedScript);
+        if (correctionErrors.length === 0) {
+          console.warn('[bootstrap] Corrected script is valid — using it');
+          script = correctedScript;
+        } else {
+          const s = correctionErrors.map(e => e.line > 0 ? `Line ${e.line}: ${e.message}` : e.message).join('; ');
+          console.warn(`[bootstrap] Corrected script still has errors: ${s} — using fallback`);
+          script = generateFallbackScript();
+        }
+      } else {
+        console.warn('[bootstrap] Correction response had no SCRIPT block — using fallback');
+        script = generateFallbackScript();
+      }
+    } catch (err: any) {
+      console.warn(`[bootstrap] Correction LLM failed: ${err.message} — using fallback`);
+      script = generateFallbackScript();
+    }
+  }
 
   return { script, reasoning };
 }

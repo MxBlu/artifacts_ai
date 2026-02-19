@@ -428,9 +428,9 @@ function parseLine(lines: ParseLine[], pos: { i: number }, baseIndent: number): 
     return { type: 'loop_count', count, body };
   }
 
-  // Unknown - skip
+  // Unknown command — record error and skip
   pos.i++;
-  return null;
+  return { type: '_unknown', lineNum: line.lineNum, raw: line.raw.trim() } as any;
 }
 
 export function parseScript(script: string): ASTNode[] {
@@ -438,5 +438,63 @@ export function parseScript(script: string): ASTNode[] {
   if (lines.length === 0) return [];
   const pos = { i: 0 };
   const baseIndent = lines[0].indent;
-  return parseBlock(lines, pos, baseIndent);
+  const nodes = parseBlock(lines, pos, baseIndent);
+  return filterUnknown(nodes);
+}
+
+function filterUnknown(nodes: ASTNode[]): ASTNode[] {
+  return nodes
+    .filter(n => (n as any).type !== '_unknown')
+    .map(n => {
+      const node = n as any;
+      if (node.body)     node.body     = filterUnknown(node.body);
+      if (node.elseBody) node.elseBody = filterUnknown(node.elseBody);
+      return n;
+    });
+}
+
+export interface ScriptError {
+  line: number;
+  raw: string;
+  message: string;
+}
+
+// Parse the script and return all errors found (unknown commands + parse exceptions).
+// Returns an empty array if the script is valid.
+export function validateScript(script: string): ScriptError[] {
+  const errors: ScriptError[] = [];
+  const lines = parseLines(script);
+  if (lines.length === 0) return errors;
+
+  // First pass: try to parse the whole script, catching thrown errors (bad conditions etc.)
+  try {
+    const pos = { i: 0 };
+    const nodes = parseBlock(lines, pos, lines[0].indent);
+
+    // Second pass: walk the AST looking for _unknown nodes
+    collectUnknownNodes(nodes, errors);
+  } catch (err: any) {
+    // Parser threw (e.g. unknown condition, bad operator) — attribute to current line context
+    errors.push({ line: 0, raw: '', message: err.message });
+  }
+
+  return errors;
+}
+
+function collectUnknownNodes(nodes: ASTNode[], errors: ScriptError[]): void {
+  for (const node of nodes) {
+    if ((node as any).type === '_unknown') {
+      errors.push({
+        line: (node as any).lineNum ?? 0,
+        raw: (node as any).raw ?? '',
+        message: `Unknown command: "${(node as any).raw}"`,
+      });
+      continue;
+    }
+    // Recurse into block nodes
+    for (const key of ['body', 'elseBody'] as const) {
+      const sub = (node as any)[key];
+      if (Array.isArray(sub)) collectUnknownNodes(sub, errors);
+    }
+  }
 }

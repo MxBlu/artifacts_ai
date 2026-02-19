@@ -1,5 +1,27 @@
 # Agentic Changes Log
 
+## [2026-02-19 11] - Validate scripts before accepting; retry with error feedback
+
+### Changed
+- File: `src/engine/parser.ts`
+  - Unknown commands now return a sentinel `_unknown` node (with `lineNum` and `raw`) instead of `null`
+  - Added `validateScript(script): ScriptError[]` — parses and collects all unknown-command errors and thrown parse exceptions (bad conditions, operators etc.) with line numbers
+  - Added `filterUnknown()` — strips `_unknown` nodes from the tree before executor sees them
+  - `parseScript()` now calls `filterUnknown()` so executor behaviour is unchanged
+- File: `src/agent/checkin.ts`
+  - MODIFY path validates the new script before accepting it
+  - On errors: logs them, sends a targeted correction prompt to `MODEL_REASONER`, validates the corrected script
+  - If correction also fails, keeps the old script and logs the failure
+  - Added `buildCorrectionPrompt()` helper
+- File: `src/agent/bootstrap.ts`
+  - Validates bootstrap script after generation
+  - On errors: sends correction prompt to `MODEL_CHAT`, validates result
+  - Falls back to `generateFallbackScript()` if correction still has errors or LLM fails
+
+### Notes
+- Only one correction retry is attempted to avoid infinite LLM loops
+- Bootstrap uses `MODEL_CHAT` for the correction (cheaper); check-in uses `MODEL_REASONER` (needs more context)
+
 ## [2026-02-19 11] - Consult agent after script completes naturally
 
 ### Changed
