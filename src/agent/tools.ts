@@ -3,7 +3,7 @@ import * as path from 'path';
 import { ArtifactsAPI, Character } from '../api';
 import { ExecutionState } from '../engine/state';
 import { ScriptExecutor } from '../engine/executor';
-import { findTiles, searchItems, searchMonsters, searchResources } from '../cache';
+import { findTiles, searchItems, searchMonsters, searchResources, getAllItems, getItemByCode } from '../cache';
 
 // ─── Tool result types ────────────────────────────────────────────────────────
 
@@ -251,6 +251,151 @@ export class AgentTools {
       return JSON.stringify(response.data?.data ?? [], null, 2);
     } catch {
       return `Market data unavailable for: ${item_code}`;
+    }
+  }
+
+  /**
+   * Resolve the full crafting chain for a target item.
+   * Returns a flat list of raw materials needed + intermediate steps.
+   * Resolves up to 2 hops deep (e.g. ore → bar → weapon).
+   */
+  async craft_chain(item_code: string, quantity = 1): Promise<string> {
+    try {
+      const item = await getItemByCode(this.api, item_code);
+      if (!item) return `Item not found: ${item_code}`;
+      if (!item.craft) return `${item_code} is not craftable`;
+
+      // Resolve ingredients recursively (max 2 levels)
+      const rawMaterials: Record<string, number> = {};
+      const steps: string[] = [];
+
+      const resolve = async (code: string, qty: number, depth: number) => {
+        const it = await getItemByCode(this.api, code);
+        if (!it?.craft || depth >= 2) {
+          // Raw material (or max depth reached)
+          rawMaterials[code] = (rawMaterials[code] ?? 0) + qty;
+          return;
+        }
+        const batchSize = it.craft.quantity ?? 1;
+        const batches = Math.ceil(qty / batchSize);
+        steps.push(`  craft ${batches}x ${code} (${it.craft.skill ?? '?'} lv${it.craft.level ?? '?'})`);
+        for (const ing of (it.craft.items ?? [])) {
+          await resolve(ing.code, ing.quantity * batches, depth + 1);
+        }
+      };
+
+      const topBatchSize = item.craft.quantity ?? 1;
+      const topBatches = Math.ceil(quantity / topBatchSize);
+      steps.push(`craft ${topBatches}x ${item_code} (${item.craft.skill ?? '?'} lv${item.craft.level ?? '?'})`);
+
+      for (const ing of (item.craft.items ?? [])) {
+        await resolve(ing.code, ing.quantity * topBatches, 1);
+      }
+
+      const rawList = Object.entries(rawMaterials)
+        .map(([code, qty]) => `  ${qty}x ${code}`)
+        .join('\n');
+
+      return `Crafting chain for ${quantity}x ${item_code}:\n\nSteps (bottom-up):\n${steps.join('\n')}\n\nRaw materials needed:\n${rawList}`;
+    } catch (err: any) {
+      return `Error resolving craft chain: ${err.message}`;
+    }
+  }
+
+  /**
+   * Given current inventory + bank contents, return what the character can craft right now
+   * at each skill level, ranked by XP per craft.
+   */
+  async get_craftable_items(
+    inventoryOrBank: Array<{ code: string; quantity: number }>,
+    skillLevels: Record<string, number>,
+  ): Promise<string> {
+    try {
+      const items = await getAllItems(this.api);
+      const stock: Record<string, number> = {};
+      for (const { code, quantity } of inventoryOrBank) {
+        stock[code] = (stock[code] ?? 0) + quantity;
+      }
+
+      const craftable: Array<{ code: string; skill: string; level: number; qty: number; xp: number }> = [];
+
+      for (const item of items) {
+        if (!item.craft) continue;
+        const skill = item.craft.skill;
+        const level = item.craft.level;
+        const ingredients = item.craft.items;
+        const output = item.craft.quantity;
+        if (!skill || level === undefined || !ingredients) continue;
+        const skillLevel = skillLevels[skill] ?? 1;
+        if (skillLevel < level) continue;
+
+        // How many batches can we craft?
+        let maxBatches = Infinity;
+        for (const ing of ingredients) {
+          const have = stock[ing.code] ?? 0;
+          maxBatches = Math.min(maxBatches, Math.floor(have / ing.quantity));
+        }
+        if (maxBatches === Infinity || maxBatches === 0) continue;
+
+        craftable.push({
+          code: item.code,
+          skill,
+          level,
+          qty: maxBatches * (output ?? 1),
+          xp: (item as any).xp ?? 0, // if API returns XP per craft
+        });
+      }
+
+      if (craftable.length === 0) return 'Nothing craftable with current materials.';
+
+      // Group by skill
+      const bySkill: Record<string, typeof craftable> = {};
+      for (const c of craftable) {
+        (bySkill[c.skill] ??= []).push(c);
+      }
+
+      const lines: string[] = [];
+      for (const [skill, items] of Object.entries(bySkill)) {
+        lines.push(`${skill}:`);
+        for (const c of items.sort((a, b) => a.level - b.level)) {
+          lines.push(`  ${c.code} x${c.qty} (lv${c.level} recipe)`);
+        }
+      }
+      return lines.join('\n');
+    } catch (err: any) {
+      return `Error checking craftable items: ${err.message}`;
+    }
+  }
+
+  /**
+   * Fetch available tasks from the API, filtered to tasks the character can do
+   * based on their current skill levels and combat level.
+   */
+  async get_available_tasks(characterLevel: number, skillLevels: Record<string, number>): Promise<string> {
+    try {
+      // Fetch all tasks (both monster and item types)
+      const resp = await (this.api as any).client?.get('/tasks/list?size=100');
+      const tasks: any[] = resp?.data?.data ?? [];
+      if (tasks.length === 0) return 'No tasks available';
+
+      const doable: string[] = [];
+      const notReady: string[] = [];
+
+      for (const task of tasks) {
+        const lvReq = task.level ?? 1;
+        const isMonster = task.type === 'monsters';
+        const relevantLevel = isMonster ? characterLevel : (skillLevels[task.skill ?? ''] ?? characterLevel);
+        const canDo = relevantLevel >= lvReq;
+        const reward = `${task.rewards.gold}g + ${task.rewards.items.map((i: any) => `${i.quantity}x ${i.code}`).join(', ')}`;
+        const qty = `${task.min_quantity}-${task.max_quantity}`;
+        const line = `  ${task.code} [lv${lvReq} ${task.type}] qty:${qty} → ${reward}`;
+        if (canDo) doable.push(line);
+        else notReady.push(line);
+      }
+
+      return `Available tasks (${doable.length}):\n${doable.join('\n')}\n\nNot yet available (${notReady.length}):\n${notReady.slice(0, 10).join('\n')}`;
+    } catch (err: any) {
+      return `Error fetching tasks: ${err.message}`;
     }
   }
 

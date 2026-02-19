@@ -1,5 +1,24 @@
 # Agentic Changes Log
 
+## [2026-02-19 05] - Phase 5.1 & 5.2: Crafting chain tools + task support
+
+### Added
+- File: `src/agent/tools.ts`
+  - `craft_chain(item_code, quantity)`: resolves full crafting ingredient tree up to 2 hops deep; returns step-by-step plan + flat list of raw materials needed
+  - `get_craftable_items(inventoryOrBank, skillLevels)`: scans all items against current stock + skill levels; returns grouped list of what can be crafted and how many batches
+  - `get_available_tasks(characterLevel, skillLevels)`: fetches `/tasks/list`, splits into "doable now" vs "not yet available" based on level; shows qty range and rewards
+
+### Changed
+- File: `src/agent/tools.ts`
+  - Added `getAllItems`, `getItemByCode` imports from `../cache`
+- File: `src/agent/bootstrap.ts`
+  - `KNOWN_LOCATIONS`: added woodcutting workshop at (-2,-3), tasks master (items) at (4,13), level 5 recipes (slimeball weapons), task loop DSL example pattern
+  - `BOOTSTRAP_SYSTEM`: added crafting chain guidance, item/monster task integration guidance
+  - User prompt: added `task_coins`, `task_type`, and `task_progress`/`task_total` display
+  - User prompt task section: now shows full task context; added point 5 (integrate tasks) and point 6 (crafting chains) to generation guidelines
+- File: `TASKS.md`
+  - Marked 5.1 and 5.2 subtasks as complete
+
 ## [2026-02-19 04] - Web UI polish: log filters, exec search, steer history, keyboard shortcuts
 
 ### Changed

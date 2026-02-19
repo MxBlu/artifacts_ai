@@ -94,8 +94,10 @@ const KNOWN_LOCATIONS = `\
 | Gearcrafting workshop | (3, 1) | crafting (gearcrafting) |
 | Jewelrycrafting workshop | (1, 3) | crafting (jewelrycrafting) |
 | Smelting workshop | (1, 5) | crafting (mining/smelting) |
+| Woodcutting workshop | (-2, -3) | crafting (woodcutting/planks) |
 | Bank | (4, 1) | bank |
-| Tasks Master | (1, 2) | tasks |
+| Tasks Master (monsters) | (1, 2) | tasks |
+| Tasks Master (items) | (4, 13) | tasks |
 | Grand Exchange | (5, 1) | trading |
 
 ## Skill XP Rates (observed)
@@ -112,12 +114,48 @@ const KNOWN_LOCATIONS = `\
 | Gearcrafting | craft copper_boots | 63 XP | 5s |
 | Jewelrycrafting | craft copper_ring | 76 XP | 5s |
 
-## Crafting Recipes (observed)
+## Crafting Recipes (observed, level 1-10)
+- ash_plank: 6x ash_wood (woodcutting workshop at -2,-3)
 - copper_bar: 8x copper_ore (smelting workshop at 1,5)
 - copper_dagger: 6x copper_bar (weaponcrafting at 2,1)
+- copper_axe: 6x copper_bar (weaponcrafting at 2,1)
 - copper_boots: 5x copper_bar (gearcrafting at 3,1)
 - copper_ring: 6x copper_bar (jewelrycrafting at 1,3)
+- wooden_staff: 1x wooden_stick + 4x ash_wood (weaponcrafting at 2,1)
+- fishing_net: 6x ash_plank (weaponcrafting at 2,1)
 - cooked_gudgeon: 1x gudgeon (cooking at 1,1)
+- small_health_potion: needs sunflower (alchemy at 2,3)
+
+## Level 5 Recipes (require monster drops)
+- sticky_dagger: 5x copper_bar + 2x green_slimeball (lv5 weaponcrafting)
+- sticky_sword: 5x copper_bar + 2x yellow_slimeball (lv5 weaponcrafting)
+- fire_staff: 2x red_slimeball + 5x ash_plank (lv5 weaponcrafting)
+- water_bow: 2x blue_slimeball + 5x ash_plank (lv5 weaponcrafting)
+
+## Tasks System
+- Monster tasks: kill N of a monster type (50-400 kills), reward: 200-500g + 3-5 tasks_coin
+- Item tasks: gather/craft N of an item (10-400 qty), reward: 150-350g + 2-4 tasks_coin
+- tasks_coin can be exchanged (6 coins → reward box) via "task exchange" command
+- Tasks master for monsters: (1, 2) — use for combat tasks
+- Tasks master for items: (4, 13) — use for gathering/crafting tasks
+- Cancel task costs 1 tasks_coin
+
+## Task Loop Pattern (DSL example)
+\`\`\`
+# Monster task loop
+loop forever:
+  if has_task:
+    if task_progress_complete:
+      goto 1 2
+      task complete
+    else:
+      # fight the task monster (move to its tile first)
+      goto 0 1
+      fight
+  else:
+    goto 1 2
+    task new
+\`\`\`
 `;
 
 const BOOTSTRAP_SYSTEM = `You are an autonomous AI player for Artifacts MMO. Your goal is to reach level 50 in all skills as efficiently as possible.
@@ -130,11 +168,14 @@ Script writing guidelines:
 - Always use "loop forever:" as the outermost loop for continuous execution
 - Bank when inventory is full before continuing
 - Rest when HP is low (hp_percent < 30) before fighting
-- Use tasks system to earn bonus gold and items
+- Use tasks system to earn bonus gold and tasks_coin — integrate task loops into combat/gathering loops
 - Prioritize skills that unlock better strategies first
 - Comments (#) are helpful for explaining loop purpose
 - Crafting is fast XP but requires gathering materials first
-- Early priority: woodcutting and mining to get copper gear, then combat`;
+- Early priority: woodcutting and mining to get copper gear, then combat
+- Crafting chains: gather raw materials → smelt/plank → craft gear (each step gives XP)
+- Item tasks (at 4,13) are great for gathering loops — get a task, gather to fill it, complete it for bonus gold
+- Monster tasks (at 1,2) integrate naturally into combat farming loops`;
 
 export interface BootstrapResult {
   script: string;
@@ -163,7 +204,8 @@ export async function bootstrapAgent(gameState: GameState): Promise<BootstrapRes
 - Gold: ${gameState.gold}
 - Position: (${gameState.position.x}, ${gameState.position.y}) [${gameState.position.layer}]
 - Inventory: ${gameState.inventory_slots.used}/${gameState.inventory_slots.max} slots
-- Task: ${gameState.task || 'none'}
+- Task: ${gameState.task ? `${gameState.task} (${gameState.task_progress}/${gameState.task_total}, type: ${gameState.task_type})` : 'none'}
+- Tasks coins: ${gameState.task_coins}
 
 ## Skills
 ${skills}
@@ -182,9 +224,10 @@ Generate an efficient long-running script that:
 2. Uses "loop forever:" as outermost structure  
 3. Handles inventory management (bank when full)
 4. Handles HP (rest when low before fighting)
-5. Focuses on efficient skill progression toward level 50 in all skills
+5. Integrates tasks into the main loop for bonus gold/coins
+6. Focuses on efficient skill progression toward level 50 in all skills
 
-Start with what makes sense given current character state. For a brand new level 1 character, a good opening strategy is woodcutting + copper mining to gather crafting materials, then batch-craft gear for fast crafting XP, then move to combat with better equipment.
+Start with what makes sense given current character state. For a brand new level 1 character, a good opening strategy is woodcutting + copper mining to gather crafting materials, then batch-craft gear for fast crafting XP, then move to combat with better equipment. Weave in item tasks (at 4,13 for gather tasks) or monster tasks (at 1,2) to earn bonus gold.
 
 Respond with:
 REASONING:

@@ -182,14 +182,16 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 ## Phase 5: Advanced Features 🚀
 
 ### 5.1 Complex Crafting
-- [ ] Analyze crafting chains (dependencies)
-- [ ] Optimize material gathering order
-- [ ] Calculate crafting profitability
+- [x] Add `craft_chain(item_code, qty)` tool — resolves full ingredient tree (2 hops deep), returns raw materials needed
+- [x] Add `get_craftable_items(inventory, skillLevels)` tool — given stock + skill levels, list what can be crafted right now
+- [x] Update `bootstrap.ts` `KNOWN_LOCATIONS` with level 5+ recipes, ash_plank, woodcutting workshop coords
+- [x] Update bootstrap system prompt to mention crafting chains and item tasks
 
 ### 5.2 Quest Support
-- [ ] Add quest tracking
-- [ ] Generate quest completion scripts
-- [ ] Handle quest rewards
+- [x] Add `get_available_tasks(characterLevel, skillLevels)` tool — fetches /tasks/list, filters by character readiness
+- [x] Add task loop DSL example to `KNOWN_LOCATIONS` in bootstrap.ts
+- [x] Update bootstrap prompt: task integration guidance, item vs monster task masters, tasks_coin exchange
+- [ ] Add tasks_coin exchange tracking to stats dashboard
 
 ### 5.3 Death Recovery
 - [x] Detect death events (fight.result === 'loss')
