@@ -28,9 +28,10 @@ export async function chat(
     max_tokens: maxTokens,
   });
   const message = response.choices[0]?.message as any;
-  // deepseek-reasoner puts the actual response in reasoning_content; content is always ""
+  // deepseek-reasoner: reasoning_content is the thinking chain, content is the final structured answer.
+  // In practice content is always empty for the reasoner — use reasoning_content as fallback.
   if (model === MODEL_REASONER) {
-    return message?.reasoning_content ?? message?.content ?? '';
+    return message?.content || message?.reasoning_content || '';
   }
   return message?.content ?? '';
 }

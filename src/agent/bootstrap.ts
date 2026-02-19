@@ -289,7 +289,7 @@ SCRIPT:
     { role: 'user', content: userPrompt },
   ];
 
-  const raw = await chat(messages, MODEL_REASONER, 4096);
+  const raw = await chat(messages, MODEL_CHAT, 8192);
 
   const reasoningMatch = raw.match(/REASONING:\s*\n([\s\S]+?)(?=SCRIPT:)/);
   const scriptMatch = raw.match(/SCRIPT:\s*\n([\s\S]+)/);

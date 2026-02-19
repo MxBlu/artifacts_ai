@@ -1,5 +1,18 @@
 # Agentic Changes Log
 
+## [2026-02-19 18] - Fix bootstrap using wrong model for structured output
+
+### Changed
+- File: `src/agent/bootstrap.ts`
+  - Switch bootstrap `chat()` call from `MODEL_REASONER` to `MODEL_CHAT` (with 8192 token budget)
+- File: `src/agent/llm.ts`
+  - Remove debug logging; keep `content || reasoning_content` fallback for reasoner calls
+
+### Notes
+- Root cause: `deepseek-reasoner` never populates `content` — it only fills `reasoning_content` with its thinking chain, which doesn't follow the `REASONING: / SCRIPT:` format instructions
+- `deepseek-chat` reliably returns structured `content` and is the right model for formatted output tasks
+- Reasoner is still appropriate for check-in decisions where free-form strategic thinking is valuable
+
 ## [2026-02-19 17] - Fix deepseek-reasoner returning empty content
 
 ### Changed
