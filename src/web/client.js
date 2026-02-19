@@ -141,6 +141,16 @@ function handleStateUpdate(data) {
     setStatus(data.status);
     agentRunning = data.status === 'running';
     updateButtons();
+    // Reset character to idle when script stops/errors
+    if (data.status !== 'running') {
+      clearTimeout(charBubbleTimer);
+      charBubbleTimer = null;
+      const overlay = el('char-overlay');
+      const bubble = el('charBubble');
+      overlay.dataset.action = 'idle';
+      bubble.textContent = '💭 idle';
+      bubble.classList.remove('visible');
+    }
   }
   el('hdrLine').textContent = data.currentLine ?? '-';
 }
@@ -602,12 +612,14 @@ function updateCharacterSprite(line) {
   bubble.textContent = result.text;
   bubble.classList.add('visible');
 
-  // Reset idle timer
+  // Reset idle timer — only revert to idle if script is not running
   clearTimeout(charBubbleTimer);
   charBubbleTimer = setTimeout(() => {
-    overlay.dataset.action = 'idle';
-    bubble.textContent = '💭 idle';
-    bubble.classList.remove('visible');
+    if (!agentRunning) {
+      overlay.dataset.action = 'idle';
+      bubble.textContent = '💭 idle';
+      bubble.classList.remove('visible');
+    }
   }, 4000);
 }
 
