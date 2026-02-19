@@ -236,7 +236,7 @@ When generating scripts, use only these commands:
 - if <condition>: / else:
 - loop <n>: | loop until <cond>: | loop while <cond>: | loop forever:
 
-Conditions: inventory_full, has_item <code> [qty], has_item_total <code> <qty> (inventory+bank combined), <skill>_level >= <n>, hp < <n>, hp_percent < <n>, gold > <n>, has_task, task_progress_complete
+Conditions: inventory_full, not <condition> (negates any condition), has_item <code> [qty], has_item_total <code> <qty> (inventory+bank combined), <skill>_level >= <n>, hp < <n>, hp_percent < <n>, gold > <n>, has_task, task_progress_complete
 
 ALWAYS goto the correct workshop BEFORE craft. Workshop aliases by craft.skill:
   mining → workshop_mining (1,5) | woodcutting → workshop_woodcutting (-2,-3)

@@ -71,6 +71,7 @@ Control Flow:
 
 Conditions:
   inventory_full
+  not <condition>           Negates any condition (e.g. not has_item copper_bar)
   has_item <code> [qty]
   has_item_total <code> <qty>   true if inventory + bank combined >= qty
   <skill>_level >= <n>      e.g. mining_level >= 5

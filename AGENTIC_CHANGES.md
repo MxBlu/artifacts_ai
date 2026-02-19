@@ -1,5 +1,21 @@
 # Agentic Changes Log
 
+## [2026-02-19 16] - Add `not` condition prefix to DSL
+
+### Changed
+- File: `src/engine/parser.ts`
+  - Split `Condition` into `BaseCondition` union + `Condition = BaseCondition & { not?: true }`
+  - `parseCondition`: if first token is `not`, parse the remainder as an inner condition and set `not: true`
+- File: `src/engine/executor.ts`
+  - `evalCondition` now delegates to `evalConditionBase` and flips result when `cond.not` is set
+- File: `src/agent/bootstrap.ts`
+  - Added `not <condition>` to DSL_DOCS conditions reference
+- File: `src/agent/checkin.ts`
+  - Added `not <condition>` to SYSTEM_PROMPT conditions reference
+
+### Notes
+- Works with any condition: `if not has_item copper_bar:`, `loop until not inventory_full:`, etc.
+
 ## [2026-02-19 15] - Document and propagate gathering tool mechanics
 
 ### Changed

@@ -169,6 +169,11 @@ export class ScriptExecutor {
   }
 
   private async evalCondition(cond: Condition): Promise<boolean> {
+    const result = await this.evalConditionBase(cond);
+    return cond.not ? !result : result;
+  }
+
+  private async evalConditionBase(cond: Condition): Promise<boolean> {
     const char = await this.getCharacter();
 
     switch (cond.cond) {

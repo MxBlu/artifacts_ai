@@ -62,7 +62,7 @@ export type Expr =
   | { kind: 'string'; value: string };
 
 // Condition types
-export type Condition =
+export type BaseCondition =
   | { cond: 'inventory_full' }
   | { cond: 'inventory_space'; op: CmpOp; value: Expr }
   | { cond: 'has_item';        item: string; quantity?: Expr }
@@ -75,6 +75,9 @@ export type Condition =
   | { cond: 'has_task' }
   | { cond: 'task_progress_complete' }
   | { cond: 'task_coins';      op: CmpOp; value: Expr };
+
+// Condition with optional negation: `not <condition>`
+export type Condition = BaseCondition & { not?: true };
 
 export type CmpOp = '>=' | '<=' | '>' | '<' | '==' | '!=';
 
@@ -170,6 +173,12 @@ function parseCmpOp(token: string): CmpOp {
 
 function parseCondition(tokens: Token[]): Condition {
   const head = tokens[0]?.toLowerCase();
+
+  // not <condition>
+  if (head === 'not') {
+    const inner = parseCondition(tokens.slice(1));
+    return { ...inner, not: true };
+  }
 
   if (head === 'inventory_full') return { cond: 'inventory_full' };
   if (head === 'has_task')       return { cond: 'has_task' };
