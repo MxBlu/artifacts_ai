@@ -1,5 +1,26 @@
 # Agentic Changes Log
 
+## [2026-02-19 09] - Animated character overlay in web UI
+
+### Added
+- File: `src/web/index.html`
+  - `#char-overlay` fixed-position element (bottom-left) containing a CSS pixel-art character and speech bubble
+  - Character body parts: head, hair, body, two arms, two legs — all built from `<div>` elements
+  - Eight `@keyframes` animations: `breathe` (idle), `walk-*` (moving), `fight-*` (combat), `chop-*` (gather/woodcut/mine/fish), `hammer-*` (craft), `sleep-*` (rest), `bounce-*` (bank/task/ge/npc), `spin-char` (recycle/equip)
+  - Speech bubble above the character with CSS triangle pointer; fades in on action, fades out after 4s
+
+- File: `src/web/client.js`
+  - `ACTION_MAP`: maps execution log line prefixes to `{ action, emoji, label }` entries
+  - `SKIP_RE`: regex to ignore result/sub-lines (`→`, `waiting`, `cooldown`, `STUCK`, etc.)
+  - `classifyAction(line)`: strips timestamps/`[MANUAL]` prefix, matches against `ACTION_MAP`
+  - `updateCharacterSprite(line)`: sets `data-action` on overlay, updates bubble text, resets 4s idle timer
+  - Hooked into `execution_log` message handler
+
+### Notes
+- All frontend-only — no server or TypeScript changes
+- Animation driven purely by `data-action` CSS attribute selector; no JS animation loops
+- Bubble stays visible for 4s after last action, then character returns to idle breathing
+
 ## [2026-02-19 08] - break statement, GE commands, tasks_coin tracking
 
 ### Changed

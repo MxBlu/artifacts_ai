@@ -70,6 +70,7 @@ function handleMessage(msg) {
       break;
     case 'execution_log':
       appendLog('execLog', msg.data.line, 'exec');
+      updateCharacterSprite(msg.data.line);
       break;
     case 'state_update':
       handleStateUpdate(msg.data);
@@ -549,6 +550,65 @@ function formatDuration(seconds) {
   if (h > 0) return `${h}h ${m}m`;
   if (m > 0) return `${m}m ${s}s`;
   return `${s}s`;
+}
+
+// ─── Character sprite ─────────────────────────────────────────────────────────
+
+let charBubbleTimer = null;
+
+// Map action label prefix → { action (CSS data-action), emoji, label }
+const ACTION_MAP = [
+  { test: /^goto|^move/,                         action: 'walk',  emoji: '🚶', label: 'moving'       },
+  { test: /^fight/,                              action: 'fight', emoji: '⚔️',  label: 'fighting'     },
+  { test: /^woodcut|^mine|^gather|^fish/,        action: 'chop',  emoji: '🪓', label: (l) => l.split(' ')[0] },
+  { test: /^craft/,                              action: 'craft', emoji: '🔨', label: 'crafting'     },
+  { test: /^recycle/,                            action: 'spin',  emoji: '♻️',  label: 'recycling'    },
+  { test: /^equip|^unequip/,                     action: 'spin',  emoji: '🛡️',  label: (l) => l.split(' ')[0] },
+  { test: /^bank/,                               action: 'bounce',emoji: '🏦', label: 'banking'      },
+  { test: /^rest/,                               action: 'rest',  emoji: '💤', label: 'resting'      },
+  { test: /^task/,                               action: 'bounce',emoji: '📋', label: 'task'         },
+  { test: /^ge /,                                action: 'bounce',emoji: '💰', label: 'trading'      },
+  { test: /^npc /,                               action: 'bounce',emoji: '🗣️',  label: 'npc trade'    },
+  { test: /^use /,                               action: 'bounce',emoji: '🧪', label: 'using item'   },
+  { test: /^transition/,                         action: 'walk',  emoji: '🚪', label: 'transition'   },
+];
+
+// Lines that don't represent real actions — skip them
+const SKIP_RE = /^\s*→|^  →|waiting|cooldown|STUCK|WARNING|death recovery|Starting script|Script completed|Script stopped|Script paused|Error:|retry|No target|resolved|already at/i;
+
+function classifyAction(line) {
+  // Strip [MANUAL] prefix and timestamps like [12:34:56]
+  const clean = line.replace(/^\[.*?\]\s*/, '').replace(/^\[MANUAL\]\s*/i, '').toLowerCase().trim();
+
+  if (SKIP_RE.test(line)) return null;
+
+  for (const entry of ACTION_MAP) {
+    if (entry.test.test(clean)) {
+      const lbl = typeof entry.label === 'function' ? entry.label(clean) : entry.label;
+      return { action: entry.action, text: `${entry.emoji} ${lbl}` };
+    }
+  }
+  return null;
+}
+
+function updateCharacterSprite(line) {
+  const result = classifyAction(line);
+  if (!result) return;
+
+  const overlay = el('char-overlay');
+  const bubble = el('charBubble');
+
+  overlay.dataset.action = result.action;
+  bubble.textContent = result.text;
+  bubble.classList.add('visible');
+
+  // Reset idle timer
+  clearTimeout(charBubbleTimer);
+  charBubbleTimer = setTimeout(() => {
+    overlay.dataset.action = 'idle';
+    bubble.textContent = '💭 idle';
+    bubble.classList.remove('visible');
+  }, 4000);
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
