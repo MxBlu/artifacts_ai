@@ -49,91 +49,91 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Implement max execution time limits
 - [x] Add graceful shutdown on errors
 
-## Phase 2: Agent Integration 🎯
+## Phase 2: Agent Integration ✅
 
 ### 2.1 Information Tools
-- [ ] Implement get_game_state() tool
-- [ ] Implement get_execution_status() tool
-- [ ] Implement query_game_knowledge() (semantic search over GAME_KNOWLEDGE.md)
-- [ ] Implement lookup_item() tool
-- [ ] Implement lookup_monster() tool
-- [ ] Implement lookup_resource() tool
-- [ ] Implement find_location() tool
-- [ ] Implement get_market_prices() tool
+- [x] Implement get_game_state() tool
+- [x] Implement get_execution_status() tool
+- [x] Implement query_game_knowledge() (semantic search over GAME_KNOWLEDGE.md)
+- [x] Implement lookup_item() tool
+- [x] Implement lookup_monster() tool
+- [x] Implement lookup_resource() tool
+- [x] Implement find_location() tool
+- [x] Implement get_market_prices() tool
 
 ### 2.2 Action Tools
-- [ ] Implement generate_script() tool
-- [ ] Implement start_script() tool
-- [ ] Implement pause_script() tool
-- [ ] Implement resume_script() tool
-- [ ] Implement stop_script() tool
+- [x] Implement generate_script() tool (bootstrap.ts)
+- [x] Implement start_script() tool (agent.ts)
+- [x] Implement pause_script() tool (executor.stop())
+- [x] Implement resume_script() tool (index.ts resume command)
+- [x] Implement stop_script() tool (executor.stop())
 
 ### 2.3 Check-in System
-- [ ] Implement 10-minute timer
-- [ ] Create check-in prompt template
-- [ ] Parse agent responses (CONTINUE/MODIFY/STOP)
-- [ ] Handle script modifications
-- [ ] Log check-in history
+- [x] Implement 10-minute timer
+- [x] Create check-in prompt template
+- [x] Parse agent responses (CONTINUE/MODIFY/STOP)
+- [x] Handle script modifications
+- [x] Log check-in history
 
 ### 2.4 Bootstrap System
-- [ ] Create initial agent prompt with game knowledge
-- [ ] Include DSL documentation in prompt
-- [ ] Add level 50 aspirational goal
-- [ ] Test initial agent script generation
+- [x] Create initial agent prompt with game knowledge
+- [x] Include DSL documentation in prompt
+- [x] Add level 50 aspirational goal
+- [x] Test initial agent script generation
 
-## Phase 3: Web Interface 🌐
+## Phase 3: Web Interface ✅
 
 ### 3.1 Backend - WebSocket Server
-- [ ] Set up Node.js WebSocket server (ws library)
-- [ ] Define WebSocket message protocol
-- [ ] Implement connection handling
-- [ ] Broadcast state updates to all clients
-- [ ] Handle client commands (pause, resume, stop, steering)
+- [x] Set up Node.js WebSocket server (ws library)
+- [x] Define WebSocket message protocol (agent_log, execution_log, state_update, stats_update, script_update, error, hello)
+- [x] Implement connection handling
+- [x] Broadcast state updates to all clients
+- [x] Handle client commands (agent_start, agent_stop, steer, script_run, get_state)
 - [ ] Implement message queuing for reliability
 
 ### 3.2 Frontend - Core UI
-- [ ] Create HTML structure (split panes layout)
-- [ ] Implement dark theme CSS (terminal aesthetic)
-- [ ] Set up WebSocket client connection
-- [ ] Handle reconnection on disconnect
-- [ ] Add auto-scroll for log panels
+- [x] Create HTML structure (4-panel grid layout)
+- [x] Implement dark theme CSS (terminal aesthetic)
+- [x] Set up WebSocket client connection
+- [x] Handle reconnection on disconnect
+- [x] Add auto-scroll for log panels
 
 ### 3.3 Agent Log Panel
-- [ ] Display AI agent responses in real-time
-- [ ] Show timestamps for each entry
-- [ ] Color-code message types (thinking, decision, error)
+- [x] Display AI agent responses in real-time
+- [x] Show timestamps for each entry
+- [x] Color-code message types (agent=purple, human=yellow, error=red, system=grey)
 - [ ] Add filtering options (show/hide types)
-- [ ] Implement log size limit (keep last N entries)
+- [x] Implement log size limit (keep last 500 entries)
 
 ### 3.4 Execution Log Panel
-- [ ] Display executed actions in real-time
-- [ ] Show command, result, and cooldown
-- [ ] Color-code human vs agent actions
+- [x] Display executed actions in real-time
+- [x] Show command, result, and cooldown
+- [x] Color-code human vs agent actions
 - [ ] Add action icons (move, fight, gather, etc.)
 - [ ] Implement search/filter
 
 ### 3.5 Stats Dashboard
-- [ ] Display current character state
-- [ ] Show skill levels with progress bars
-- [ ] Calculate and display XP/hr per skill
-- [ ] Calculate and display gold/hr
-- [ ] Show session statistics (runtime, actions, gold earned)
+- [x] Display current character state
+- [x] Show skill XP gained with progress bars
+- [x] Calculate and display XP/hr per skill
+- [x] Calculate and display gold/hr
+- [x] Show session statistics (runtime, actions, gold earned)
 - [ ] Add level-up notifications (toast/flash)
 - [ ] Implement stats history graph (optional)
 
 ### 3.6 Script Viewer
-- [ ] Display current script with line numbers
-- [ ] Highlight current execution line
-- [ ] Show loop depth with indentation
-- [ ] Syntax highlighting for commands
+- [x] Display current script with line numbers
+- [x] Highlight current execution line
+- [x] Show loop depth with indentation
+- [x] Syntax highlighting for commands (keywords, numbers, strings, comments)
 - [ ] Add expand/collapse for large scripts
 
 ### 3.7 Human Steering Input
-- [ ] Create text input field
-- [ ] Implement send button and Enter key handling
-- [ ] Show agent acknowledgment of input
+- [x] Create text input field
+- [x] Implement send button and Enter key handling
+- [x] Show agent acknowledgment of input (echoed to agent log)
 - [ ] Display steering history (past commands)
-- [ ] Add quick action buttons (pause, resume, emergency stop)
+- [x] Add quick action buttons (Start, Resume, Stop)
 
 ### 3.8 Manual Play Mode
 - [ ] Implement "Take Control" button
@@ -194,15 +194,14 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [ ] Re-equip from bank
 - [ ] Resume interrupted task
 
-## Current Sprint (Week 2)
+## Current Sprint
 
-**Goal:** Complete Phase 2 (Agent Integration) + Phase 3 (Web Interface)
+**Goal:** Phase 4 — Optimization (pathfinding, caching, metrics)
 
-- [ ] Implement agent tools (get_game_state, lookup_*, etc.)
-- [ ] Build check-in system (10-minute timer + prompt)
-- [ ] Create bootstrap prompt with level 50 goal
-- [ ] Set up WebSocket server
-- [ ] Build web dashboard (logs, stats, script viewer, steering)
+- [ ] Pathfinding: A* for multi-tile navigation
+- [ ] Resource/item/monster data caching (avoid redundant API calls)
+- [ ] XP tracking with per-session rates from live character data
+- [ ] Manual play mode in web UI (take/release control)
 
 ## Backlog Ideas
 
@@ -214,12 +213,8 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 ## Completed ✅
 
 - Phase 1: Script Executor Foundation (parser, executor, persistence, error handling)
-  - DSL parser with full AST, tokenizer, all commands, conditions, control flow
-  - ScriptExecutor class with live API integration
-  - Atomic persistence with snapshot rotation
-  - Retry logic, cooldown handling, stuck detection
-  - CLI entry point: run, resume, status, stop
-  - Smoke tested against live API (greenglasses character)
+- Phase 2: Agent Integration (tools, check-in, bootstrap, agent loop, CLI)
+- Phase 3: Web Interface (WebSocket server, 4-panel dashboard, steering, script viewer, stats)
 
 ---
 

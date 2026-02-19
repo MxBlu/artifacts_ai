@@ -1,5 +1,50 @@
 # Agentic Changes Log
 
+## [2026-02-19] - Phase 2 complete + Phase 3 web interface
+
+### Added
+- File: `src/agent/bootstrap.ts`
+  - Initial agent prompt with full DSL docs, known locations, XP rates
+  - Calls `deepseek-reasoner` to generate first script from game state
+  - `REASONING:` / `SCRIPT:` response parsing; fallback script on parse failure
+- File: `src/agent/agent.ts`
+  - `Agent` class: main autonomous loop (bootstrap → executor → check-ins → MODIFY)
+  - `start({ resume, humanInput })` — bootstraps or resumes from saved state
+  - `stop()` / `steer(input)` — public controls for web UI
+  - `onAgentLog` / `onExecutionLog` / `onStateChange` callbacks for WebSocket
+  - Error/stopped/natural-completion handling with automatic check-in triggers
+- File: `src/web/server.ts`
+  - HTTP server on port 3000 serving static files from `src/web/`
+  - WebSocket server; protocol: `agent_log`, `execution_log`, `state_update`, `stats_update`, `script_update`, `error`, `hello`
+  - Client commands: `agent_start`, `agent_stop`, `steer`, `script_run`, `get_state`
+  - Sends full state snapshot (`hello`) on new connection
+  - Broadcasts real-time logs and stats from agent/executor callbacks
+- File: `src/web/index.html`
+  - 4-panel dark terminal-aesthetic dashboard
+  - Agent log (top-left), execution log (top-right), stats (bottom-left), script viewer (bottom-right)
+  - Header: status badge, live actions/gold/runtime, connection indicator, Start/Resume/Stop buttons
+- File: `src/web/client.js`
+  - WebSocket client with auto-reconnect (3s)
+  - Real-time log rendering with color classes (agent=purple, human=yellow, error=red)
+  - Script viewer with line highlighting, DSL syntax highlighting, auto-scroll to current line
+  - Skills panel with XP bars (session XP gained)
+  - Gold/hr, XP/hr, runtime stats
+  - Steering input → `steer` WS command
+
+### Changed
+- File: `src/index.ts`
+  - Added `agent` command: `npx tsx src/index.ts agent [--resume] ["instruction"]`
+  - Added `setupAgentSignalHandlers()` for SIGINT/SIGTERM
+  - Added `dotenv.config()` import
+  - Updated help text
+- File: `src/agent/agent.ts`
+  - Added public `steer(input)` method (triggers `checkin.triggerNow`)
+- File: `package.json`
+  - Added `"agent"` and `"web"` scripts
+  - Added `ws` dependency + `@types/ws` devDependency
+- File: `TASKS.md`
+  - Marked Phase 2 and Phase 3 complete; updated current sprint to Phase 4
+
 ## [2026-02-19] - Fix rest command: HP restore via API; rename sleep command
 
 ### Changed

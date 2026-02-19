@@ -1,8 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import * as dotenv from 'dotenv';
+dotenv.config();
+
 import { ArtifactsAPI } from './api';
 import { ScriptExecutor } from './engine/executor';
 import { createEmptyState, loadState, saveState } from './engine/state';
+import { Agent } from './agent/agent';
 
 const CHARACTER_NAME = 'greenglasses';
 const AUTH_FILE = path.resolve(process.cwd(), 'auth_headers.txt');
@@ -27,6 +31,17 @@ async function main() {
   const api = new ArtifactsAPI(token);
 
   // ─── CLI commands ───────────────────────────────────────────────────────────
+
+  if (command === 'agent') {
+    // Start autonomous agent: npx tsx src/index.ts agent [--resume] ["human instruction"]
+    const resume = args.includes('--resume');
+    const humanInput = args.filter(a => !a.startsWith('--') && a !== 'agent').join(' ') || undefined;
+
+    const agent = new Agent(api, CHARACTER_NAME);
+    setupAgentSignalHandlers(agent);
+    await agent.start({ resume, humanInput });
+    return;
+  }
 
   if (command === 'run' && scriptFile) {
     // Run a script file: npx tsx src/index.ts run scripts/my_script.dsl
@@ -100,16 +115,29 @@ async function main() {
 
   // Default: show help
   console.log(`
-Artifacts MMO Script Executor
+Artifacts MMO Agent
 
 Usage:
-  npx tsx src/index.ts run <script.dsl>    Run a DSL script
-  npx tsx src/index.ts resume              Resume from last saved state
-  npx tsx src/index.ts status              Show current execution status
-  npx tsx src/index.ts stop                Mark current execution as stopped
+  npx tsx src/index.ts agent [--resume] ["instruction"]  Start autonomous agent
+  npx tsx src/index.ts run <script.dsl>                  Run a DSL script
+  npx tsx src/index.ts resume                            Resume from last saved state
+  npx tsx src/index.ts status                            Show current execution status
+  npx tsx src/index.ts stop                              Mark current execution as stopped
 
 Character: ${CHARACTER_NAME}
 `);
+}
+
+function setupAgentSignalHandlers(agent: Agent): void {
+  process.on('SIGINT', () => {
+    console.log('\nSIGINT received - stopping agent...');
+    agent.stop();
+    setTimeout(() => process.exit(0), 2000);
+  });
+  process.on('SIGTERM', () => {
+    agent.stop();
+    setTimeout(() => process.exit(0), 2000);
+  });
 }
 
 function setupSignalHandlers(executor: ScriptExecutor): void {

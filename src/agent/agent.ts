@@ -65,6 +65,12 @@ export class Agent {
     this.log('Agent stopped');
   }
 
+  // Trigger an immediate check-in with a human instruction (called by web UI)
+  async steer(input: string): Promise<void> {
+    this.log(`Human steering: ${input}`);
+    await this.checkin.triggerNow(input);
+  }
+
   // ─── Bootstrap ──────────────────────────────────────────────────────────────
 
   private async runBootstrap(humanInput?: string): Promise<void> {

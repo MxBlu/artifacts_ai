@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Artifacts MMO Agent</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --bg2: #161b22;
+      --bg3: #1c2128;
+      --border: #30363d;
+      --text: #e6edf3;
+      --text2: #8b949e;
+      --green: #3fb950;
+      --yellow: #d29922;
+      --red: #f85149;
+      --blue: #58a6ff;
+      --purple: #bc8cff;
+      --orange: #ffa657;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      font-size: 13px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--blue);
+      letter-spacing: 0.05em;
+    }
+
+    .status-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .status-running  { background: #1a3a1a; color: var(--green); }
+    .status-stopped  { background: #2a1a1a; color: var(--red); }
+    .status-paused   { background: #2a2a1a; color: var(--yellow); }
+    .status-error    { background: #2a1a1a; color: var(--red); }
+    .status-offline  { background: var(--bg3); color: var(--text2); }
+
+    .header-stats {
+      margin-left: auto;
+      display: flex;
+      gap: 20px;
+      color: var(--text2);
+      font-size: 12px;
+    }
+    .header-stats span { color: var(--text); }
+
+    .header-btns {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* ── Buttons ── */
+    button {
+      padding: 4px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg3);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    button:hover { background: #2d333b; }
+    button.primary { background: #1f6feb; border-color: #388bfd; }
+    button.primary:hover { background: #388bfd; }
+    button.danger  { background: #6e1c1c; border-color: var(--red); }
+    button.danger:hover  { background: #8a2020; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    /* ── Main layout ── */
+    .main {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 1px;
+      flex: 1;
+      overflow: hidden;
+      background: var(--border);
+    }
+
+    .panel {
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      padding: 6px 12px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .panel-header .count {
+      background: var(--bg3);
+      border-radius: 8px;
+      padding: 1px 6px;
+      font-size: 10px;
+      color: var(--text2);
+    }
+
+    /* ── Log panels ── */
+    .log-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+
+    .log-line {
+      padding: 1px 12px;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .log-line:hover { background: var(--bg2); }
+
+    .log-line.agent   { color: var(--purple); }
+    .log-line.exec    { color: var(--text); }
+    .log-line.human   { color: var(--yellow); }
+    .log-line.error   { color: var(--red); }
+    .log-line.system  { color: var(--text2); }
+
+    /* ── Stats panel (bottom-left) ── */
+    .stats-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .stat-section h3 {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text2);
+      margin-bottom: 8px;
+    }
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 2px 0;
+      color: var(--text2);
+      font-size: 12px;
+    }
+    .stat-row span { color: var(--text); }
+
+    .skill-row {
+      margin: 4px 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .skill-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--text2);
+    }
+    .skill-label span { color: var(--text); }
+
+    .skill-bar {
+      height: 4px;
+      background: var(--bg3);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .skill-bar-fill {
+      height: 100%;
+      background: var(--blue);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+
+    /* ── Script panel (bottom-right) ── */
+    .script-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+
+    .script-line {
+      display: flex;
+      padding: 1px 0;
+      line-height: 1.5;
+    }
+    .script-line.current { background: #1c2d1c; }
+    .script-line.current .script-text { color: var(--green); }
+
+    .script-gutter {
+      width: 36px;
+      text-align: right;
+      padding-right: 8px;
+      color: var(--border);
+      font-size: 11px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .script-line.current .script-gutter { color: var(--green); }
+
+    .script-arrow {
+      width: 16px;
+      color: var(--green);
+      flex-shrink: 0;
+      text-align: center;
+    }
+
+    .script-text {
+      color: var(--text2);
+      white-space: pre;
+    }
+    .script-text .kw  { color: var(--blue); }
+    .script-text .num { color: var(--orange); }
+    .script-text .str { color: var(--green); }
+    .script-text .cmt { color: var(--text2); font-style: italic; }
+
+    /* ── Steering bar ── */
+    .steer-bar {
+      border-top: 1px solid var(--border);
+      padding: 8px 12px;
+      display: flex;
+      gap: 8px;
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+
+    .steer-bar input {
+      flex: 1;
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+      padding: 5px 10px;
+      outline: none;
+    }
+    .steer-bar input:focus { border-color: var(--blue); }
+    .steer-bar input::placeholder { color: var(--text2); }
+
+    /* ── Connection indicator ── */
+    .conn-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      display: inline-block;
+    }
+    .conn-dot.connected { background: var(--green); }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Artifacts MMO Agent</h1>
+  <div id="statusBadge" class="status-badge status-offline">offline</div>
+  <div class="header-stats">
+    <div>Line <span id="hdrLine">-</span></div>
+    <div>Actions <span id="hdrActions">0</span></div>
+    <div>Gold <span id="hdrGold">0</span></div>
+    <div>Runtime <span id="hdrRuntime">0s</span></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:6px;color:var(--text2);font-size:12px;">
+    <span class="conn-dot" id="connDot"></span>
+    <span id="connLabel">Connecting...</span>
+  </div>
+  <div class="header-btns">
+    <button id="btnStart" class="primary" onclick="agentStart()">Start Agent</button>
+    <button id="btnResume" onclick="agentResume()">Resume</button>
+    <button id="btnStop" class="danger" onclick="agentStop()" disabled>Stop</button>
+  </div>
+</header>
+
+<div class="main">
+  <!-- Agent log (top-left) -->
+  <div class="panel">
+    <div class="panel-header">
+      Agent Log
+      <span class="count" id="agentCount">0</span>
+    </div>
+    <div class="log-body" id="agentLog"></div>
+  </div>
+
+  <!-- Execution log (top-right) -->
+  <div class="panel">
+    <div class="panel-header">
+      Execution Log
+      <span class="count" id="execCount">0</span>
+    </div>
+    <div class="log-body" id="execLog"></div>
+  </div>
+
+  <!-- Stats (bottom-left) -->
+  <div class="panel">
+    <div class="panel-header">Stats</div>
+    <div class="stats-body" id="statsBody">
+      <div class="stat-section">
+        <h3>Session</h3>
+        <div class="stat-row">Status <span id="statStatus">-</span></div>
+        <div class="stat-row">Actions <span id="statActions">0</span></div>
+        <div class="stat-row">Gold earned <span id="statGold">0</span></div>
+        <div class="stat-row">Gold/hr <span id="statGoldHr">0</span></div>
+        <div class="stat-row">Runtime <span id="statRuntime">0s</span></div>
+      </div>
+      <div class="stat-section">
+        <h3>Skills</h3>
+        <div id="skillsList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Script viewer (bottom-right) -->
+  <div class="panel">
+    <div class="panel-header">
+      Script
+      <span id="scriptLineInfo" style="color:var(--text2);font-size:11px;">no script</span>
+    </div>
+    <div class="script-body" id="scriptBody"></div>
+    <div class="steer-bar">
+      <input id="steerInput" placeholder="Steer agent... (e.g. 'switch to fishing')" onkeydown="steerKeydown(event)">
+      <button onclick="steerSend()">Send</button>
+    </div>
+  </div>
+</div>
+
+<script src="client.js"></script>
+</body>
+</html>
