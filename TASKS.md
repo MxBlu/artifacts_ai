@@ -171,7 +171,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Calculate gold/hr
 - [x] Live character snapshot on WS connect (skill levels, raw XP for progress bars)
 - [x] Skills dashboard: shows Lv, session XP gained, XP/hr, within-level progress bar
-- [ ] Level-up notifications (toast/flash in UI)
+- [x] Level-up notifications (toast/flash in UI)
 - [ ] Stats history graph (optional)
 
 ### 4.4 Strategy Learning
@@ -192,21 +192,18 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [ ] Handle quest rewards
 
 ### 5.3 Death Recovery
-- [ ] Detect death events
-- [ ] Return to safe location
-- [ ] Re-equip from bank
-- [ ] Resume interrupted task
+- [x] Detect death events (fight.result === 'loss')
+- [x] Return to safe location (bank at 4,1)
+- [x] Re-equip from bank (withdraw + equip any gear lost on death)
+- [x] Resume interrupted task (recovery is inline — script continues after)
 
 ## Current Sprint
 
-**Goal:** Phase 4 — Optimization (pathfinding, caching, metrics)
+**Goal:** Phase 5 — Advanced Features
 
-- [x] Resource/item/monster/map data caching (avoid redundant API calls) — `src/cache.ts`
-- [x] Fixed LOCATION_ALIASES with accurate coordinates from live API
-- [x] `goto <name>` falls back to nearest-tile cache lookup for unknown locations
-- [x] XP tracking with per-session rates and live character data in skills dashboard
-- [x] Level-up toast notifications
-- [x] Manual play mode in web UI (take/release control, action buttons, DSL input)
+- [x] Death recovery: auto re-equip from bank after death, resume script inline
+- [ ] Strategy learning: log strategies to `state/strategies.json`, include in check-in context
+- [ ] GE command: implement grand exchange buy/sell in executor
 
 ## Backlog Ideas
 

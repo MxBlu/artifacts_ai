@@ -43,6 +43,7 @@ export class ScriptExecutor {
   private stuckCounter = 0;
   private lastStateHash = '';
   private stopped = false;
+  private lastEquipment: Record<string, string> = {}; // slot → item code before fight
 
   // Callbacks for external observers (web interface)
   onAction?: (msg: string) => void;
@@ -358,6 +359,11 @@ export class ScriptExecutor {
 
   private async execFight(node: any): Promise<void> {
     appendLog(this.state, `fight${node.monster ? ` (${node.monster})` : ''}`);
+
+    // Snapshot gear before fighting so we can re-equip after death
+    const charBefore = await this.getCharacter();
+    this.lastEquipment = captureEquipment(charBefore);
+
     const data = await this.apiCall('fight', () => this.api.fightCharacter(this.characterName));
     if (data?.fight) {
       const fight = data.fight;
@@ -382,9 +388,53 @@ export class ScriptExecutor {
       const drops = (fight as any).drops?.map((d: any) => `${d.quantity}x ${d.code}`).join(', ') ?? '';
       appendLog(this.state, `  → ${fight.result}, ${fight.turns} turns${drops ? `, drops: ${drops}` : ''}`);
       if (fight.result === 'loss') {
-        appendLog(this.state, '  → DIED — character returned to spawn');
+        appendLog(this.state, '  → DIED — starting death recovery');
+        await this.execDeathRecovery();
       }
     }
+  }
+
+  // After death: move to bank, re-equip any gear that was lost
+  private async execDeathRecovery(): Promise<void> {
+    appendLog(this.state, '[death recovery] moving to bank');
+    await this.apiCall('goto bank', () => this.api.moveCharacter(this.characterName, 4, 1));
+
+    const char = await this.getCharacter();
+    const currentEquip = captureEquipment(char);
+
+    // Find slots that had gear before death but are now empty
+    const toReequip: Array<{ slot: string; code: string }> = [];
+    for (const [slot, code] of Object.entries(this.lastEquipment)) {
+      if (code && !currentEquip[slot]) {
+        toReequip.push({ slot, code });
+      }
+    }
+
+    if (toReequip.length === 0) {
+      appendLog(this.state, '[death recovery] no gear to re-equip');
+      return;
+    }
+
+    appendLog(this.state, `[death recovery] re-equipping ${toReequip.length} items from bank`);
+
+    // Withdraw each item from bank (ignore errors — item may not be in bank)
+    for (const { slot, code } of toReequip) {
+      try {
+        await this.apiCall(
+          `bank withdraw ${code}`,
+          () => this.api.withdrawBankItems(this.characterName, [{ code, quantity: 1 }])
+        );
+        await this.apiCall(
+          `equip ${code} ${slot}`,
+          () => this.api.equipItem(this.characterName, code, slot)
+        );
+        appendLog(this.state, `[death recovery]   re-equipped ${code} → ${slot}`);
+      } catch (err: any) {
+        appendLog(this.state, `[death recovery]   could not re-equip ${code} to ${slot}: ${err.message}`);
+      }
+    }
+
+    appendLog(this.state, '[death recovery] complete — resuming script');
   }
 
   private async execBank(node: any): Promise<void> {
@@ -617,4 +667,25 @@ export class ScriptExecutor {
 
 function sleep(ms: number): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+const EQUIPMENT_SLOTS = [
+  'weapon_slot', 'rune_slot', 'shield_slot', 'helmet_slot', 'body_armor_slot',
+  'leg_armor_slot', 'boots_slot', 'ring1_slot', 'ring2_slot', 'amulet_slot',
+  'artifact1_slot', 'artifact2_slot', 'artifact3_slot', 'utility1_slot', 'utility2_slot',
+  'bag_slot',
+];
+
+// Returns slot_name → item_code for all non-empty equipment slots
+// Strips the trailing '_slot' so the key can be passed directly to equipItem
+function captureEquipment(char: Character): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const slot of EQUIPMENT_SLOTS) {
+    const code = char[slot];
+    if (code && typeof code === 'string' && code !== '') {
+      const slotName = slot.replace('_slot', '');
+      result[slotName] = code;
+    }
+  }
+  return result;
 }

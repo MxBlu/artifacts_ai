@@ -1,5 +1,21 @@
 # Agentic Changes Log
 
+## [2026-02-19 02] - Death recovery (Phase 5.3)
+
+### Changed
+- File: `src/engine/executor.ts`
+  - Added `lastEquipment: Record<string, string>` to track equipped gear before each fight
+  - `execFight`: snapshots gear before fight; on `fight.result === 'loss'` calls `execDeathRecovery()`
+  - Added `execDeathRecovery()`: moves to bank, withdraws any gear lost on death, re-equips slot-by-slot, then resumes script
+  - Added `captureEquipment(char)` helper — reads all `*_slot` fields from character, returns `slotName → itemCode` map
+  - Added `EQUIPMENT_SLOTS` constant listing all 16 equipment slot field names
+
+### Changed
+- File: `TASKS.md`
+  - Marked Phase 4.3 level-up toast as completed
+  - Marked Phase 5.3 Death Recovery as fully completed
+  - Updated Current Sprint goal to Phase 5
+
 ## [2026-02-19] - Level-up toasts + manual play mode
 
 ### Changed
