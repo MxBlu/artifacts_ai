@@ -163,12 +163,16 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Cache map tiles (`state/cache/map_overworld.json`)
 
 ### 4.3 Metrics & Monitoring
-- [ ] Track actions executed
-- [ ] Track XP gains per skill
-- [ ] Track gold earned/spent
-- [ ] Track items gathered
-- [ ] Calculate efficiency metrics (XP/hour, gold/hour)
-- [ ] Add progress visualization
+- [x] Track actions executed
+- [x] Track XP gains per skill (correct skill keys: woodcutting/mining/fishing/alchemy/combat/craft skills)
+- [x] Track gold earned
+- [x] Track items gathered
+- [x] Calculate XP/hr per skill (server-side, broadcast in stats_update)
+- [x] Calculate gold/hr
+- [x] Live character snapshot on WS connect (skill levels, raw XP for progress bars)
+- [x] Skills dashboard: shows Lv, session XP gained, XP/hr, within-level progress bar
+- [ ] Level-up notifications (toast/flash in UI)
+- [ ] Stats history graph (optional)
 
 ### 4.4 Strategy Learning
 - [ ] Log successful strategies
@@ -200,7 +204,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Resource/item/monster/map data caching (avoid redundant API calls) — `src/cache.ts`
 - [x] Fixed LOCATION_ALIASES with accurate coordinates from live API
 - [x] `goto <name>` falls back to nearest-tile cache lookup for unknown locations
-- [ ] XP tracking with per-session rates from live character data
+- [x] XP tracking with per-session rates and live character data in skills dashboard
 - [ ] Manual play mode in web UI (take/release control)
 
 ## Backlog Ideas
@@ -219,4 +223,4 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 ---
 
 **Last Updated:** 2026-02-19
-**Current Focus:** Phase 2 - Agent Integration
+**Current Focus:** Phase 4 - Optimization & Polish
