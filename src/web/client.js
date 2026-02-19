@@ -19,6 +19,13 @@ let runtimeTimer = null;
 // Live character snapshot (from hello payload)
 let characterSnapshot = null;
 
+// Log filter state (which classes are visible in agentLog)
+const activeFilters = new Set(['agent', 'human', 'system', 'error']);
+
+// Steering history (arrow-up recall)
+const steerHistory = [];
+let steerHistoryIdx = -1;
+
 // ─── WebSocket ────────────────────────────────────────────────────────────────
 
 function connect() {
@@ -202,7 +209,14 @@ function appendLog(panelId, text, cls = 'exec') {
 
   const line = document.createElement('div');
   line.className = `log-line ${cls}`;
+  line.dataset.cls = cls;
   line.textContent = text;
+
+  // Apply active filter for agent log
+  if (panelId === 'agentLog' && !activeFilters.has(cls)) {
+    line.classList.add('hidden');
+  }
+
   panel.appendChild(line);
 
   // Trim to MAX_LOG_LINES
@@ -454,11 +468,52 @@ function steerSend() {
   if (!input) return;
   send({ type: 'steer', input });
   appendLog('agentLog', `[HUMAN] ${input}`, 'human');
+  // Save to history
+  if (steerHistory[0] !== input) steerHistory.unshift(input);
+  if (steerHistory.length > 50) steerHistory.pop();
+  steerHistoryIdx = -1;
   el('steerInput').value = '';
 }
 
 function steerKeydown(e) {
-  if (e.key === 'Enter') steerSend();
+  if (e.key === 'Enter') { steerSend(); return; }
+  // Arrow-up/down: recall history
+  if (e.key === 'ArrowUp') {
+    e.preventDefault();
+    steerHistoryIdx = Math.min(steerHistoryIdx + 1, steerHistory.length - 1);
+    el('steerInput').value = steerHistory[steerHistoryIdx] ?? '';
+  } else if (e.key === 'ArrowDown') {
+    e.preventDefault();
+    steerHistoryIdx = Math.max(steerHistoryIdx - 1, -1);
+    el('steerInput').value = steerHistoryIdx >= 0 ? steerHistory[steerHistoryIdx] : '';
+  }
+}
+
+// ─── Log filtering & search ───────────────────────────────────────────────────
+
+function toggleFilter(cls, btn) {
+  if (activeFilters.has(cls)) {
+    activeFilters.delete(cls);
+    btn.classList.remove('active');
+  } else {
+    activeFilters.add(cls);
+    btn.classList.add('active');
+  }
+  // Re-apply visibility to all agent log lines
+  const panel = el('agentLog');
+  for (const line of panel.children) {
+    const lineCls = line.dataset.cls ?? 'exec';
+    line.classList.toggle('hidden', !activeFilters.has(lineCls));
+  }
+}
+
+function filterExecLog(query) {
+  const q = query.toLowerCase().trim();
+  const panel = el('execLog');
+  for (const line of panel.children) {
+    const match = !q || line.textContent.toLowerCase().includes(q);
+    line.classList.toggle('search-hidden', !match);
+  }
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -485,3 +540,28 @@ runtimeTimer = setInterval(() => {
     el('hdrRuntime').textContent = formatDuration(runtime);
   }
 }, 1000);
+
+// Keyboard shortcuts (skip when typing in an input/textarea)
+document.addEventListener('keydown', (e) => {
+  const tag = document.activeElement?.tagName?.toLowerCase();
+  if (tag === 'input' || tag === 'textarea') return;
+
+  switch (e.key) {
+    case 's': case 'S':
+      if (!agentRunning && !manualMode) agentStart();
+      break;
+    case 'r': case 'R':
+      if (!agentRunning && !manualMode) agentResume();
+      break;
+    case 'Escape':
+      if (agentRunning) agentStop();
+      break;
+    case 't': case 'T':
+      if (!manualMode) takeControl();
+      break;
+    case '/':
+      e.preventDefault();
+      el('execSearch').focus();
+      break;
+  }
+});

@@ -357,8 +357,51 @@
     }
     .toast-icon { font-size: 15px; margin-right: 4px; }
 
-    /* ── Scrollbar ── */
-    ::-webkit-scrollbar { width: 6px; }
+    /* ── Filter toggles ── */
+    .filter-toggles {
+      display: flex;
+      gap: 4px;
+    }
+    .filter-btn {
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      background: transparent;
+      font-family: inherit;
+      font-size: 10px;
+      cursor: pointer;
+      opacity: 0.45;
+      transition: opacity 0.1s, background 0.1s;
+      color: var(--text2);
+    }
+    .filter-btn.active { opacity: 1; border-color: var(--border); background: var(--bg3); }
+    .filter-btn.f-agent  { color: var(--purple); }
+    .filter-btn.f-human  { color: var(--yellow); }
+    .filter-btn.f-system { color: var(--text2); }
+    .filter-btn.f-error  { color: var(--red); }
+
+    /* ── Search bar ── */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .search-bar input {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: inherit;
+      font-size: 11px;
+      padding: 2px 6px;
+      width: 140px;
+      outline: none;
+    }
+    .search-bar input:focus { border-color: var(--blue); }
+    .search-bar input::placeholder { color: var(--text2); }
+
+    .log-line.hidden { display: none; }
+    .log-line.search-hidden { display: none; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
   </style>
@@ -392,7 +435,15 @@
   <div class="panel">
     <div class="panel-header">
       Agent Log
-      <span class="count" id="agentCount">0</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="filter-toggles">
+          <button class="filter-btn f-agent active"  data-filter="agent"  onclick="toggleFilter('agent',this)"  title="Agent messages">agent</button>
+          <button class="filter-btn f-human active"  data-filter="human"  onclick="toggleFilter('human',this)"  title="Human messages">human</button>
+          <button class="filter-btn f-system active" data-filter="system" onclick="toggleFilter('system',this)" title="System messages">sys</button>
+          <button class="filter-btn f-error active"  data-filter="error"  onclick="toggleFilter('error',this)"  title="Errors">err</button>
+        </div>
+        <span class="count" id="agentCount">0</span>
+      </div>
     </div>
     <div class="log-body" id="agentLog"></div>
   </div>
@@ -401,7 +452,12 @@
   <div class="panel">
     <div class="panel-header">
       Execution Log
-      <span class="count" id="execCount">0</span>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <div class="search-bar">
+          <input id="execSearch" placeholder="filter..." oninput="filterExecLog(this.value)" title="Filter execution log (/ to focus)">
+        </div>
+        <span class="count" id="execCount">0</span>
+      </div>
     </div>
     <div class="log-body" id="execLog"></div>
   </div>

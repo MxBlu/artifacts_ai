@@ -102,7 +102,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Display AI agent responses in real-time
 - [x] Show timestamps for each entry
 - [x] Color-code message types (agent=purple, human=yellow, error=red, system=grey)
-- [ ] Add filtering options (show/hide types)
+- [x] Add filtering options (toggle buttons: agent/human/sys/err)
 - [x] Implement log size limit (keep last 500 entries)
 
 ### 3.4 Execution Log Panel
@@ -110,7 +110,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Show command, result, and cooldown
 - [x] Color-code human vs agent actions
 - [ ] Add action icons (move, fight, gather, etc.)
-- [ ] Implement search/filter
+- [x] Implement search/filter (live text filter input in panel header)
 
 ### 3.5 Stats Dashboard
 - [x] Display current character state
@@ -132,7 +132,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [x] Create text input field
 - [x] Implement send button and Enter key handling
 - [x] Show agent acknowledgment of input (echoed to agent log)
-- [ ] Display steering history (past commands)
+- [x] Display steering history (arrow-up/down recall, last 50 commands)
 - [x] Add quick action buttons (Start, Resume, Stop)
 
 ### 3.8 Manual Play Mode
@@ -147,7 +147,7 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 - [ ] Test real-time updates under load
 - [ ] Test reconnection scenarios
 - [ ] Mobile responsive layout (optional)
-- [ ] Add keyboard shortcuts
+- [x] Add keyboard shortcuts (S=Start, R=Resume, Esc=Stop, T=Take Control, /=focus search)
 - [ ] Performance optimization (virtualized logs)
 
 ## Phase 4: Optimization & Polish ⚡

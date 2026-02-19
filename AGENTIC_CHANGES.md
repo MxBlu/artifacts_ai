@@ -1,5 +1,26 @@
 # Agentic Changes Log
 
+## [2026-02-19 04] - Web UI polish: log filters, exec search, steer history, keyboard shortcuts
+
+### Changed
+- File: `src/web/index.html`
+  - Agent Log panel header: added toggle buttons (agent/human/sys/err) for log type filtering
+  - Execution Log panel header: added live text search/filter input
+  - Added CSS: `.filter-btn`, `.filter-toggles`, `.search-bar`, `.log-line.hidden`, `.log-line.search-hidden`
+
+- File: `src/web/client.js`
+  - Added `activeFilters` Set (defaults all on); `steerHistory[]` + `steerHistoryIdx` for recall
+  - `appendLog`: tags each line with `data-cls`, hides agent-log lines that don't match `activeFilters`
+  - Added `toggleFilter(cls, btn)`: toggles filter state + re-applies visibility to all existing lines
+  - Added `filterExecLog(query)`: live text filter — hides non-matching exec log lines
+  - `steerKeydown`: ArrowUp/Down now cycles through `steerHistory`; sends push history on send
+  - `steerSend`: saves to `steerHistory` (dedup, max 50), resets index
+  - Added global `keydown` shortcut handler: S=Start, R=Resume, Esc=Stop, T=Take Control, /=focus exec search (skips when typing in inputs)
+
+### Changed
+- File: `TASKS.md`
+  - Marked 3.3 filtering, 3.4 search/filter, 3.7 steering history, 3.9 keyboard shortcuts as completed
+
 ## [2026-02-19 03] - Strategy learning (Phase 4.4)
 
 ### Added
