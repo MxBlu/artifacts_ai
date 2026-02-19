@@ -242,7 +242,10 @@ async function main() {
           state.status = 'running';
           const executor = new ScriptExecutor(api, CHARACTER_NAME, state);
           executor.onAction = (line) => broadcast(wss, msg('execution_log', { line }));
-          executor.onStateChange = (s) => broadcast(wss, msg('stats_update', buildStatsUpdate(s)));
+          executor.onStateChange = (s) => {
+            broadcast(wss, msg('state_update', { status: s.status, currentLine: s.currentLine }));
+            broadcast(wss, msg('stats_update', buildStatsUpdate(s)));
+          };
           broadcast(wss, msg('agent_log', { line: '[WS] Running script directly' }));
           executor.run().catch((e) => broadcast(wss, msg('error', { message: e.message })));
           break;

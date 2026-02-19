@@ -209,6 +209,7 @@ function parseCondition(tokens: Token[]): Condition {
 // ─── Script Parser ────────────────────────────────────────────────────────────
 
 interface ParseLine {
+  lineNum: number;  // 1-based line number in original script
   indent: number;
   tokens: Token[];
   raw: string;
@@ -223,7 +224,8 @@ function getIndent(line: string): number {
 }
 
 function parseLines(script: string): ParseLine[] {
-  return script.split('\n').map((raw, _i) => ({
+  return script.split('\n').map((raw, i) => ({
+    lineNum: i + 1,
     indent: getIndent(raw),
     tokens: tokenizeLine(raw),
     raw,
@@ -237,8 +239,12 @@ function parseBlock(lines: ParseLine[], pos: { i: number }, baseIndent: number):
     if (line.indent < baseIndent) break;
     if (line.indent > baseIndent) { pos.i++; continue; } // skip deeper lines (handled by block parsers)
 
+    const lineNum = lines[pos.i].lineNum; // capture BEFORE parseLine increments pos.i
     const node = parseLine(lines, pos, baseIndent);
-    if (node) nodes.push(node);
+    if (node) {
+      (node as any).line = lineNum;
+      nodes.push(node);
+    }
   }
   return nodes;
 }

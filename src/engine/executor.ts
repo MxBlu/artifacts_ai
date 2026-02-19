@@ -104,6 +104,13 @@ export class ScriptExecutor {
   private async execNode(node: ASTNode): Promise<void> {
     if (this.stopped) throw new Error('STOPPED');
 
+    // Update current line for web UI highlighting (only when it changes)
+    const lineNum = (node as any).line;
+    if (lineNum !== undefined && lineNum !== this.state.currentLine) {
+      this.state.currentLine = lineNum;
+      this.onStateChange?.(this.state);
+    }
+
     switch (node.type) {
       case 'goto':          return this.execGoto(node);
       case 'gather':

@@ -1,5 +1,19 @@
 # Agentic Changes Log
 
+## [2026-02-19 10] - Fix current line tracking in script viewer
+
+### Changed
+- File: `src/engine/parser.ts`
+  - `parseBlock()` captures `lineNum` before calling `parseLine()` (which increments `pos.i`), then tags the returned node with `(node as any).line = lineNum`
+- File: `src/engine/executor.ts`
+  - `execNode()` reads `(node as any).line` and updates `state.currentLine`, broadcasting via `onStateChange` only when the line number changes
+- File: `src/web/server.ts`
+  - `script_run` case: `onStateChange` now broadcasts both `state_update` (with `currentLine`) and `stats_update` so the script viewer highlights correctly for manually-run scripts
+
+### Notes
+- `ParseLine.lineNum` was already present (from previous session); only the propagation to AST nodes and executor were missing
+- Line highlighting was already wired in `client.js` (`highlightLine()`); it just wasn't being fed the correct data
+
 ## [2026-02-19 09] - Animated character overlay in web UI
 
 ### Added
