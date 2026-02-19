@@ -1,6 +1,7 @@
 import { ArtifactsAPI, Character, SimpleItem } from '../api';
 import { ASTNode, Condition, Expr, CmpOp, parseScript } from './parser';
 import { ExecutionState, appendLog, saveState } from './state';
+import { nearestTile } from '../cache';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -9,11 +10,20 @@ const MAX_RETRIES = 3;
 const RETRY_BASE_MS = 1000;
 const STUCK_THRESHOLD = 50; // actions without state change = stuck
 const LOCATION_ALIASES: Record<string, { x: number; y: number }> = {
-  bank: { x: 4, y: 1 },
-  workshop: { x: 5, y: 1 },
-  grand_exchange: { x: 5, y: 1 },
-  ge: { x: 5, y: 1 },
-  tasks_master: { x: 5, y: 1 },
+  bank:              { x: 4,  y: 1  },
+  grand_exchange:    { x: 5,  y: 1  },
+  ge:                { x: 5,  y: 1  },
+  tasks_master:      { x: 1,  y: 2  },   // monsters tasks master
+  tasks_master_items:{ x: 4,  y: 13 },   // items tasks master
+  workshop_cooking:  { x: 1,  y: 1  },
+  workshop_weaponcrafting: { x: 2, y: 1 },
+  workshop_gearcrafting:   { x: 3, y: 1 },
+  workshop_jewelrycrafting:{ x: 1, y: 3 },
+  workshop_alchemy:  { x: 2,  y: 3  },
+  workshop_woodcutting:    { x: -2, y: -3 },
+  workshop_mining:   { x: 1,  y: 5  },
+  // legacy alias — defaults to the main city bank
+  workshop:          { x: 2,  y: 1  },
 };
 
 // ─── Executor class ───────────────────────────────────────────────────────────
@@ -282,8 +292,16 @@ export class ScriptExecutor {
     let x: number, y: number;
     if (node.location) {
       const alias = LOCATION_ALIASES[node.location.toLowerCase()];
-      if (!alias) throw new Error(`Unknown location: ${node.location}`);
-      x = alias.x; y = alias.y;
+      if (alias) {
+        x = alias.x; y = alias.y;
+      } else {
+        // Dynamic lookup via cache: search for content code/type/name
+        const char = await this.getCharacter();
+        const found = await nearestTile(this.api, node.location, char.x, char.y);
+        if (!found) throw new Error(`Unknown location: ${node.location}`);
+        x = found.x; y = found.y;
+        appendLog(this.state, `  → resolved '${node.location}' to (${x}, ${y}) via cache`);
+      }
     } else {
       x = Number(this.evalExpr(node.x));
       y = Number(this.evalExpr(node.y));

@@ -3,6 +3,7 @@ import * as path from 'path';
 import { ArtifactsAPI, Character } from '../api';
 import { ExecutionState } from '../engine/state';
 import { ScriptExecutor } from '../engine/executor';
+import { findTiles, searchItems, searchMonsters, searchResources } from '../cache';
 
 // ─── Tool result types ────────────────────────────────────────────────────────
 
@@ -183,71 +184,45 @@ export class AgentTools {
 
   async lookup_item(search: string): Promise<string> {
     try {
-      // Try exact code first
-      const item = await this.api.getItem(search.toLowerCase().replace(/\s+/g, '_'));
-      return JSON.stringify({
-        code: item.code,
-        name: item.name,
-        level: item.level,
-        type: item.type,
-        subtype: item.subtype,
-        craft: item.craft ?? null,
-        tradeable: item.tradeable,
-      }, null, 2);
-    } catch {
-      // Fuzzy search via getAllItems
-      const items = await this.api.getAllItems();
-      const searchLower = search.toLowerCase();
-      const matches = items.filter(i =>
-        i.name.toLowerCase().includes(searchLower) ||
-        i.code.toLowerCase().includes(searchLower)
-      ).slice(0, 5);
+      const matches = await searchItems(this.api, search);
       if (matches.length === 0) return `No items found matching: ${search}`;
-      return matches.map(i => `${i.code}: ${i.name} (lv${i.level}, ${i.type})`).join('\n');
+      // If exact code match, show full detail
+      const exact = matches.find(i => i.code === search.toLowerCase().replace(/\s+/g, '_'));
+      if (exact) {
+        return JSON.stringify({
+          code: exact.code, name: exact.name, level: exact.level,
+          type: exact.type, subtype: exact.subtype,
+          craft: exact.craft ?? null, tradeable: exact.tradeable,
+        }, null, 2);
+      }
+      return matches.slice(0, 5).map(i => `${i.code}: ${i.name} (lv${i.level}, ${i.type})`).join('\n');
+    } catch (err: any) {
+      return `Error looking up item: ${err.message}`;
     }
   }
 
   async lookup_monster(search: string): Promise<string> {
     try {
-      const monster = await this.api.getMonster(search.toLowerCase().replace(/\s+/g, '_'));
+      const matches = await searchMonsters(this.api, search);
+      if (matches.length === 0) return `Monster not found: ${search}`;
+      const m = matches[0];
       return JSON.stringify({
-        code: monster.code,
-        name: monster.name,
-        level: monster.level,
-        hp: monster.hp,
-        type: monster.type,
-        drops: monster.drops?.slice(0, 10),
-        min_gold: monster.min_gold,
-        max_gold: monster.max_gold,
-        attack: {
-          fire: monster.attack_fire,
-          earth: monster.attack_earth,
-          water: monster.attack_water,
-          air: monster.attack_air,
-        },
-        resist: {
-          fire: monster.res_fire,
-          earth: monster.res_earth,
-          water: monster.res_water,
-          air: monster.res_air,
-        },
+        code: m.code, name: m.name, level: m.level, hp: m.hp, type: m.type,
+        drops: m.drops?.slice(0, 10),
+        min_gold: m.min_gold, max_gold: m.max_gold,
+        attack: { fire: m.attack_fire, earth: m.attack_earth, water: m.attack_water, air: m.attack_air },
+        resist: { fire: m.res_fire, earth: m.res_earth, water: m.res_water, air: m.res_air },
       }, null, 2);
-    } catch {
-      return `Monster not found: ${search}`;
+    } catch (err: any) {
+      return `Error looking up monster: ${err.message}`;
     }
   }
 
   async lookup_resource(search: string): Promise<string> {
     try {
-      const resources = await this.api.getAllResources();
-      const searchLower = search.toLowerCase();
-      const matches = resources.filter(r =>
-        r.name.toLowerCase().includes(searchLower) ||
-        r.code.toLowerCase().includes(searchLower) ||
-        r.skill.toLowerCase().includes(searchLower)
-      ).slice(0, 5);
+      const matches = await searchResources(this.api, search);
       if (matches.length === 0) return `No resources found matching: ${search}`;
-      return matches.map(r =>
+      return matches.slice(0, 5).map(r =>
         `${r.code}: ${r.name} (${r.skill} lv${r.level}, drops: ${r.drops?.map(d => d.code).join(', ')})`
       ).join('\n');
     } catch (err: any) {
@@ -257,25 +232,12 @@ export class AgentTools {
 
   async find_location(search: string): Promise<string> {
     try {
-      const searchLower = search.toLowerCase();
-      // Search overworld maps for matching content
-      const maps = await this.api.getMapsByLayer('overworld');
-      const results: string[] = [];
-
-      for (const tile of maps) {
-        const content = tile.interactions?.content;
-        if (!content) continue;
-        if (
-          content.code?.toLowerCase().includes(searchLower) ||
-          content.type?.toLowerCase().includes(searchLower) ||
-          tile.name?.toLowerCase().includes(searchLower)
-        ) {
-          results.push(`(${tile.x}, ${tile.y}) ${tile.name}: ${content.type}=${content.code}`);
-        }
-      }
-
+      const results = await findTiles(this.api, search);
       if (results.length === 0) return `No locations found matching: ${search}`;
-      return results.slice(0, 10).join('\n');
+      return results.slice(0, 10).map(({ tile }) => {
+        const content = tile.interactions?.content;
+        return `(${tile.x}, ${tile.y}) ${tile.name}: ${content ? `${content.type}=${content.code}` : 'no content'}`;
+      }).join('\n');
     } catch (err: any) {
       return `Error finding location: ${err.message}`;
     }

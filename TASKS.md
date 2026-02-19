@@ -153,15 +153,14 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 ## Phase 4: Optimization & Polish ⚡
 
 ### 4.1 Path Finding
-- [ ] Implement A* pathfinding algorithm
-- [ ] Cache map data for navigation
-- [ ] Optimize multi-tile movement
+- [x] Dynamic location lookup via cache (nearestTile) — replaces A* since API moves directly
+- [x] Fixed LOCATION_ALIASES with correct coordinates
 
 ### 4.2 Resource Caching
-- [ ] Cache item database
-- [ ] Cache monster database
-- [ ] Cache resource locations
-- [ ] Cache map tiles
+- [x] Cache item database (`state/cache/items.json`, 6h TTL)
+- [x] Cache monster database (`state/cache/monsters.json`)
+- [x] Cache resource locations (`state/cache/resources.json`)
+- [x] Cache map tiles (`state/cache/map_overworld.json`)
 
 ### 4.3 Metrics & Monitoring
 - [ ] Track actions executed
@@ -198,8 +197,9 @@ Implementation roadmap for autonomous AI agent client based on SPEC.md.
 
 **Goal:** Phase 4 — Optimization (pathfinding, caching, metrics)
 
-- [ ] Pathfinding: A* for multi-tile navigation
-- [ ] Resource/item/monster data caching (avoid redundant API calls)
+- [x] Resource/item/monster/map data caching (avoid redundant API calls) — `src/cache.ts`
+- [x] Fixed LOCATION_ALIASES with accurate coordinates from live API
+- [x] `goto <name>` falls back to nearest-tile cache lookup for unknown locations
 - [ ] XP tracking with per-session rates from live character data
 - [ ] Manual play mode in web UI (take/release control)
 

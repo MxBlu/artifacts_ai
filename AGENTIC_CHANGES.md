@@ -1,5 +1,35 @@
 # Agentic Changes Log
 
+## [2026-02-19] - Phase 4: Game data cache + location aliases fix
+
+### Added
+- File: `src/cache.ts`
+  - `getMapTiles(api)` — loads overworld tile index, caches to `state/cache/map_overworld.json` (6h TTL)
+  - `getAllItems(api)` — loads full item database, caches to `state/cache/items.json`
+  - `loadMonsters(api)` — builds monster index by scanning map tiles + fetching each monster, caches to `state/cache/monsters.json`
+  - `getAllResources(api)` — loads resource list, caches to `state/cache/resources.json`
+  - `findTiles(api, search, cx, cy)` — finds tiles by content code/type/name, sorted by Manhattan distance
+  - `nearestTile(api, search, cx, cy)` — returns nearest matching tile coordinates
+  - `searchItems/searchMonsters/searchResources` — in-memory fuzzy search over cached data
+  - `invalidateCache()` — clears all in-memory caches (call after major game events)
+
+### Changed
+- File: `src/agent/tools.ts`
+  - `lookup_item` — now uses `searchItems` from cache (avoids re-fetching all items)
+  - `lookup_monster` — now uses `searchMonsters` from cache
+  - `lookup_resource` — now uses `searchResources` from cache
+  - `find_location` — now uses `findTiles` from cache (no more full map API call per tool use)
+- File: `src/engine/executor.ts`
+  - Fixed `LOCATION_ALIASES`: corrected all coordinates from live API lookup
+    - bank: (4,1), ge: (5,1), tasks_master: (1,2), workshops by skill, woodcutting: (-2,-3)
+  - `execGoto`: if location name is not in aliases, falls back to `nearestTile` cache lookup
+  - Imported `nearestTile` from `src/cache.ts`
+
+### Notes
+- Cache files saved to `state/cache/` (gitignored with `state/`)
+- TTL is 6h; in-memory cache is cleared on `invalidateCache()` only
+- Monster cache is bootstrapped by scanning map tile content codes then fetching each monster once
+
 ## [2026-02-19] - Fix stale 'running' status on web UI connect
 
 ### Changed
